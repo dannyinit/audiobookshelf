@@ -1,5 +1,5 @@
 import Path = require('path')
-import { DataTypes, Model, Sequelize } from 'sequelize'
+import { DataTypes, Model, Sequelize, BelongsToGetAssociationMixin } from 'sequelize'
 import fsExtra = require('../libs/fsExtra')
 import Logger = require('../Logger')
 import libraryFilters = require('../utils/queries/libraryFilters')
@@ -33,14 +33,11 @@ class LibraryItem extends Model {
   declare isMissing: boolean
   /** @type {boolean} */
   declare isInvalid: boolean
-  /** @type {Date} */
-  declare mtime: Date
-  /** @type {Date} */
-  declare ctime: Date
-  /** @type {Date} */
-  declare birthtime: Date
-  /** @type {BigInt} */
-  declare size: BigInt
+  // Set from file stats as epoch ms; read back from the db as a Date
+  declare mtime: Date | number
+  declare ctime: Date | number
+  declare birthtime: Date | number
+  declare size: number
   /** @type {Date} */
   declare lastScan: Date
   /** @type {string} */
@@ -57,7 +54,7 @@ class LibraryItem extends Model {
   declare createdAt: Date
   /** @type {Date} */
   declare updatedAt: Date
-  /** @type {Book.BookExpanded|Podcast.PodcastExpanded} - only set when expanded */
+  /** @type {Book.BookExpanded|Podcast} - only set when expanded */
   declare media: Book.BookExpanded | Podcast.PodcastExpanded
   /** @type {string} */
   declare title: string
@@ -67,12 +64,19 @@ class LibraryItem extends Model {
   declare authorNamesFirstLast: string
   /** @type {string} */
   declare authorNamesLastFirst: string
-  declare mediaItemShare: any
-  declare numEpisodesIncomplete: any
-  declare rssFeed: { toOldJSONMinified: () => any }
-  declare series: any
-  declare collapsedSeries: any
-  declare recentEpisode: any
+  // Polymorphic association includes, moved to media by the afterFind hook
+  declare book?: Book
+  declare podcast?: Podcast
+  declare getBook: BelongsToGetAssociationMixin<Book>
+  declare getPodcast: BelongsToGetAssociationMixin<Podcast>
+
+  // Extra properties attached by library filter queries
+  declare mediaItemShare?: Record<string, any>
+  declare numEpisodesIncomplete?: number
+  declare rssFeed?: import('./Feed')
+  declare series?: Record<string, any>
+  declare collapsedSeries?: Record<string, any>
+  declare recentEpisode?: import('./PodcastEpisode')
 
   /**
    * Gets library items partially expanded, not including podcast episodes
@@ -82,9 +86,9 @@ class LibraryItem extends Model {
    * @param {number} limit
    * @returns {Promise<LibraryItem[]>} LibraryItem
    */
-  static getLibraryItemsIncrement(offset: number, limit: number, where = null): Promise<LibraryItem[]> {
+  static getLibraryItemsIncrement(offset: number, limit: number, where: import('sequelize').WhereOptions | null = null): Promise<LibraryItem[]> {
     return this.findAll({
-      where,
+      where: where as import('sequelize').WhereOptions,
       include: [
         {
           model: this.sequelize!.models.book,
@@ -138,9 +142,9 @@ class LibraryItem extends Model {
    * @param {import('sequelize').WhereOptions} where
    * @returns {Promise<LibraryItemExpanded[]>}
    */
-  static async findAllExpandedWhere(where: import('sequelize').WhereOptions = null): Promise<LibraryItemExpanded[]> {
-    return this.findAll({
-      where,
+  static async findAllExpandedWhere(where: import('sequelize').WhereOptions | null = null): Promise<LibraryItemExpanded[]> {
+    return <Promise<LibraryItemExpanded[]>>this.findAll({
+      where: where as import('sequelize').WhereOptions,
       include: [
         {
           model: this.sequelize!.models.book,
@@ -161,9 +165,12 @@ class LibraryItem extends Model {
         },
         {
           model: this.sequelize!.models.podcast,
-          include: {
-            model: this.sequelize!.models.podcastEpisode
-          }
+          // Sequelize normalizes a single include object to an array; its types only accept the array form
+          include: [
+            {
+              model: this.sequelize!.models.podcastEpisode
+            }
+          ]
         }
       ],
       order: [
@@ -179,7 +186,7 @@ class LibraryItem extends Model {
    * @param {string} libraryItemId
    * @returns {Promise<LibraryItemExpanded>}
    */
-  static async getExpandedById(libraryItemId: string): Promise<LibraryItemExpanded> {
+  static async getExpandedById(libraryItemId: string): Promise<LibraryItemExpanded | null> {
     if (!libraryItemId) return null
 
     const libraryItem = await this.findByPk(libraryItemId)
@@ -189,15 +196,15 @@ class LibraryItem extends Model {
     }
 
     if (libraryItem.mediaType === 'podcast') {
-      libraryItem.media = await libraryItem.getMedia({
+      libraryItem.media = (await libraryItem.getMedia({
         include: [
           {
             model: this.sequelize!.models.podcastEpisode
           }
         ]
-      })
+      })) as Podcast.PodcastExpanded
     } else {
-      libraryItem.media = await libraryItem.getMedia({
+      libraryItem.media = (await libraryItem.getMedia({
         include: [
           {
             model: this.sequelize!.models.author,
@@ -216,7 +223,7 @@ class LibraryItem extends Model {
           [this.sequelize!.models.author, this.sequelize!.models.bookAuthor, 'createdAt', 'ASC'],
           [this.sequelize!.models.series, 'bookSeries', 'createdAt', 'ASC']
         ]
-      })
+      })) as Book.BookExpanded
     }
 
     if (!libraryItem.media) return null
@@ -230,26 +237,26 @@ class LibraryItem extends Model {
    * @param {import('sequelize').IncludeOptions} [include]
    * @returns {Promise<LibraryItemExpanded>}
    */
-  static async findOneExpanded(where: import('sequelize').WhereOptions, replacements: import('sequelize').BindOrReplacements = null, include: import('sequelize').IncludeOptions = null): Promise<LibraryItemExpanded> {
+  static async findOneExpanded(where: import('sequelize').WhereOptions, replacements: import('sequelize').BindOrReplacements | null = null, include: import('sequelize').IncludeOptions | null = null): Promise<LibraryItemExpanded | null> {
     const libraryItem = await this.findOne({
       where,
-      replacements,
-      include
+      replacements: replacements as import('sequelize').BindOrReplacements,
+      include: include as import('sequelize').IncludeOptions
     })
     if (!libraryItem) {
       return null
     }
 
     if (libraryItem.mediaType === 'podcast') {
-      libraryItem.media = await libraryItem.getMedia({
+      libraryItem.media = (await libraryItem.getMedia({
         include: [
           {
             model: this.sequelize!.models.podcastEpisode
           }
         ]
-      })
+      })) as Podcast.PodcastExpanded
     } else {
-      libraryItem.media = await libraryItem.getMedia({
+      libraryItem.media = (await libraryItem.getMedia({
         include: [
           {
             model: this.sequelize!.models.author,
@@ -268,7 +275,7 @@ class LibraryItem extends Model {
           [this.sequelize!.models.author, this.sequelize!.models.bookAuthor, 'createdAt', 'ASC'],
           [this.sequelize!.models.series, 'bookSeries', 'createdAt', 'ASC']
         ]
-      })
+      })) as Book.BookExpanded
     }
 
     if (!libraryItem.media) return null
@@ -288,8 +295,8 @@ class LibraryItem extends Model {
     Logger.debug(`Loaded ${libraryItems.length} of ${count} items for libary page in ${((Date.now() - start) / 1000).toFixed(2)}s`)
 
     return {
-      libraryItems: libraryItems.map((li) => {
-        const oldLibraryItem = li.toOldJSONMinified()
+      libraryItems: libraryItems.map((li: LibraryItem) => {
+        const oldLibraryItem: Record<string, any> = li.toOldJSONMinified()
         if (li.collapsedSeries) {
           oldLibraryItem.collapsedSeries = li.collapsedSeries
         }
@@ -299,8 +306,8 @@ class LibraryItem extends Model {
         if (li.rssFeed) {
           oldLibraryItem.rssFeed = li.rssFeed.toOldJSONMinified()
         }
-        if (li.media.numEpisodes) {
-          oldLibraryItem.media.numEpisodes = li.media.numEpisodes
+        if ((li.media as Podcast).numEpisodes) {
+          oldLibraryItem.media.numEpisodes = (li.media as Podcast).numEpisodes
         }
         if (li.size && !oldLibraryItem.media.size) {
           oldLibraryItem.media.size = li.size
@@ -329,9 +336,9 @@ class LibraryItem extends Model {
   static async getPersonalizedShelves(library: import('./Library'), user: import('./User'), include: string[], limit: number): Promise<Record<string, any>[]> {
     const fullStart = Date.now() // Used for testing load times
 
-    const shelves = []
+    const shelves: Record<string, any>[] = []
 
-    const timed = async (loader) => {
+    const timed = async <T>(loader: () => Promise<T>) => {
       const start = Date.now()
       const payload = await loader()
       return {
@@ -341,7 +348,7 @@ class LibraryItem extends Model {
     }
 
     // "Continue Listening" shelf
-    const itemsInProgressPayload = await libraryFilters.getMediaItemsInProgress(library, user, include, limit, false)
+    const itemsInProgressPayload = await libraryFilters.getMediaItemsInProgress(library, user, include, limit)
     if (itemsInProgressPayload.items.length) {
       const ebookOnlyItemsInProgress = itemsInProgressPayload.items.filter((li) => li.media.ebookFormat && !li.media.numTracks)
       const audioItemsInProgress = itemsInProgressPayload.items.filter((li) => li.media.numTracks || li.mediaType === 'podcast')
@@ -555,7 +562,7 @@ class LibraryItem extends Model {
    * @param {import('./User')} user
    * @returns {Promise<LibraryItemExpanded[]>}
    */
-  static async getForAuthor(author: import('./Author'), user: import('./User') = null): Promise<LibraryItemExpanded[]> {
+  static async getForAuthor(author: import('./Author'), user: import('./User') | null = null): Promise<LibraryItemExpanded[]> {
     const { libraryItems } = await libraryFilters.getLibraryItemsForAuthor(author, user, undefined, undefined)
     return libraryItems
   }
@@ -574,7 +581,7 @@ class LibraryItem extends Model {
    * @param {string} libraryItemId
    * @returns {Promise<string>}
    */
-  static async getCoverPath(libraryItemId: string): Promise<string> {
+  static async getCoverPath(libraryItemId: string): Promise<string | null> {
     const libraryItem = await this.findByPk(libraryItemId, {
       attributes: ['id', 'mediaType', 'mediaId', 'libraryId'],
       include: [
@@ -614,10 +621,11 @@ class LibraryItem extends Model {
     const metadataFilePath = Path.join(metadataPath, `metadata.${global.ServerSettings.metadataFileFormat}`)
 
     // Expanded with series, authors, podcastEpisodes
-    const mediaExpanded = this.media || (await this.getMediaExpanded())
+    const media = this.media || (await this.getMediaExpanded())
 
     let jsonObject = {}
     if (this.mediaType === 'book') {
+      const mediaExpanded = media as Book.BookExpanded
       jsonObject = {
         tags: mediaExpanded.tags || [],
         chapters: mediaExpanded.chapters?.map((c) => ({ ...c })) || [],
@@ -642,6 +650,7 @@ class LibraryItem extends Model {
         abridged: !!mediaExpanded.abridged
       }
     } else {
+      const mediaExpanded = media as Podcast.PodcastExpanded
       jsonObject = {
         tags: mediaExpanded.tags || [],
         title: mediaExpanded.title,
@@ -654,7 +663,8 @@ class LibraryItem extends Model {
         itunesPageURL: mediaExpanded.itunesPageURL,
         itunesId: mediaExpanded.itunesId,
         itunesArtistId: mediaExpanded.itunesArtistId,
-        asin: mediaExpanded.asin,
+        // Podcasts have no asin column, so this is always undefined (and omitted from the json)
+        asin: (mediaExpanded as { asin?: string }).asin,
         language: mediaExpanded.language,
         explicit: !!mediaExpanded.explicit,
         podcastType: mediaExpanded.podcastType
@@ -670,7 +680,7 @@ class LibraryItem extends Model {
           if (!metadataLibraryFile) {
             const newLibraryFile = new LibraryFile()
             await newLibraryFile.setDataFromPath(metadataFilePath, `metadata.json`)
-            metadataLibraryFile = newLibraryFile.toJSON()
+            metadataLibraryFile = newLibraryFile.toJSON() as LibraryFileObject
             this.libraryFiles.push(metadataLibraryFile)
           } else {
             const fileTimestamps = await getFileTimestampsWithIno(metadataFilePath)
@@ -807,13 +817,13 @@ class LibraryItem extends Model {
     LibraryItem.addHook('afterFind', (findResult) => {
       if (!findResult) return
 
-      if (!Array.isArray(findResult)) findResult = [findResult]
-      for (const instance of findResult) {
+      const instances = (Array.isArray(findResult) ? findResult : [findResult]) as LibraryItem[]
+      for (const instance of instances) {
         if (instance.mediaType === 'book' && instance.book !== undefined) {
-          instance.media = instance.book
+          instance.media = instance.book as Book.BookExpanded
           instance.dataValues.media = instance.dataValues.book
         } else if (instance.mediaType === 'podcast' && instance.podcast !== undefined) {
-          instance.media = instance.podcast
+          instance.media = instance.podcast as Podcast.PodcastExpanded
           instance.dataValues.media = instance.dataValues.podcast
         }
         // To prevent mistakes:
@@ -824,7 +834,7 @@ class LibraryItem extends Model {
       }
     })
 
-    LibraryItem.addHook('afterDestroy', async (instance) => {
+    LibraryItem.addHook('afterDestroy', async (instance: LibraryItem) => {
       if (!instance) return
       const media = await instance.getMedia()
       if (media) {
@@ -858,9 +868,9 @@ class LibraryItem extends Model {
    * @param {import('sequelize').FindOptions} options
    * @returns {Promise<Book|Podcast>}
    */
-  getMedia(options: import('sequelize').FindOptions): Promise<Book | Podcast> {
+  getMedia(options?: import('sequelize').FindOptions): Promise<Book | Podcast | null> {
     if (!this.mediaType) return Promise.resolve(null)
-    const mixinMethodName = `get${this.sequelize.uppercaseFirst(this.mediaType)}`
+    const mixinMethodName = `get${this.sequelize.uppercaseFirst(this.mediaType)}` as 'getBook' | 'getPodcast'
     return this[mixinMethodName](options)
   }
 
@@ -868,9 +878,9 @@ class LibraryItem extends Model {
    *
    * @returns {Promise<Book|Podcast>}
    */
-  getMediaExpanded(): Promise<Book | Podcast> {
+  getMediaExpanded(): Promise<Book.BookExpanded | Podcast.PodcastExpanded> {
     if (this.mediaType === 'podcast') {
-      return this.getMedia({
+      return <Promise<Podcast.PodcastExpanded>>this.getMedia({
         include: [
           {
             model: this.sequelize.models.podcastEpisode
@@ -878,7 +888,7 @@ class LibraryItem extends Model {
         ]
       })
     } else {
-      return this.getMedia({
+      return <Promise<Book.BookExpanded>>this.getMedia({
         include: [
           {
             model: this.sequelize.models.author,
@@ -906,15 +916,15 @@ class LibraryItem extends Model {
    * @param {string} ino
    * @returns {import('./Book').AudioFileObject}
    */
-  getAudioFileWithIno(ino: string): import('./Book').AudioFileObject {
+  getAudioFileWithIno(ino: string): import('./Book').AudioFileObject | null | undefined {
     if (!this.media) {
       Logger.error(`[LibraryItem] getAudioFileWithIno: Library item "${this.id}" does not have media`)
       return null
     }
     if (this.isBook) {
-      return this.media.audioFiles.find((af) => af.ino === ino)
+      return (this.media as Book.BookExpanded).audioFiles.find((af) => af.ino === ino)
     } else {
-      return this.media.podcastEpisodes.find((pe) => pe.audioFile?.ino === ino)?.audioFile
+      return (this.media as Podcast.PodcastExpanded).podcastEpisodes.find((pe) => pe.audioFile?.ino === ino)?.audioFile
     }
   }
 
@@ -926,7 +936,7 @@ class LibraryItem extends Model {
    * @param {string} [episodeId]
    * @returns {import('./Book').AudioTrack[]}
    */
-  getTrackList(episodeId: string): import('./Book').AudioTrack[] {
+  getTrackList(episodeId?: string | null): import('./Book').AudioTrack[] {
     if (!this.media) {
       Logger.error(`[LibraryItem] getTrackList: Library item "${this.id}" does not have media`)
       return []
@@ -939,7 +949,7 @@ class LibraryItem extends Model {
    * @param {string} ino
    * @returns {LibraryFile}
    */
-  getLibraryFileWithIno(ino: string): LibraryFile {
+  getLibraryFileWithIno(ino: string): LibraryFile | null {
     const libraryFile = this.libraryFiles.find((lf) => lf.ino === ino)
     if (!libraryFile) return null
     return new LibraryFile(libraryFile)
@@ -1038,7 +1048,7 @@ namespace LibraryItem {
     isSupplementary: boolean
     addedAt: number
     updatedAt: number
-    metadata: { filename: string; ext: string; path: string; relPath: string; size: number; mtimeMs: number; ctimeMs: number; birthtimeMs: number} 
+    metadata: { filename: string; ext: string; path: string; relPath: string; size: number; mtimeMs: number; ctimeMs: number; birthtimeMs: number }
   }
 
   export interface LibraryItemExpandedProperties {

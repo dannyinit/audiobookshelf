@@ -4,11 +4,9 @@ import Logger = require('../Logger')
 import libraryItemsPodcastFilters = require('../utils/queries/libraryItemsPodcastFilters')
 import htmlSanitizer = require('../utils/htmlSanitizer')
 
-interface PodcastExpandedProperties {
-  podcastEpisodes: import('./PodcastEpisode')[]
-}
+type PodcastExpandedProperties = Podcast.PodcastExpandedProperties
 
-type PodcastExpanded = Podcast & PodcastExpandedProperties
+type PodcastExpanded = Podcast.PodcastExpanded
 
 class Podcast extends Model {
   /** @type {string} */
@@ -296,7 +294,7 @@ class Podcast extends Model {
     return hasUpdates
   }
 
-  checkCanDirectPlay(supportedMimeTypes: string[], episodeId: string) {
+  checkCanDirectPlay(supportedMimeTypes: string[], episodeId?: string | null) {
     if (!Array.isArray(supportedMimeTypes)) {
       Logger.error(`[Podcast] checkCanDirectPlay: supportedMimeTypes is not an array`, supportedMimeTypes)
       return false
@@ -318,7 +316,7 @@ class Podcast extends Model {
    * @param {string} episodeId
    * @returns {import('./Book').AudioTrack[]}
    */
-  getTracklist(libraryItemId: string, episodeId: string): import('./Book').AudioTrack[] {
+  getTracklist(libraryItemId: string, episodeId?: string | null): import('./Book').AudioTrack[] {
     const episode = this.podcastEpisodes.find((ep) => ep.id === episodeId)
     if (!episode) {
       Logger.error(`[Podcast] getTracklist: episode not found`, episodeId)
@@ -334,7 +332,7 @@ class Podcast extends Model {
    * @param {string} episodeId
    * @returns {import('./PodcastEpisode').ChapterObject[]}
    */
-  getChapters(episodeId: string): import('./PodcastEpisode').ChapterObject[] {
+  getChapters(episodeId?: string | null): import('./PodcastEpisode').ChapterObject[] {
     const episode = this.podcastEpisodes.find((ep) => ep.id === episodeId)
     if (!episode) {
       Logger.error(`[Podcast] getChapters: episode not found`, episodeId)
@@ -344,7 +342,7 @@ class Podcast extends Model {
     return structuredClone(episode.chapters) || []
   }
 
-  getPlaybackTitle(episodeId: string) {
+  getPlaybackTitle(episodeId?: string | null) {
     const episode = this.podcastEpisodes.find((ep) => ep.id === episodeId)
     if (!episode) {
       Logger.error(`[Podcast] getPlaybackTitle: episode not found`, episodeId)
@@ -358,7 +356,7 @@ class Podcast extends Model {
     return this.author
   }
 
-  getPlaybackDuration(episodeId: string) {
+  getPlaybackDuration(episodeId?: string | null) {
     const episode = this.podcastEpisodes.find((ep) => ep.id === episodeId)
     if (!episode) {
       Logger.error(`[Podcast] getPlaybackDuration: episode not found`, episodeId)
@@ -491,6 +489,14 @@ class Podcast extends Model {
       episodes: this.podcastEpisodes.map((e) => e.toOldJSONExpanded(libraryItemId))
     }
   }
+}
+
+namespace Podcast {
+  export interface PodcastExpandedProperties {
+    podcastEpisodes: import('./PodcastEpisode')[]
+  }
+
+  export type PodcastExpanded = Podcast & PodcastExpandedProperties
 }
 
 export = Podcast
