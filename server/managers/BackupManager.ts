@@ -197,7 +197,7 @@ class BackupManager {
    * @param {Backup} backup
    * @param {import('express').Response} res
    */
-  async requestApplyBackup(apiCacheManager, backup, res) {
+  async requestApplyBackup(apiCacheManager: import('./ApiCacheManager'), backup: Backup, res: import('express').Response) {
     Logger.info(`[BackupManager] Applying backup at "${backup.fullPath}"`)
 
     const zip = new StreamZip.async({ file: backup.fullPath })
@@ -405,7 +405,7 @@ class BackupManager {
    * @see https://github.com/TryGhost/node-sqlite3/pull/1116
    * @param {Backup} backup
    */
-  backupSqliteDb(backup) {
+  backupSqliteDb(backup: Backup) {
     const db = new sqlite3.Database(Database.dbPath)
     const dbFilePath = Path.join(global.ConfigPath, `absdatabase.${backup.id}.sqlite`)
     return new Promise(async (resolve, reject) => {

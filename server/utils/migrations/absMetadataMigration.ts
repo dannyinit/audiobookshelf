@@ -9,7 +9,7 @@ import LibraryFile = require('../../objects/files/LibraryFile')
  * @param {import('../../models/LibraryItem')} libraryItem 
  * @returns {Promise<boolean>} false if failed
  */
-async function writeMetadataFileForItem(libraryItem) {
+async function writeMetadataFileForItem(libraryItem: import('../../models/LibraryItem')): Promise<boolean> {
   const storeMetadataWithItem = global.ServerSettings.storeMetadataWithItem && !libraryItem.isFile
   const metadataPath = storeMetadataWithItem ? libraryItem.path : Path.join(global.MetadataPath, 'items', libraryItem.id)
   const metadataFilepath = fileUtils.filePathToPOSIX(Path.join(metadataPath, 'metadata.json'))
@@ -66,7 +66,7 @@ async function writeMetadataFileForItem(libraryItem) {
  * @param {number} [offset=0]
  * @param {number} [totalCreated=0]
  */
-async function runMigration(Database, offset = 0, totalCreated = 0) {
+async function runMigration(Database: import('../../Database'), offset: number = 0, totalCreated: number = 0) {
   const libraryItems = await Database.libraryItemModel.getLibraryItemsIncrement(offset, 500, { isMissing: false })
   if (!libraryItems.length) return totalCreated
 
@@ -86,7 +86,7 @@ async function runMigration(Database, offset = 0, totalCreated = 0) {
  * 
  * @param {import('../../Database')} Database 
  */
-export const migrate = async (Database) => {
+export const migrate = async (Database: import('../../Database')) => {
   Logger.info(`[absMetadataMigration] Starting metadata.json migration`)
   const totalCreated = await runMigration(Database)
   Logger.info(`[absMetadataMigration] Finished metadata.json migration (${totalCreated} files created)`)

@@ -24,9 +24,9 @@ import AudioFile = require('../objects/files/AudioFile')
 
 class PodcastManager {
   /** @type {PodcastEpisodeDownload[]} */
-  downloadQueue
+  downloadQueue: PodcastEpisodeDownload[]
   /** @type {PodcastEpisodeDownload} */
-  currentDownload
+  currentDownload: PodcastEpisodeDownload
 
   constructor() {
     this.downloadQueue = []
@@ -60,7 +60,7 @@ class PodcastManager {
    * @param {import('../utils/podcastUtils').RssPodcastEpisode[]} episodesToDownload
    * @param {boolean} isAutoDownload - If this download was triggered by auto download
    */
-  async downloadPodcastEpisodes(libraryItem, episodesToDownload, isAutoDownload) {
+  async downloadPodcastEpisodes(libraryItem: import('../models/LibraryItem'), episodesToDownload: import('../utils/podcastUtils').RssPodcastEpisode[], isAutoDownload: boolean) {
     for (const ep of episodesToDownload) {
       const newPeDl = new PodcastEpisodeDownload()
       newPeDl.setData(ep, libraryItem, isAutoDownload, libraryItem.libraryId)
@@ -73,7 +73,7 @@ class PodcastManager {
    * @param {PodcastEpisodeDownload} podcastEpisodeDownload
    * @returns
    */
-  async startPodcastEpisodeDownload(podcastEpisodeDownload) {
+  async startPodcastEpisodeDownload(podcastEpisodeDownload: PodcastEpisodeDownload) {
     if (this.currentDownload) {
       // Prevent downloading episodes from the same URL for the same library item.
       // Allow downloading for different library items in case of the same podcast existing in multiple libraries (e.g. different folders)
@@ -192,7 +192,7 @@ class PodcastManager {
    * Scans the downloaded audio file, create the podcast episode, remove oldest episode if necessary
    * @returns {Promise<boolean>} - Returns true if added
    */
-  async scanAddPodcastEpisodeAudioFile() {
+  async scanAddPodcastEpisodeAudioFile(): Promise<boolean> {
     const libraryFile = new LibraryFile()
     await libraryFile.setDataFromPath(this.currentDownload.targetPath, this.currentDownload.targetRelPath)
 
@@ -273,13 +273,13 @@ class PodcastManager {
    * @param {string} episodeIdJustDownloaded
    * @returns {Promise<import('../models/PodcastEpisode')|null>} - Returns the episode to remove
    */
-  async getRemoveOldestEpisode(libraryItem, episodeIdJustDownloaded) {
+  async getRemoveOldestEpisode(libraryItem: import('../models/LibraryItem').LibraryItemExpanded, episodeIdJustDownloaded: string): Promise<import('../models/PodcastEpisode') | null> {
     let smallestPublishedAt = 0
     /** @type {import('../models/PodcastEpisode')} */
-    let oldestEpisode = null
+    let oldestEpisode: import('../models/PodcastEpisode') = null
 
     /** @type {import('../models/PodcastEpisode')[]} */
-    const podcastEpisodes = libraryItem.media.podcastEpisodes
+    const podcastEpisodes: import('../models/PodcastEpisode')[] = libraryItem.media.podcastEpisodes
 
     for (const ep of podcastEpisodes) {
       if (ep.id === episodeIdJustDownloaded || !ep.publishedAt) continue
@@ -307,7 +307,7 @@ class PodcastManager {
    * @param {LibraryFile} libraryFile
    * @returns {Promise<AudioFile|null>}
    */
-  async probeAudioFile(libraryFile) {
+  async probeAudioFile(libraryFile: LibraryFile): Promise<AudioFile | null> {
     const path = libraryFile.metadata.path
     const mediaProbeData = await prober.probe(path)
     if (mediaProbeData.error) {
@@ -325,7 +325,7 @@ class PodcastManager {
    * @param {import('../models/LibraryItem')} libraryItem
    * @returns {Promise<boolean>} - Returns false if auto download episodes was disabled (disabled if reaches max failed checks)
    */
-  async runEpisodeCheck(libraryItem) {
+  async runEpisodeCheck(libraryItem: import('../models/LibraryItem')): Promise<boolean> {
     const lastEpisodeCheck = libraryItem.media.lastEpisodeCheck?.valueOf() || 0
     const latestEpisodePublishedAt = libraryItem.media.getLatestEpisodePublishedAt()
 
@@ -380,7 +380,7 @@ class PodcastManager {
    * @param {number} maxNewEpisodes
    * @returns {Promise<import('../utils/podcastUtils').RssPodcastEpisode[]|null>}
    */
-  async checkPodcastForNewEpisodes(podcastLibraryItem, dateToCheckForEpisodesAfter, maxNewEpisodes = 3) {
+  async checkPodcastForNewEpisodes(podcastLibraryItem: import('../models/LibraryItem'), dateToCheckForEpisodesAfter: number, maxNewEpisodes: number = 3): Promise<import('../utils/podcastUtils').RssPodcastEpisode[] | null> {
     if (!podcastLibraryItem.media.feedURL) {
       Logger.error(`[PodcastManager] checkPodcastForNewEpisodes no feed url for ${podcastLibraryItem.media.title} (ID: ${podcastLibraryItem.id})`)
       return null
@@ -417,7 +417,7 @@ class PodcastManager {
    * @param {*} maxEpisodesToDownload
    * @returns {Promise<import('../utils/podcastUtils').RssPodcastEpisode[]>}
    */
-  async checkAndDownloadNewEpisodes(libraryItem, maxEpisodesToDownload) {
+  async checkAndDownloadNewEpisodes(libraryItem: import('../models/LibraryItem'), maxEpisodesToDownload: any): Promise<import('../utils/podcastUtils').RssPodcastEpisode[]> {
     const lastEpisodeCheck = libraryItem.media.lastEpisodeCheck?.valueOf() || 0
     const lastEpisodeCheckDate = lastEpisodeCheck > 0 ? libraryItem.media.lastEpisodeCheck : 'Never'
     Logger.info(`[PodcastManager] checkAndDownloadNewEpisodes for "${libraryItem.media.title}" - Last episode check: ${lastEpisodeCheckDate}`)
@@ -505,7 +505,7 @@ class PodcastManager {
    * @param {import('../models/Podcast')[]} podcasts
    * @returns {string} XML string
    */
-  generateOPMLFileText(podcasts) {
+  generateOPMLFileText(podcasts: import('../models/Podcast')[]): string {
     return opmlGenerator.generate(podcasts)
   }
 
@@ -526,7 +526,7 @@ class PodcastManager {
    * @param {boolean} autoDownloadEpisodes
    * @param {import('../managers/CronManager')} cronManager
    */
-  async createPodcastsFromFeedUrls(rssFeedUrls, folder, autoDownloadEpisodes, cronManager) {
+  async createPodcastsFromFeedUrls(rssFeedUrls: string[], folder: import('../models/LibraryFolder'), autoDownloadEpisodes: boolean, cronManager: import('../managers/CronManager')) {
     const taskTitleString = {
       text: 'OPML import',
       key: 'MessageTaskOpmlImport'

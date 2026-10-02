@@ -3,11 +3,11 @@ import Logger = require('../Logger')
 
 class ScanLogger {
   /** @type {string[]} */
-  authorsRemovedFromBooks
+  authorsRemovedFromBooks: string[]
   /** @type {Set<string>} */
-  authorsNumBooksChangedIds
+  authorsNumBooksChangedIds: Set<string>
   /** @type {string[]} */
-  seriesRemovedFromBooks
+  seriesRemovedFromBooks: string[]
 
   constructor() {
     this.id = null

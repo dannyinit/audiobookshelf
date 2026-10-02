@@ -6,13 +6,13 @@ import oldNotificationSettings = require('../objects/settings/NotificationSettin
 
 class Setting extends Model {
   /** @type {string} */
-  declare key
+  declare key: string
   /** @type {Object} */
-  declare value
+  declare value: object
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
   /** @type {Date} */
-  declare updatedAt
+  declare updatedAt: Date
 
   constructor(values, options) {
     super(values, options)
@@ -45,7 +45,7 @@ class Setting extends Model {
    * Initialize model
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         key: {

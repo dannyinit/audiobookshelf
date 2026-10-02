@@ -18,7 +18,7 @@ import Stream = require('../objects/Stream')
 
 class PlaybackSessionManager {
   /** @type {PlaybackSession[]} */
-  sessions
+  sessions: PlaybackSession[]
 
   constructor() {
     this.StreamsPath = Path.join(global.MetadataPath, 'streams')
@@ -34,7 +34,7 @@ class PlaybackSessionManager {
    * @param {string} sessionId
    * @returns {PlaybackSession}
    */
-  getSession(sessionId) {
+  getSession(sessionId: string): PlaybackSession {
     return this.sessions.find((s) => s.id === sessionId)
   }
   getUserSession(userId) {
@@ -51,7 +51,7 @@ class PlaybackSessionManager {
    * @param {Object} [clientDeviceInfo]
    * @returns {Promise<DeviceInfo>}
    */
-  async getDeviceInfo(req, clientDeviceInfo = null) {
+  async getDeviceInfo(req: import('../controllers/LibraryItemController').LibraryItemControllerRequest, clientDeviceInfo: object = null): Promise<DeviceInfo> {
     const ua = uaParserJs(req.headers['user-agent'])
     const ip = requestIp.getClientIp(req)
 
@@ -79,7 +79,7 @@ class PlaybackSessionManager {
    * @param {import('express').Response} res
    * @param {string} [episodeId]
    */
-  async startSessionRequest(req, res, episodeId) {
+  async startSessionRequest(req: import('../controllers/LibraryItemController').LibraryItemControllerRequest, res: import('express').Response, episodeId: string) {
     const deviceInfo = await this.getDeviceInfo(req, req.body?.deviceInfo)
     Logger.debug(`[PlaybackSessionManager] startSessionRequest for device ${deviceInfo.deviceDescription}`)
     const { libraryItem, body: options } = req
@@ -94,7 +94,7 @@ class PlaybackSessionManager {
    * @param {*} payload
    * @param {import('express').Response} res
    */
-  async syncSessionRequest(user, session, payload, res) {
+  async syncSessionRequest(user: import('../models/User'), session: any, payload: any, res: import('express').Response) {
     if (await this.syncSession(user, session, payload)) {
       res.sendStatus(200)
     } else {
@@ -126,7 +126,7 @@ class PlaybackSessionManager {
    * @param {*} deviceInfo
    * @returns
    */
-  async syncLocalSession(user, sessionJson, deviceInfo) {
+  async syncLocalSession(user: import('../models/User'), sessionJson: any, deviceInfo: any) {
     // TODO: Combine libraryItem query with library query
     const libraryItem = await Database.libraryItemModel.getExpandedById(sessionJson.libraryItemId)
     const episode = sessionJson.episodeId && libraryItem && libraryItem.isPodcast ? libraryItem.media.podcastEpisodes.find((pe) => pe.id === sessionJson.episodeId) : null
@@ -280,7 +280,7 @@ class PlaybackSessionManager {
    * @param {import('../controllers/SessionController').RequestWithUser} req
    * @param {*} res
    */
-  async syncLocalSessionRequest(req, res) {
+  async syncLocalSessionRequest(req: import('../controllers/SessionController').RequestWithUser, res: any) {
     const deviceInfo = await this.getDeviceInfo(req, req.body?.deviceInfo)
     const sessionJson = req.body
     const result = await this.syncLocalSession(req.user, sessionJson, deviceInfo)
@@ -298,7 +298,7 @@ class PlaybackSessionManager {
    * @param {*} syncData
    * @param {import('express').Response} res
    */
-  async closeSessionRequest(user, session, syncData, res) {
+  async closeSessionRequest(user: import('../models/User'), session: any, syncData: any, res: import('express').Response) {
     await this.closeSession(user, session, syncData)
     res.sendStatus(200)
   }
@@ -312,7 +312,7 @@ class PlaybackSessionManager {
    * @param {{forceDirectPlay?:boolean, forceTranscode?:boolean, mediaPlayer:string, supportedMimeTypes?:string[]}} options
    * @returns {Promise<PlaybackSession>}
    */
-  async startSession(user, deviceInfo, libraryItem, episodeId, options) {
+  async startSession(user: import('../models/User'), deviceInfo: DeviceInfo, libraryItem: import('../models/LibraryItem'), episodeId: string | null, options: { forceDirectPlay?: boolean; forceTranscode?: boolean; mediaPlayer: string; supportedMimeTypes?: string[] }): Promise<PlaybackSession> {
     // Close any sessions already open for user and device
     const userSessions = this.sessions.filter((playbackSession) => playbackSession.userId === user.id && playbackSession.deviceId === deviceInfo.id)
     for (const session of userSessions) {
@@ -372,7 +372,7 @@ class PlaybackSessionManager {
    * @param {*} syncData
    * @returns {Promise<boolean>}
    */
-  async syncSession(user, session, syncData) {
+  async syncSession(user: import('../models/User'), session: any, syncData: any): Promise<boolean> {
     // TODO: Combine libraryItem query with library query
     const libraryItem = await Database.libraryItemModel.getExpandedById(session.libraryItemId)
     if (!libraryItem) {
@@ -420,7 +420,7 @@ class PlaybackSessionManager {
    * @param {*} syncData
    * @returns
    */
-  async closeSession(user, session, syncData = null) {
+  async closeSession(user: import('../models/User'), session: any, syncData: any = null) {
     if (syncData) {
       await this.syncSession(user, session, syncData)
     } else {
@@ -447,7 +447,7 @@ class PlaybackSessionManager {
    *
    * @param {string} sessionId
    */
-  async removeSession(sessionId) {
+  async removeSession(sessionId: string) {
     const session = this.sessions.find((s) => s.id === sessionId)
     if (!session) return
     if (session.stream) {

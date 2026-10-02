@@ -15,7 +15,7 @@ import parseComicMetadata = require('./parseComicMetadata')
  * @param {import('../../models/Book').EBookFileObject} ebookFile 
  * @returns {Promise<EBookFileScanData>}
  */
-async function parse(ebookFile) {
+async function parse(ebookFile: import('../../models/Book').EBookFileObject): Promise<EBookFileScanData> {
   if (!ebookFile) return null
 
   if (ebookFile.ebookFormat === 'epub') {
@@ -34,7 +34,7 @@ export { parse }
  * @param {string} outputCoverPath 
  * @returns {Promise<boolean>}
  */
-async function extractCoverImage(ebookFileScanData, outputCoverPath) {
+async function extractCoverImage(ebookFileScanData: EBookFileScanData, outputCoverPath: string): Promise<boolean> {
   if (!ebookFileScanData?.ebookCoverPath) return false
 
   if (ebookFileScanData.ebookFormat === 'epub') {

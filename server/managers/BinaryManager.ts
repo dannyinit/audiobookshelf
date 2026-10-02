@@ -368,7 +368,7 @@ class BinaryManager {
    * @param {string} destination
    * @param {Binary} binary
    */
-  async removeBinary(destination, binary) {
+  async removeBinary(destination: string, binary: Binary) {
     const binaryPath = path.join(destination, binary.fileName)
     try {
       if (await fs.pathExists(binaryPath)) {
@@ -385,7 +385,7 @@ class BinaryManager {
    *
    * @param {Binary[]} binaries
    */
-  async removeOldBinaries(binaries) {
+  async removeOldBinaries(binaries: Binary[]) {
     for (const binary of binaries) {
       await this.removeBinary(this.mainInstallDir, binary)
       await this.removeBinary(this.altInstallDir, binary)
@@ -397,7 +397,7 @@ class BinaryManager {
    *
    * @returns {Promise<Binary[]>} Array of missing binaries
    */
-  async findRequiredBinaries() {
+  async findRequiredBinaries(): Promise<Binary[]> {
     const missingBinaries = []
     for (const binary of this.requiredBinaries) {
       const binaryPath = await binary.find(this.mainInstallDir, this.altInstallDir)
@@ -420,7 +420,7 @@ class BinaryManager {
    *
    * @param {Binary[]} binaries
    */
-  async install(binaries) {
+  async install(binaries: Binary[]) {
     if (!binaries.length) return
     Logger.info(`[BinaryManager] Installing binaries: ${binaries.map((binary) => binary.name).join(', ')}`)
     let destination = (await fileUtils.isWritable(this.mainInstallDir)) ? this.mainInstallDir : this.altInstallDir

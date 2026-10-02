@@ -16,7 +16,7 @@ export = {
    * @param {*} hideSingleBookSeries
    * @returns
    */
-  getSeriesFromBooks(libraryItems, filterSeries, hideSingleBookSeries) {
+  getSeriesFromBooks(libraryItems: import('../models/LibraryItem')[], filterSeries: any, hideSingleBookSeries: any) {
     const _series = {}
     const seriesToFilterOut = {}
     libraryItems.forEach((libraryItem) => {
@@ -68,7 +68,7 @@ export = {
    * @param {boolean} hideSingleBookSeries
    * @returns
    */
-  collapseBookSeries(libraryItems, filterSeries, hideSingleBookSeries) {
+  collapseBookSeries(libraryItems: import('../models/LibraryItem')[], filterSeries: string, hideSingleBookSeries: boolean) {
     // Get series from the library items. If this list is being collapsed after filtering for a series,
     // don't collapse that series, only books that are in other series.
     const seriesObjects = this.getSeriesFromBooks(libraryItems, filterSeries, hideSingleBookSeries).filter((s) => s.id != filterSeries)
@@ -102,7 +102,7 @@ export = {
    * @param {import('../models/Library')} library
    * @returns {Object[]}
    */
-  async handleCollapseSubseries(payload, seriesId, user, library) {
+  async handleCollapseSubseries(payload: any, seriesId: string, user: import('../models/User'), library: import('../models/Library')): object[] {
     if (payload.sortBy && !VALID_COLLAPSE_SUBSERIES_SORTS.has(payload.sortBy)) {
       Logger.warn(`[libraryHelpers] Invalid "sort" query string "${payload.sortBy}"`)
       payload.sortBy = undefined

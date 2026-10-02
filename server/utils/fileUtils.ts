@@ -13,7 +13,7 @@ import { AudioMimeType } from './constants'
  * @param {String} path - Ugly file path
  * @return {String} Pretty posix file path
  */
-const filePathToPOSIX = (path) => {
+const filePathToPOSIX = (path: string): string => {
   if (!global.isWin || !path) return path
   return path.startsWith('\\\\') ? '\\\\' + path.slice(2).replace(/\\/g, '/') : path.replace(/\\/g, '/')
 }
@@ -26,7 +26,7 @@ export { filePathToPOSIX }
  * @param {string} childPath
  * @returns {boolean}
  */
-function isSameOrSubPath(parentPath, childPath) {
+function isSameOrSubPath(parentPath: string, childPath: string): boolean {
   parentPath = filePathToPOSIX(parentPath)
   childPath = filePathToPOSIX(childPath)
   if (parentPath === childPath) return true
@@ -70,7 +70,7 @@ export { getFileTimestampsWithIno }
  * @param {string} path
  * @returns {Promise<number>}
  */
-export const getFileSize = async (path) => {
+export const getFileSize = async (path: string): Promise<number> => {
   return (await getFileStat(path))?.size || 0
 }
 
@@ -80,7 +80,7 @@ export const getFileSize = async (path) => {
  * @param {string} path
  * @returns {Promise<number>} epoch timestamp
  */
-export const getFileMTimeMs = async (path) => {
+export const getFileMTimeMs = async (path: string): Promise<number> => {
   try {
     return (await getFileStat(path))?.mtimeMs || 0
   } catch (err) {
@@ -94,7 +94,7 @@ export const getFileMTimeMs = async (path) => {
  * @param {string} filepath
  * @returns {boolean}
  */
-async function checkPathIsFile(filepath) {
+async function checkPathIsFile(filepath: string): boolean {
   try {
     const stat = await fs.stat(filepath)
     return stat.isFile()
@@ -120,7 +120,7 @@ export { getIno }
  * @param {string} path
  * @returns {string}
  */
-async function readTextFile(path) {
+async function readTextFile(path: string): string {
   try {
     var data = await fs.readFile(path)
     return String(data)
@@ -137,7 +137,7 @@ export { readTextFile }
  * @param {string} path
  * @returns {string}
  */
-export const shouldIgnoreFile = (path) => {
+export const shouldIgnoreFile = (path: string): string => {
   // Check if directory or file name starts with "."
   if (Path.basename(path).startsWith('.')) {
     return 'dotfile'
@@ -181,7 +181,7 @@ export const shouldIgnoreFile = (path) => {
  * @param {string} [relPathToReplace]
  * @returns {FilePathItem[]}
  */
-export const recurseFiles = async (path, relPathToReplace = null) => {
+export const recurseFiles = async (path: string, relPathToReplace: string = null): FilePathItem[] => {
   path = filePathToPOSIX(path)
   if (!path.endsWith('/')) path = path + '/'
 
@@ -271,7 +271,7 @@ export const recurseFiles = async (path, relPathToReplace = null) => {
  * @param {import('../Watcher').PendingFileUpdate} fileUpdate
  * @returns {FilePathItem}
  */
-export const getFilePathItemFromFileUpdate = (fileUpdate) => {
+export const getFilePathItemFromFileUpdate = (fileUpdate: import('../Watcher').PendingFileUpdate): FilePathItem => {
   let relPath = fileUpdate.relPath
   if (relPath.startsWith('/')) relPath = relPath.slice(1)
 
@@ -295,7 +295,7 @@ export const getFilePathItemFromFileUpdate = (fileUpdate) => {
  * @param {Function} [contentTypeFilter] validate content type before writing
  * @returns {Promise}
  */
-export const downloadFile = (url, filepath, contentTypeFilter = null) => {
+export const downloadFile = (url: string, filepath: string, contentTypeFilter: Function = null): Promise<any> => {
   return new Promise(async (resolve, reject) => {
     Logger.debug(`[fileUtils] Downloading file to ${filepath}`)
     axios({
@@ -350,7 +350,7 @@ export const downloadFile = (url, filepath, contentTypeFilter = null) => {
  * @param {string} filepath
  * @returns {Promise}
  */
-export const downloadImageFile = (url, filepath) => {
+export const downloadImageFile = (url: string, filepath: string): Promise<any> => {
   const contentTypeFilter = (contentType) => {
     return contentType?.startsWith('image/') && contentType !== 'image/svg+xml'
   }
@@ -454,7 +454,7 @@ export const encodeUriPath = (path) => {
  * @param {string} directory
  * @returns {Promise<boolean>}
  */
-export const isWritable = async (directory) => {
+export const isWritable = async (directory: string): Promise<boolean> => {
   try {
     const accessTestFile = Path.join(directory, 'accessTest')
     await fs.writeFile(accessTestFile, '')
@@ -471,7 +471,7 @@ export const isWritable = async (directory) => {
  *
  * @returns {Promise<string[]>}
  */
-export const getWindowsDrives = async () => {
+export const getWindowsDrives = async (): Promise<string[]> => {
   if (!global.isWin) {
     return []
   }
@@ -506,7 +506,7 @@ export const getWindowsDrives = async () => {
  * @param {number} level
  * @returns {Promise<{ path:string, dirname:string, level:number }[]>}
  */
-export const getDirectoriesInPath = async (dirPath, level) => {
+export const getDirectoriesInPath = async (dirPath: string, level: number): Promise<{ path: string; dirname: string; level: number }[]> => {
   try {
     const paths = await fs.readdir(dirPath)
     let dirs = await Promise.all(
@@ -542,7 +542,7 @@ export const getDirectoriesInPath = async (dirPath, level) => {
  * @returns {Promise<void>} A promise that resolves when the file has been successfully copied.
  * @throws {Error} If there is an error reading the source file or writing the destination file.
  */
-async function copyToExisting(srcPath, destPath) {
+async function copyToExisting(srcPath: string, destPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     // Create a readable stream from the source file
     const readStream = fs.createReadStream(srcPath)

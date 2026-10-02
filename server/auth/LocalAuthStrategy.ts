@@ -19,7 +19,7 @@ class LocalAuthStrategy {
    * Get the passport strategy instance
    * @returns {LocalStrategy}
    */
-  getStrategy() {
+  getStrategy(): LocalStrategy {
     if (!this.strategy) {
       this.strategy = new LocalStrategy({ passReqToCallback: true }, this.verifyCredentials.bind(this))
     }
@@ -48,7 +48,7 @@ class LocalAuthStrategy {
    * @param {string} password
    * @param {Function} done - Passport callback
    */
-  async verifyCredentials(req, username, password, done) {
+  async verifyCredentials(req: import('express').Request, username: string, password: string, done: Function) {
     // Load the user given it's username
     const user = await Database.userModel.getUserByUsername(username.toLowerCase())
 
@@ -102,7 +102,7 @@ class LocalAuthStrategy {
    * @param {string} username
    * @param {string} message
    */
-  logFailedLoginAttempt(req, username, message) {
+  logFailedLoginAttempt(req: import('express').Request, username: string, message: string) {
     if (!req || !username || !message) return
     Logger.error(`[LocalAuth] Failed login attempt for username "${username}" from ip ${requestIp.getClientIp(req)} (${message})`)
   }
@@ -112,7 +112,7 @@ class LocalAuthStrategy {
    * @param {string} password
    * @returns {Promise<string>} hash
    */
-  hashPassword(password) {
+  hashPassword(password: string): Promise<string> {
     return new Promise((resolve) => {
       bcrypt.hash(password, 8, (err, hash) => {
         if (err) {
@@ -130,7 +130,7 @@ class LocalAuthStrategy {
    * @param {import('../models/User')} user
    * @returns {Promise<boolean>}
    */
-  comparePassword(password, user) {
+  comparePassword(password: string, user: import('../models/User')): Promise<boolean> {
     if (user.type === 'root' && !password && !user.pash) return true
     if (!password || !user.pash) return false
     return bcrypt.compare(password, user.pash)
@@ -142,7 +142,7 @@ class LocalAuthStrategy {
    * @param {string} password
    * @param {string} newPassword
    */
-  async changePassword(user, password, newPassword) {
+  async changePassword(user: import('../models/User'), password: string, newPassword: string) {
     // Only root can have an empty password
     if (user.type !== 'root' && !newPassword) {
       return {

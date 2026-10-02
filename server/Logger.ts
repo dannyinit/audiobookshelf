@@ -4,7 +4,7 @@ import util = require('util')
 
 class Logger {
   /** @type {import('./managers/LogManager')} */
-  logManager
+  logManager: import('./managers/LogManager')
 
   constructor() {
     this.logManager = null
@@ -18,7 +18,7 @@ class Logger {
   /**
    * @returns {string}
    */
-  get timestamp() {
+  get timestamp(): string {
     return date.format(new Date(), 'YYYY-MM-DD HH:mm:ss.SSS')
   }
 
@@ -29,7 +29,7 @@ class Logger {
   /**
    * @returns {string}
    */
-  get source() {
+  get source(): string {
     const regex = global.isWin ? /^.*\\([^\\:]*:[0-9]*):[0-9]*\)*/ : /^.*\/([^/:]*:[0-9]*):[0-9]*\)*/
     return Error().stack.split('\n')[3].replace(regex, '$1')
   }
@@ -71,7 +71,7 @@ class Logger {
    * @param {string[]} args
    * @param {string} src
    */
-  async #logToFileAndListeners(level, levelName, args, src) {
+  async #logToFileAndListeners(level: number, levelName: string, args: string[], src: string) {
     const expandedArgs = args.map((arg) => (typeof arg !== 'string' ? util.inspect(arg) : arg))
     const logObj = {
       timestamp: this.timestamp,

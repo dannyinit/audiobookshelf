@@ -2,15 +2,15 @@ import { DataTypes, Model } from 'sequelize'
 
 class CollectionBook extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {number} */
-  declare order
+  declare order: number
   /** @type {string} */
-  declare bookId
+  declare bookId: string
   /** @type {string} */
-  declare collectionId
+  declare collectionId: string
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
 
   constructor(values, options) {
     super(values, options)

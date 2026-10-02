@@ -8,7 +8,7 @@ import PodcastFinder = require('../finders/PodcastFinder')
  */
 class CoverSearchManager {
   /** @type {Map<string, AbortController>} Map of requestId to AbortController */
-  activeSearches
+  activeSearches: Map<string, AbortController>
 
   constructor() {
     this.activeSearches = new Map()
@@ -33,7 +33,7 @@ class CoverSearchManager {
    * @param {Function} onComplete - Callback when search completes
    * @param {Function} onError - Callback for errors
    */
-  async startSearch(requestId, searchParams, onResult, onComplete, onError) {
+  async startSearch(requestId: string, searchParams: { title: string; author: string; provider: string; podcast: boolean }, onResult: Function, onComplete: Function, onError: Function) {
     if (this.activeSearches.has(requestId)) {
       Logger.warn(`[CoverSearchManager] Search with requestId ${requestId} already exists`)
       return
@@ -77,7 +77,7 @@ class CoverSearchManager {
    * Cancel an active search
    * @param {string} requestId - Request ID to cancel
    */
-  cancelSearch(requestId) {
+  cancelSearch(requestId: string) {
     const abortController = this.activeSearches.get(requestId)
     if (abortController) {
       Logger.info(`[CoverSearchManager] Cancelling search ${requestId}`)

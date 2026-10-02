@@ -83,7 +83,7 @@ class PlaybackSession {
    * @param {import('../models/LibraryItem')} [libraryItem]
    * @returns
    */
-  toJSONForClient(libraryItem) {
+  toJSONForClient(libraryItem: import('../models/LibraryItem')) {
     return {
       id: this.id,
       userId: this.userId,
@@ -206,7 +206,7 @@ class PlaybackSession {
    * @param {*} startTime
    * @param {*} episodeId
    */
-  setData(libraryItem, userId, mediaPlayer, deviceInfo, startTime, episodeId = null) {
+  setData(libraryItem: import('../models/LibraryItem'), userId: any, mediaPlayer: any, deviceInfo: any, startTime: any, episodeId: any = null) {
     this.id = uuidv4()
     this.userId = userId
     this.libraryId = libraryItem.libraryId

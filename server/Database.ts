@@ -12,11 +12,11 @@ import MigrationManager = require('./managers/MigrationManager')
 
 class Database {
   /** @type {import('./objects/settings/ServerSettings')} */
-  serverSettings
+  serverSettings: import('./objects/settings/ServerSettings')
   /** @type {import('./objects/settings/NotificationSettings')} */
-  notificationSettings
+  notificationSettings: import('./objects/settings/NotificationSettings')
   /** @type {import('./objects/settings/EmailSettings')} */
-  emailSettings
+  emailSettings: import('./objects/settings/EmailSettings')
 
   constructor() {
     this.sequelize = null
@@ -165,7 +165,7 @@ class Database {
    * Check if db file exists
    * @returns {boolean}
    */
-  async checkHasDb() {
+  async checkHasDb(): boolean {
     if (!(await fs.pathExists(this.dbPath))) {
       Logger.info(`[Database] absdatabase.sqlite not found at ${this.dbPath}`)
       return false
@@ -177,7 +177,7 @@ class Database {
    * Connect to db, build models and run migrations
    * @param {boolean} [force=false] Used for testing, drops & re-creates all tables
    */
-  async init(force = false) {
+  async init(force: boolean = false) {
     this.dbPath = Path.join(global.ConfigPath, 'absdatabase.sqlite')
 
     // First check if this is a new database
@@ -212,7 +212,7 @@ class Database {
    * Connect to db
    * @returns {boolean}
    */
-  async connect() {
+  async connect(): boolean {
     Logger.info(`[Database] Initializing db at "${this.dbPath}"`)
 
     let logging = false
@@ -280,7 +280,7 @@ class Database {
   /**
    * @param {string} extension paths to extension binary
    */
-  async loadExtension(extension) {
+  async loadExtension(extension: string) {
     // This is a hack to get the db connection for loading extensions.
     // The proper way would be to use the 'afterConnect' hook, but that hook is never called for sqlite due to a bug in sequelize.
     // See https://github.com/sequelize/sequelize/issues/12487
@@ -354,7 +354,7 @@ class Database {
    * @param {string} v2
    * @returns {-1|0|1} 1 if v1 > v2
    */
-  compareVersions(v1, v2) {
+  compareVersions(v1: string, v2: string): -1 | 0 | 1 {
     if (!v1 || !v2) return 0
     return v1.localeCompare(v2, undefined, { numeric: true, sensitivity: 'case', caseFirst: 'upper' })
   }
@@ -422,7 +422,7 @@ class Database {
    * @param {Auth} auth
    * @returns {Promise<boolean>} true if created
    */
-  async createRootUser(username, pash, auth) {
+  async createRootUser(username: string, pash: string, auth: Auth): Promise<boolean> {
     if (!this.sequelize) return false
     await this.userModel.createRootUser(username, pash, auth)
     this.hasRootUser = true
@@ -588,7 +588,7 @@ class Database {
    * @param {string} authorId
    * @returns {Promise<boolean>}
    */
-  async checkAuthorExists(libraryId, authorId) {
+  async checkAuthorExists(libraryId: string, authorId: string): Promise<boolean> {
     if (!this.libraryFilterData[libraryId]) {
       return this.authorModel.checkExistsById(authorId)
     }
@@ -603,7 +603,7 @@ class Database {
    * @param {string} seriesId
    * @returns {Promise<boolean>}
    */
-  async checkSeriesExists(libraryId, seriesId) {
+  async checkSeriesExists(libraryId: string, seriesId: string): Promise<boolean> {
     if (!this.libraryFilterData[libraryId]) {
       return this.seriesModel.checkExistsById(seriesId)
     }
@@ -617,7 +617,7 @@ class Database {
    * @param {string} authorName
    * @returns {Promise<string>} author id or null if not found
    */
-  async getAuthorIdByName(libraryId, authorName) {
+  async getAuthorIdByName(libraryId: string, authorName: string): Promise<string> {
     if (!this.libraryFilterData[libraryId]) {
       return (await this.authorModel.getByNameAndLibrary(authorName, libraryId))?.id || null
     }
@@ -631,7 +631,7 @@ class Database {
    * @param {string} seriesName
    * @returns {Promise<string>} series id or null if not found
    */
-  async getSeriesIdByName(libraryId, seriesName) {
+  async getSeriesIdByName(libraryId: string, seriesName: string): Promise<string> {
     if (!this.libraryFilterData[libraryId]) {
       return (await this.seriesModel.getByNameAndLibrary(seriesName, libraryId))?.id || null
     }
@@ -642,7 +642,7 @@ class Database {
    * Reset numIssues for library
    * @param {string} libraryId
    */
-  async resetLibraryIssuesFilterData(libraryId) {
+  async resetLibraryIssuesFilterData(libraryId: string) {
     if (!this.libraryFilterData[libraryId]) return // Do nothing if filter data is not set
 
     this.libraryFilterData[libraryId].numIssues = await this.libraryItemModel.count({
@@ -959,7 +959,7 @@ WHERE EXISTS (
      * @param {string} value
      * @returns {string}
      */
-    normalize(value) {
+    normalize(value: string): string {
       return `unaccent(${value})`
     }
 
@@ -984,7 +984,7 @@ WHERE EXISTS (
      * @param {string} column
      * @returns {string}
      */
-    matchExpression(column) {
+    matchExpression(column: string): string {
       const pattern = this.sequelize.escape(`%${this.query}%`)
       if (!this.supportsUnaccent) return `${column} LIKE ${pattern}`
       const normalizedColumn = this.hasAccents ? column : this.normalize(column)

@@ -18,31 +18,31 @@ import Logger = require('../Logger')
 
 class Library extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {string} */
-  declare name
+  declare name: string
   /** @type {number} */
-  declare displayOrder
+  declare displayOrder: number
   /** @type {string} */
-  declare icon
+  declare icon: string
   /** @type {string} */
-  declare mediaType
+  declare mediaType: string
   /** @type {string} */
-  declare provider
+  declare provider: string
   /** @type {Date} */
-  declare lastScan
+  declare lastScan: Date
   /** @type {string} */
-  declare lastScanVersion
+  declare lastScanVersion: string
   /** @type {LibrarySettingsObject} */
-  declare settings
+  declare settings: LibrarySettingsObject
   /** @type {Object} */
-  declare extraData
+  declare extraData: object
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
   /** @type {Date} */
-  declare updatedAt
+  declare updatedAt: Date
   /** @type {import('./LibraryFolder')[]|undefined} */
-  declare libraryFolders
+  declare libraryFolders: import('./LibraryFolder')[] | undefined
 
   constructor(values, options) {
     super(values, options)
@@ -54,7 +54,7 @@ class Library extends Model {
    * @param {string} mediaType
    * @returns
    */
-  static getDefaultLibrarySettingsForMediaType(mediaType) {
+  static getDefaultLibrarySettingsForMediaType(mediaType: string) {
     if (mediaType === 'podcast') {
       return {
         coverAspectRatio: 1, // Square
@@ -90,7 +90,7 @@ class Library extends Model {
    *
    * @returns {Promise<Library[]>}
    */
-  static getAllWithFolders() {
+  static getAllWithFolders(): Promise<Library[]> {
     return this.findAll({
       include: this.sequelize.models.libraryFolder,
       order: [['displayOrder', 'ASC']]
@@ -102,7 +102,7 @@ class Library extends Model {
    * @param {string} libraryId
    * @returns {Promise<Library>}
    */
-  static findByIdWithFolders(libraryId) {
+  static findByIdWithFolders(libraryId: string): Promise<Library> {
     return this.findByPk(libraryId, {
       include: this.sequelize.models.libraryFolder
     })
@@ -112,7 +112,7 @@ class Library extends Model {
    * Get all library ids
    * @returns {Promise<string[]>} array of library ids
    */
-  static async getAllLibraryIds() {
+  static async getAllLibraryIds(): Promise<string[]> {
     const libraries = await this.findAll({
       attributes: ['id', 'displayOrder'],
       order: [['displayOrder', 'ASC']]
@@ -125,7 +125,7 @@ class Library extends Model {
    * Used for setting a new libraries display order
    * @returns {Promise<number>}
    */
-  static getMaxDisplayOrder() {
+  static getMaxDisplayOrder(): Promise<number> {
     return this.max('displayOrder') || 0
   }
 
@@ -152,7 +152,7 @@ class Library extends Model {
    * Initialize model
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {
@@ -186,14 +186,14 @@ class Library extends Model {
   /**
    * @returns {string[]}
    */
-  get lastScanMetadataPrecedence() {
+  get lastScanMetadataPrecedence(): string[] {
     return this.extraData?.lastScanMetadataPrecedence || []
   }
 
   /**
    * @returns {LibrarySettingsObject}
    */
-  get librarySettings() {
+  get librarySettings(): LibrarySettingsObject {
     return this.settings || Library.getDefaultLibrarySettingsForMediaType(this.mediaType)
   }
 

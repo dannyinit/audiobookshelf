@@ -6,7 +6,9 @@ import htmlSanitizer = require('../htmlSanitizer')
  * @property {string} value
  * @property {string} role
  * @property {string} fileAs
- *
+ */
+
+/**
  * @example
  * <dc:creator xmlns:ns0="http://www.idpf.org/2007/opf" ns0:role="aut" ns0:file-as="Steinbeck, John">John Steinbeck</dc:creator>
  * <dc:creator opf:role="aut" opf:file-as="Orwell, George">George Orwell</dc:creator>
@@ -14,7 +16,7 @@ import htmlSanitizer = require('../htmlSanitizer')
  * @param {Object} metadata
  * @returns {MetadataCreatorObject[]}
  */
-function parseCreators(metadata) {
+function parseCreators(metadata: object): MetadataCreatorObject[] {
   if (!metadata['dc:creator']?.length) return null
   return metadata['dc:creator'].map((c) => {
     if (typeof c !== 'object' || !c['$'] || !c['_']) return false
@@ -94,7 +96,7 @@ function fetchPublisher(metadata) {
  * @param {string} scheme
  * @returns {string}
  */
-function fetchIdentifier(metadata, scheme) {
+function fetchIdentifier(metadata: object, scheme: string): string {
   if (!metadata['dc:identifier']?.length) return null
   const identifierObj = metadata['dc:identifier'].find((i) => {
     if (!i['$']) return false

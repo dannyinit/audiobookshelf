@@ -13,7 +13,7 @@ import { createComicBookExtractor } from '../comicBookExtractors.js'
  * @param {string} outputCoverPath
  * @returns {Promise<boolean>}
  */
-async function extractCoverImage(comicPath, comicImageFilepath, outputCoverPath) {
+async function extractCoverImage(comicPath: string, comicImageFilepath: string, outputCoverPath: string): Promise<boolean> {
   let archive = null
   try {
     archive = createComicBookExtractor(comicPath)
@@ -35,7 +35,7 @@ export { extractCoverImage }
  * @param {import('../../models/Book').EBookFileObject} ebookFile
  * @returns {Promise<import('./parseEbookMetadata').EBookFileScanData>}
  */
-async function parse(ebookFile) {
+async function parse(ebookFile: import('../../models/Book').EBookFileObject): Promise<import('./parseEbookMetadata').EBookFileScanData> {
   const comicPath = ebookFile.metadata.path
   Logger.debug(`[parseComicMetadata] Parsing comic metadata at "${comicPath}"`)
   let archive = null

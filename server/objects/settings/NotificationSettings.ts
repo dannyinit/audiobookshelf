@@ -46,7 +46,7 @@ class NotificationSettings {
    * @param {string} eventName
    * @returns {boolean} - TRUE if there are active notifications for the event
    */
-  getHasActiveNotificationsForEvent(eventName) {
+  getHasActiveNotificationsForEvent(eventName: string): boolean {
     return this.notifications.some((n) => n.eventName === eventName && n.enabled)
   }
 
@@ -54,7 +54,7 @@ class NotificationSettings {
    * @param {string} eventName
    * @returns {Notification[]}
    */
-  getActiveNotificationsForEvent(eventName) {
+  getActiveNotificationsForEvent(eventName: string): Notification[] {
     return this.notifications.filter((n) => n.eventName === eventName && n.enabled)
   }
 

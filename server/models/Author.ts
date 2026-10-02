@@ -3,23 +3,23 @@ import parseNameString = require('../utils/parsers/parseNameString')
 
 class Author extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {string} */
-  declare name
+  declare name: string
   /** @type {string} */
-  declare lastFirst
+  declare lastFirst: string
   /** @type {string} */
-  declare asin
+  declare asin: string
   /** @type {string} */
-  declare description
+  declare description: string
   /** @type {string} */
-  declare imagePath
+  declare imagePath: string
   /** @type {string} */
-  declare libraryId
+  declare libraryId: string
   /** @type {Date} */
-  declare updatedAt
+  declare updatedAt: Date
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
 
   constructor(values, options) {
     super(values, options)
@@ -31,7 +31,7 @@ class Author extends Model {
    * @param {string} name
    * @returns {string}
    */
-  static getLastFirst(name) {
+  static getLastFirst(name: string): string {
     if (!name) return null
     return parseNameString.nameToLastFirst(name)
   }
@@ -41,7 +41,7 @@ class Author extends Model {
    * @param {string} authorId
    * @returns {Promise<boolean>}
    */
-  static async checkExistsById(authorId) {
+  static async checkExistsById(authorId: string): Promise<boolean> {
     return (await this.count({ where: { id: authorId } })) > 0
   }
 
@@ -53,7 +53,7 @@ class Author extends Model {
    * @param {string} libraryId
    * @returns {Promise<Author>}
    */
-  static async getByNameAndLibrary(authorName, libraryId) {
+  static async getByNameAndLibrary(authorName: string, libraryId: string): Promise<Author> {
     return this.findOne({
       where: [
         where(fn('lower', col('name')), authorName.toLowerCase()),
@@ -69,7 +69,7 @@ class Author extends Model {
    * @param {string} authorId
    * @returns {Promise<import('./LibraryItem')[]>}
    */
-  static async getAllLibraryItemsForAuthor(authorId) {
+  static async getAllLibraryItemsForAuthor(authorId: string): Promise<import('./LibraryItem')[]> {
     const author = await this.findByPk(authorId, {
       include: [
         {
@@ -114,7 +114,7 @@ class Author extends Model {
    * @param {string} libraryId
    * @returns {Promise<{ author: Author, created: boolean }>}
    */
-  static async findOrCreateByNameAndLibrary(name, libraryId) {
+  static async findOrCreateByNameAndLibrary(name: string, libraryId: string): Promise<{ author: Author; created: boolean }> {
     const author = await this.getByNameAndLibrary(name, libraryId)
     if (author) return { author, created: false }
     const newAuthor = await this.create({
@@ -129,7 +129,7 @@ class Author extends Model {
    * Initialize model
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {
@@ -193,7 +193,7 @@ class Author extends Model {
    * @param {number} numBooks
    * @returns
    */
-  toOldJSONExpanded(numBooks = 0) {
+  toOldJSONExpanded(numBooks: number = 0) {
     const oldJson = this.toOldJSON()
     oldJson.numBooks = numBooks
     return oldJson

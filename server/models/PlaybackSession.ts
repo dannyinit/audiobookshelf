@@ -4,49 +4,49 @@ import oldPlaybackSession = require('../objects/PlaybackSession')
 
 class PlaybackSession extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {string} */
-  declare mediaItemId
+  declare mediaItemId: string
   /** @type {string} */
-  declare mediaItemType
+  declare mediaItemType: string
   /** @type {string} */
-  declare displayTitle
+  declare displayTitle: string
   /** @type {string} */
-  declare displayAuthor
+  declare displayAuthor: string
   /** @type {number} */
-  declare duration
+  declare duration: number
   /** @type {number} */
-  declare playMethod
+  declare playMethod: number
   /** @type {string} */
-  declare mediaPlayer
+  declare mediaPlayer: string
   /** @type {number} */
-  declare startTime
+  declare startTime: number
   /** @type {number} */
-  declare currentTime
+  declare currentTime: number
   /** @type {string} */
-  declare serverVersion
+  declare serverVersion: string
   /** @type {string} */
-  declare coverPath
+  declare coverPath: string
   /** @type {number} */
-  declare timeListening
+  declare timeListening: number
   /** @type {Object} */
-  declare mediaMetadata
+  declare mediaMetadata: object
   /** @type {string} */
-  declare date
+  declare date: string
   /** @type {string} */
-  declare dayOfWeek
+  declare dayOfWeek: string
   /** @type {Object} */
-  declare extraData
+  declare extraData: object
   /** @type {string} */
-  declare userId
+  declare userId: string
   /** @type {string} */
-  declare deviceId
+  declare deviceId: string
   /** @type {string} */
-  declare libraryId
+  declare libraryId: string
   /** @type {Date} */
-  declare updatedAt
+  declare updatedAt: Date
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
 
   constructor(values, options) {
     super(values, options)
@@ -172,7 +172,7 @@ class PlaybackSession extends Model {
    * Initialize model
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {

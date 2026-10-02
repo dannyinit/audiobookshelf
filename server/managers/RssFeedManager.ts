@@ -56,7 +56,7 @@ class RssFeedManager {
    * @param {string} entityId
    * @returns {Promise<import('../models/Feed')>}
    */
-  findFeedForEntityId(entityId) {
+  findFeedForEntityId(entityId: string): Promise<import('../models/Feed')> {
     return Database.feedModel.findOne({
       where: {
         entityId
@@ -69,7 +69,7 @@ class RssFeedManager {
    * @param {string} slug
    * @returns {Promise<boolean>}
    */
-  checkExistsBySlug(slug) {
+  checkExistsBySlug(slug: string): Promise<boolean> {
     return Database.feedModel
       .count({
         where: {
@@ -85,7 +85,7 @@ class RssFeedManager {
    * @param {import('../models/Feed')} feed
    * @returns {Promise<boolean>}
    */
-  async checkFeedRequiresUpdate(feed) {
+  async checkFeedRequiresUpdate(feed: import('../models/Feed')): Promise<boolean> {
     if (feed.entityType === 'libraryItem') {
       feed.entity = await feed.getEntity({
         attributes: ['id', 'updatedAt', 'mediaId', 'mediaType']
@@ -162,7 +162,7 @@ class RssFeedManager {
    * @param {Request} req
    * @param {Response} res
    */
-  async getFeed(req, res) {
+  async getFeed(req: Request, res: Response) {
     let feed = await Database.feedModel.findOne({
       where: {
         slug: req.params.slug
@@ -194,7 +194,7 @@ class RssFeedManager {
    * @param {Request} req
    * @param {Response} res
    */
-  async getFeedItem(req, res) {
+  async getFeedItem(req: Request, res: Response) {
     const feed = await Database.feedModel.findOne({
       where: {
         slug: req.params.slug
@@ -231,7 +231,7 @@ class RssFeedManager {
    * @param {Request} req
    * @param {Response} res
    */
-  async getFeedCover(req, res) {
+  async getFeedCover(req: Request, res: Response) {
     const feed = await Database.feedModel.findOne({
       where: {
         slug: req.params.slug
@@ -269,7 +269,7 @@ class RssFeedManager {
    * @param {*} options
    * @returns {import('../models/Feed').FeedOptions}
    */
-  getFeedOptionsFromReqOptions(options) {
+  getFeedOptionsFromReqOptions(options: any): import('../models/Feed').FeedOptions {
     const metadataDetails = options.metadataDetails || {}
 
     if (metadataDetails.preventIndexing !== false) {
@@ -290,7 +290,7 @@ class RssFeedManager {
    * @param {*} options
    * @returns {Promise<import('../models/Feed').FeedExpanded>}
    */
-  async openFeedForItem(userId, libraryItem, options) {
+  async openFeedForItem(userId: string, libraryItem: import('../models/LibraryItem'), options: any): Promise<import('../models/Feed').FeedExpanded> {
     const serverAddress = options.serverAddress
     const slug = options.slug
     const feedOptions = this.getFeedOptionsFromReqOptions(options)
@@ -311,7 +311,7 @@ class RssFeedManager {
    * @param {*} options
    * @returns {Promise<import('../models/Feed').FeedExpanded>}
    */
-  async openFeedForCollection(userId, collectionExpanded, options) {
+  async openFeedForCollection(userId: string, collectionExpanded: import('../models/Collection'), options: any): Promise<import('../models/Feed').FeedExpanded> {
     const serverAddress = options.serverAddress
     const slug = options.slug
     const feedOptions = this.getFeedOptionsFromReqOptions(options)
@@ -332,7 +332,7 @@ class RssFeedManager {
    * @param {*} options
    * @returns {Promise<import('../models/Feed').FeedExpanded>}
    */
-  async openFeedForSeries(userId, seriesExpanded, options) {
+  async openFeedForSeries(userId: string, seriesExpanded: import('../models/Series'), options: any): Promise<import('../models/Feed').FeedExpanded> {
     const serverAddress = options.serverAddress
     const slug = options.slug
     const feedOptions = this.getFeedOptionsFromReqOptions(options)
@@ -352,7 +352,7 @@ class RssFeedManager {
    * @param {import('../models/Feed')} feed
    * @returns {Promise<boolean>} - true if feed was closed
    */
-  async handleCloseFeed(feed) {
+  async handleCloseFeed(feed: import('../models/Feed')): Promise<boolean> {
     if (!feed) return false
     const wasRemoved = await Database.feedModel.removeById(feed.id)
     SocketAuthority.emitter('rss_feed_closed', feed.toOldJSONMinified())
@@ -365,7 +365,7 @@ class RssFeedManager {
    * @param {string} entityId
    * @returns {Promise<boolean>} - true if feed was closed
    */
-  async closeFeedForEntityId(entityId) {
+  async closeFeedForEntityId(entityId: string): Promise<boolean> {
     const feed = await Database.feedModel.findOne({
       where: {
         entityId
@@ -381,7 +381,7 @@ class RssFeedManager {
    *
    * @param {string[]} entityIds
    */
-  async closeFeedsForEntityIds(entityIds) {
+  async closeFeedsForEntityIds(entityIds: string[]) {
     const feeds = await Database.feedModel.findAll({
       where: {
         entityId: entityIds
@@ -396,7 +396,7 @@ class RssFeedManager {
    *
    * @returns {Promise<import('../models/Feed').FeedExpanded[]>}
    */
-  getFeeds() {
+  getFeeds(): Promise<import('../models/Feed').FeedExpanded[]> {
     return Database.feedModel.findAll({
       include: {
         model: Database.feedEpisodeModel

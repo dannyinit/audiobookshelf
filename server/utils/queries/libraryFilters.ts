@@ -26,7 +26,7 @@ export = {
    * @param {object} options
    * @returns {Promise<{ libraryItems:import('../../models/LibraryItem')[], count:number }>}
    */
-  async getFilteredLibraryItems(libraryId, user, options) {
+  async getFilteredLibraryItems(libraryId: string, user: import('../../models/User'), options: object): Promise<{ libraryItems: import('../../models/LibraryItem')[]; count: number }> {
     const { filterBy, sortBy, sortDesc, limit, offset, collapseseries, include, mediaType } = options
 
     let filterValue = null
@@ -53,7 +53,7 @@ export = {
    * @param {number} limit
    * @returns {Promise<{ items:import('../../models/LibraryItem')[], count:number }>}
    */
-  async getMediaItemsInProgress(library, user, include, limit) {
+  async getMediaItemsInProgress(library: import('../../models/Library'), user: import('../../models/User'), include: string[], limit: number): Promise<{ items: import('../../models/LibraryItem')[]; count: number }> {
     if (library.isBook) {
       const { libraryItems, count } = await libraryItemsBookFilters.getFilteredLibraryItems(library.id, user, 'progress', 'in-progress', 'progress', true, false, include, limit, 0, true)
       return {
@@ -90,7 +90,7 @@ export = {
    * @param {number} limit
    * @returns {object} { libraryItems:LibraryItem[], count:number }
    */
-  async getLibraryItemsMostRecentlyAdded(library, user, include, limit) {
+  async getLibraryItemsMostRecentlyAdded(library: import('../../models/Library'), user: import('../../models/User'), include: string[], limit: number): object {
     if (library.isBook) {
       const { libraryItems, count } = await libraryItemsBookFilters.getFilteredLibraryItems(library.id, user, 'recent', null, 'addedAt', true, false, include, limit, 0)
       return {
@@ -138,7 +138,7 @@ export = {
    * @param {number} limit
    * @returns {object} { libraryItems:LibraryItem[], count:number }
    */
-  async getLibraryItemsContinueSeries(library, user, include, limit) {
+  async getLibraryItemsContinueSeries(library: import('../../models/Library'), user: import('../../models/User'), include: string[], limit: number): object {
     const { libraryItems, count } = await libraryItemsBookFilters.getContinueSeriesLibraryItems(library, user, include, limit, 0)
     return {
       libraryItems: libraryItems.map((li) => {
@@ -167,7 +167,7 @@ export = {
    * @param {number} limit
    * @returns {Promise<{ items:oldLibraryItem[], count:number }>}
    */
-  async getMediaFinished(library, user, include, limit) {
+  async getMediaFinished(library: import('../../models/Library'), user: import('../../models/User'), include: string[], limit: number): Promise<{ items: oldLibraryItem[]; count: number }> {
     if (library.isBook) {
       const { libraryItems, count } = await libraryItemsBookFilters.getFilteredLibraryItems(library.id, user, 'progress', 'finished', 'progress', true, false, include, limit, 0)
       return {
@@ -204,7 +204,7 @@ export = {
    * @param {number} limit
    * @returns {{ series:any[], count:number}}
    */
-  async getSeriesMostRecentlyAdded(library, user, include, limit) {
+  async getSeriesMostRecentlyAdded(library: import('../../models/Library'), user: import('../../models/User'), include: string[], limit: number): { series: any[]; count: number } {
     if (!library.isBook) return { series: [], count: 0 }
 
     const seriesIncludes = []
@@ -331,7 +331,7 @@ export = {
    * @param {number} limit
    * @returns {Promise<{ authors:oldAuthor[], count:number }>}
    */
-  async getNewestAuthors(library, user, limit) {
+  async getNewestAuthors(library: import('../../models/Library'), user: import('../../models/User'), limit: number): Promise<{ authors: oldAuthor[]; count: number }> {
     if (library.mediaType !== 'book') return { authors: [], count: 0 }
 
     const { bookWhere, replacements } = libraryItemsBookFilters.getUserPermissionBookWhereQuery(user)
@@ -375,7 +375,7 @@ export = {
    * @param {number} limit
    * @returns {Promise<{libraryItems:oldLibraryItem[], count:number}>}
    */
-  async getLibraryItemsToDiscover(library, user, include, limit) {
+  async getLibraryItemsToDiscover(library: import('../../models/Library'), user: import('../../models/User'), include: string[], limit: number): Promise<{ libraryItems: oldLibraryItem[]; count: number }> {
     if (library.mediaType !== 'book') return { libraryItems: [], count: 0 }
 
     const { libraryItems, count } = await libraryItemsBookFilters.getDiscoverLibraryItems(library.id, user, include, limit)
@@ -401,7 +401,7 @@ export = {
    * @param {number} limit
    * @returns {Promise<{libraryItems:oldLibraryItem[], count:number}>}
    */
-  async getNewestPodcastEpisodes(library, user, limit) {
+  async getNewestPodcastEpisodes(library: import('../../models/Library'), user: import('../../models/User'), limit: number): Promise<{ libraryItems: oldLibraryItem[]; count: number }> {
     if (library.mediaType !== 'podcast') return { libraryItems: [], count: 0 }
 
     const { libraryItems, count } = await libraryItemsPodcastFilters.getFilteredPodcastEpisodes(library.id, user, 'recent', null, 'createdAt', true, limit, 0)
@@ -423,7 +423,7 @@ export = {
    * @param {number} offset
    * @returns {Promise<{ libraryItems:import('../../models/LibraryItem')[], count:number }>}
    */
-  async getLibraryItemsForAuthor(author, user, limit, offset) {
+  async getLibraryItemsForAuthor(author: import('../../models/Author'), user: import('../../models/User'), limit: number, offset: number): Promise<{ libraryItems: import('../../models/LibraryItem')[]; count: number }> {
     const { libraryItems, count } = await libraryItemsBookFilters.getFilteredLibraryItems(author.libraryId, user, 'authors', author.id, 'addedAt', true, false, [], limit, offset)
     return {
       count,
@@ -436,7 +436,7 @@ export = {
    * @param {oldCollection} collection
    * @returns {Promise<import('../../models/LibraryItem')[]>}
    */
-  getLibraryItemsForCollection(collection) {
+  getLibraryItemsForCollection(collection: oldCollection): Promise<import('../../models/LibraryItem')[]> {
     return libraryItemsBookFilters.getLibraryItemsForCollection(collection)
   },
 
@@ -446,7 +446,7 @@ export = {
    * @param {string} libraryId
    * @returns {Promise<object>}
    */
-  async getFilterData(mediaType, libraryId) {
+  async getFilterData(mediaType: string, libraryId: string): Promise<object> {
     const cachedFilterData = Database.libraryFilterData[libraryId]
     if (cachedFilterData) {
       const cacheElapsed = Date.now() - cachedFilterData.loadedAt

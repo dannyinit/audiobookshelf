@@ -4,35 +4,35 @@ import { isNullOrNaN } from '../utils'
 
 class MediaProgress extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {string} */
-  declare mediaItemId
+  declare mediaItemId: string
   /** @type {string} */
-  declare mediaItemType
+  declare mediaItemType: string
   /** @type {number} */
-  declare duration
+  declare duration: number
   /** @type {number} */
-  declare currentTime
+  declare currentTime: number
   /** @type {boolean} */
-  declare isFinished
+  declare isFinished: boolean
   /** @type {boolean} */
-  declare hideFromContinueListening
+  declare hideFromContinueListening: boolean
   /** @type {string} */
-  declare ebookLocation
+  declare ebookLocation: string
   /** @type {number} */
-  declare ebookProgress
+  declare ebookProgress: number
   /** @type {Date} */
-  declare finishedAt
+  declare finishedAt: Date
   /** @type {Object} */
-  declare extraData
+  declare extraData: object
   /** @type {string} */
-  declare userId
+  declare userId: string
   /** @type {Date} */
-  declare updatedAt
+  declare updatedAt: Date
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
   /** @type {string} */
-  declare podcastId
+  declare podcastId: string
 
   constructor(values, options) {
     super(values, options)
@@ -55,7 +55,7 @@ class MediaProgress extends Model {
    *
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {
@@ -188,7 +188,7 @@ class MediaProgress extends Model {
    * @param {import('./User').ProgressUpdatePayload} progressPayload
    * @returns {Promise<MediaProgress>}
    */
-  async applyProgressUpdate(progressPayload) {
+  async applyProgressUpdate(progressPayload: import('./User').ProgressUpdatePayload): Promise<MediaProgress> {
     if (!this.extraData) this.extraData = {}
     if (progressPayload.isFinished !== undefined) {
       if (progressPayload.isFinished && !this.isFinished) {

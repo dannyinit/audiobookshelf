@@ -14,7 +14,7 @@ class MigrationManager {
    * @param {boolean} isDatabaseNew
    * @param {string} [configPath]
    */
-  constructor(sequelize, isDatabaseNew, configPath = global.configPath) {
+  constructor(sequelize: import('../Database').sequelize, isDatabaseNew: boolean, configPath: string = global.configPath) {
     if (!sequelize || !(sequelize instanceof Sequelize)) throw new Error('Sequelize instance is required for MigrationManager.')
     this.sequelize = sequelize
     this.isDatabaseNew = isDatabaseNew
@@ -34,7 +34,7 @@ class MigrationManager {
    *
    * @param {string} serverVersion
    */
-  async init(serverVersion) {
+  async init(serverVersion: string) {
     if (!(await fs.pathExists(this.configPath))) throw new Error(`Config path does not exist: ${this.configPath}`)
 
     this.migrationsDir = path.join(this.configPath, 'migrations')
@@ -278,7 +278,7 @@ class MigrationManager {
    * @param {string} direction - 'up' or 'down'
    * @returns {string[]} - names of migrations to run
    */
-  findMigrationsToRun(migrations, executedMigrations, direction) {
+  findMigrationsToRun(migrations: { name: string }[], executedMigrations: string[], direction: string): string[] {
     const migrationsToRun = migrations
       .filter((migration) => {
         const migrationVersion = this.extractVersionFromTag(migration.name)

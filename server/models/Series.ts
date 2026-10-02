@@ -4,21 +4,21 @@ import { getTitlePrefixAtEnd, getTitleIgnorePrefix } from '../utils/index'
 
 class Series extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {string} */
-  declare name
+  declare name: string
   /** @type {string} */
-  declare nameIgnorePrefix
+  declare nameIgnorePrefix: string
   /** @type {string} */
-  declare description
+  declare description: string
   /** @type {string} */
-  declare libraryId
+  declare libraryId: string
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
   /** @type {Date} */
-  declare updatedAt
+  declare updatedAt: Date
   /** @type {import('./Book').BookExpandedWithLibraryItem[]} - only set when expanded */
-  declare books
+  declare books: import('./Book').BookExpandedWithLibraryItem[]
 
   constructor(values, options) {
     super(values, options)
@@ -33,7 +33,7 @@ class Series extends Model {
    * @param {string} seriesId
    * @returns {Promise<boolean>}
    */
-  static async checkExistsById(seriesId) {
+  static async checkExistsById(seriesId: string): Promise<boolean> {
     return (await this.count({ where: { id: seriesId } })) > 0
   }
 
@@ -44,7 +44,7 @@ class Series extends Model {
    * @param {string} libraryId
    * @returns {Promise<Series>}
    */
-  static async getByNameAndLibrary(seriesName, libraryId) {
+  static async getByNameAndLibrary(seriesName: string, libraryId: string): Promise<Series> {
     return this.findOne({
       where: [
         where(fn('lower', col('name')), seriesName.toLowerCase()),
@@ -60,7 +60,7 @@ class Series extends Model {
    * @param {string} seriesId
    * @returns {Promise<Series>}
    */
-  static async getExpandedById(seriesId) {
+  static async getExpandedById(seriesId: string): Promise<Series> {
     const series = await this.findByPk(seriesId)
     if (!series) return null
     series.books = await series.getBooksExpandedWithLibraryItem()
@@ -73,7 +73,7 @@ class Series extends Model {
    * @param {string} libraryId
    * @returns {Promise<Series>}
    */
-  static async findOrCreateByNameAndLibrary(seriesName, libraryId) {
+  static async findOrCreateByNameAndLibrary(seriesName: string, libraryId: string): Promise<Series> {
     const series = await this.getByNameAndLibrary(seriesName, libraryId)
     if (series) return series
     return this.create({
@@ -87,7 +87,7 @@ class Series extends Model {
    * Initialize model
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {
@@ -142,7 +142,7 @@ class Series extends Model {
    *
    * @returns {Promise<import('./Book').BookExpandedWithLibraryItem[]>}
    */
-  getBooksExpandedWithLibraryItem() {
+  getBooksExpandedWithLibraryItem(): Promise<import('./Book').BookExpandedWithLibraryItem[]> {
     return this.getBooks({
       joinTableAttributes: ['sequence'],
       include: [

@@ -61,7 +61,7 @@ export const zipDirectoryPipe = (path, filename, res) => {
  * @param {Response} res - Response object to pipe the archive data to.
  * @returns {Promise<void>} - Promise that resolves when the zip operation completes.
  */
-export const zipDirectoriesPipe = (pathObjects, filename, res) => {
+export const zipDirectoriesPipe = (pathObjects: { path: string; isFile: boolean }[], filename: string, res: Response): Promise<void> => {
   return new Promise((resolve, reject) => {
     // create a file to stream archive data to
     res.attachment(filename)
@@ -126,7 +126,7 @@ export const zipDirectoriesPipe = (pathObjects, filename, res) => {
  * @param {Response} res
  * @returns {*}
  */
-export const handleDownloadError = (error, res) => {
+export const handleDownloadError = (error: any, res: Response): any => {
   if (!res.headersSent) {
     if (error.code === 'ENOENT') {
       return res.status(404).send('File not found')

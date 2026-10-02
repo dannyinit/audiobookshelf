@@ -45,7 +45,7 @@ export { checkFilepathIsAudioFile }
  * @param {boolean} [includeNonMediaFiles=false] - Used by the watcher to re-scan when covers/metadata files are added/removed
  * @returns {Record<string,string[]>} map of files grouped into potential libarary item dirs
  */
-function groupFileItemsIntoLibraryItemDirs(mediaType, fileItems, audiobooksOnly, includeNonMediaFiles = false) {
+function groupFileItemsIntoLibraryItemDirs(mediaType: string, fileItems: import('./fileUtils').FilePathItem[], audiobooksOnly: boolean, includeNonMediaFiles: boolean = false): Record<string, string[]> {
   // Step 1: Filter out non-book-media files in root dir (with depth of 0)
   const itemsFiltered = fileItems.filter((i) => {
     return i.deep > 0 || (mediaType === 'book' && isMediaFile(mediaType, i.extension, audiobooksOnly))
@@ -54,9 +54,9 @@ function groupFileItemsIntoLibraryItemDirs(mediaType, fileItems, audiobooksOnly,
   // Step 2: Separate media files and other files
   //     - Directories without a media file will not be included (unless includeNonMediaFiles is true)
   /** @type {import('./fileUtils').FilePathItem[]} */
-  const mediaFileItems = []
+  const mediaFileItems: import('./fileUtils').FilePathItem[] = []
   /** @type {import('./fileUtils').FilePathItem[]} */
-  const otherFileItems = []
+  const otherFileItems: import('./fileUtils').FilePathItem[] = []
   itemsFiltered.forEach((item) => {
     if (isMediaFile(mediaType, item.extension, audiobooksOnly) || (includeNonMediaFiles && isScannableNonMediaFile(item.extension))) {
       mediaFileItems.push(item)
@@ -127,7 +127,7 @@ export { groupFileItemsIntoLibraryItemDirs }
  * @param {string[]} files
  * @returns {import('../objects/files/LibraryFile')}
  */
-function buildLibraryFile(libraryItemPath, files) {
+function buildLibraryFile(libraryItemPath: string, files: string[]): import('../objects/files/LibraryFile') {
   return Promise.all(
     files.map(async (file) => {
       const filePath = Path.posix.join(libraryItemPath, file)
@@ -146,7 +146,7 @@ export { buildLibraryFile }
  * @param {boolean} parseSubtitle
  * @returns {LibraryItemFilenameMetadata}
  */
-function getBookDataFromDir(relPath, parseSubtitle = false) {
+function getBookDataFromDir(relPath: string, parseSubtitle: boolean = false): LibraryItemFilenameMetadata {
   const splitDir = relPath.split('/')
 
   const titleFolder = splitDir.pop() // Audio files will always be in the directory named for the title
@@ -179,7 +179,7 @@ export { getBookDataFromDir }
  * @param {string} folder
  * @returns {[string, string]} [folder, narrator]
  */
-function getNarrator(folder) {
+function getNarrator(folder: string): [string, string] {
   const pattern = /^(?<title>.*) \{(?<narrators>.*)\}$/
   const match = folder.match(pattern)
   return match ? [match.groups.title, match.groups.narrators] : [folder, null]
@@ -202,7 +202,7 @@ function getNarrator(folder) {
  * @param {string} folder
  * @returns {[string, string]} [folder, sequence]
  */
-function getSequence(folder) {
+function getSequence(folder: string): [string, string] {
   // Matches a valid volume string. Also matches a book whose title starts with a 1 to 3 digit number. Will handle that later.
   const pattern = /^(?<volumeLabel>vol\.? |volume |book )?(?<sequence>\d{0,3}(?:\.\d{1,2})?)(?<trailingDot>\.?)(?: (?<suffix>.*))?$/i
 
@@ -231,7 +231,7 @@ function getSequence(folder) {
  * @param {string} folder
  * @returns {[string, string]} [folder, publishedYear]
  */
-function getPublishedYear(folder) {
+function getPublishedYear(folder: string): [string, string] {
   let publishedYear = null
 
   const pattern = /^ *\(?([0-9]{4})\)? * - *(.+)/ //Matches #### - title or (####) - title
@@ -250,7 +250,7 @@ function getPublishedYear(folder) {
  * @param {string} folder
  * @returns {[string, string]} [folder, subtitle]
  */
-function getSubtitle(folder) {
+function getSubtitle(folder: string): [string, string] {
   // Subtitle is everything after " - "
   const splitTitle = folder.split(' - ')
   return [splitTitle.shift(), splitTitle.join(' - ')]
@@ -262,7 +262,7 @@ function getSubtitle(folder) {
  * @param {string} folder
  * @returns {[string, string]} [folder, asin]
  */
-function getASIN(folder) {
+function getASIN(folder: string): [string, string] {
   let asin = null
 
   const pattern = /(?: |^)\[([A-Z0-9]{10})](?= |$)/ // Matches "[B0015T963C]"
@@ -279,7 +279,7 @@ function getASIN(folder) {
  * @param {string} relPath
  * @returns {LibraryItemFilenameMetadata}
  */
-function getPodcastDataFromDir(relPath) {
+function getPodcastDataFromDir(relPath: string): LibraryItemFilenameMetadata {
   const splitDir = relPath.split('/')
 
   // Audio files will always be in the directory named for the title
@@ -296,7 +296,7 @@ function getPodcastDataFromDir(relPath) {
  * @param {string} relPath
  * @returns {{ mediaMetadata: LibraryItemFilenameMetadata, relPath: string, path: string}}
  */
-function getDataFromMediaDir(libraryMediaType, folderPath, relPath) {
+function getDataFromMediaDir(libraryMediaType: string, folderPath: string, relPath: string): { mediaMetadata: LibraryItemFilenameMetadata; relPath: string; path: string } {
   relPath = filePathToPOSIX(relPath)
   let fullPath = Path.posix.join(folderPath, relPath)
   let mediaMetadata = null

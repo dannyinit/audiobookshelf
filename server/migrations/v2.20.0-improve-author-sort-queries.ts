@@ -1,14 +1,14 @@
 import util = require('util')
 import { Sequelize } from 'sequelize'
 
-/**
- * @typedef MigrationContext
- * @property {import('sequelize').QueryInterface} queryInterface - a suquelize QueryInterface object.
- * @property {import('../Logger')} logger - a Logger object.
- *
- * @typedef MigrationOptions
- * @property {MigrationContext} context - an object containing the migration context.
- */
+interface MigrationContext {
+  queryInterface: import('sequelize').QueryInterface
+  logger: import('../Logger')
+}
+
+interface MigrationOptions {
+  context: MigrationContext
+}
 
 const migrationVersion = '2.20.0'
 const migrationName = `${migrationVersion}-improve-author-sort-queries`
@@ -38,7 +38,7 @@ const authorsJoin = `${authors} JOIN ${bookAuthors} ON ${authors}.id = ${bookAut
  * @param {MigrationOptions} options - an object containing the migration context.
  * @returns {Promise<void>} - A promise that resolves when the migration is complete.
  */
-async function up({ context: { queryInterface, logger } }) {
+async function up({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   const helper = new MigrationHelper(queryInterface, logger)
 
   // Upwards migration script
@@ -71,7 +71,7 @@ async function up({ context: { queryInterface, logger } }) {
  * @param {MigrationOptions} options - an object containing the migration context.
  * @returns {Promise<void>} - A promise that resolves when the migration is complete.
  */
-async function down({ context: { queryInterface, logger } }) {
+async function down({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   // Downward migration script
   logger.info(`${loggerPrefix} DOWNGRADE BEGIN: ${migrationName}`)
 
@@ -265,7 +265,7 @@ class MigrationHelper {
  * @param {string} str - the string to convert to snake case.
  * @returns {string} - the string in snake case.
  */
-function convertToSnakeCase(str) {
+function convertToSnakeCase(str: string): string {
   return str.replace(/([A-Z])/g, '_$1').toLowerCase()
 }
 

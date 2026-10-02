@@ -5,12 +5,11 @@ import Database = require('../Database')
 
 import { validateUrl } from '../utils/index'
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- */
+interface RequestUserObject {
+  user: import('../models/User')
+}
+
+type RequestWithUser = Request & RequestUserObject
 
 class CustomMetadataProviderController {
   constructor() {}
@@ -21,7 +20,7 @@ class CustomMetadataProviderController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async getAll(req, res) {
+  async getAll(req: RequestWithUser, res: Response) {
     const providers = await Database.customMetadataProviderModel.findAll()
 
     res.json({
@@ -35,7 +34,7 @@ class CustomMetadataProviderController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async create(req, res) {
+  async create(req: RequestWithUser, res: Response) {
     const { name, url, mediaType, authHeaderValue } = req.body
 
     if (!name || !url || !mediaType) {
@@ -69,11 +68,11 @@ class CustomMetadataProviderController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async delete(req, res) {
+  async delete(req: RequestWithUser, res: Response) {
     const slug = `custom-${req.params.id}`
 
     /** @type {import('../models/CustomMetadataProvider')} */
-    const provider = req.customMetadataProvider
+    const provider: import('../models/CustomMetadataProvider') = req.customMetadataProvider
     const providerClientJson = provider.toClientJson()
 
     const fallbackProvider = provider.mediaType === 'book' ? 'google' : 'itunes'
@@ -105,7 +104,7 @@ class CustomMetadataProviderController {
    * @param {Response} res
    * @param {NextFunction} next
    */
-  async middleware(req, res, next) {
+  async middleware(req: RequestWithUser, res: Response, next: NextFunction) {
     if (!req.user.isAdminOrUp) {
       Logger.warn(`[CustomMetadataProviderController] Non-admin user "${req.user.username}" attempted access route "${req.path}"`)
       return res.sendStatus(403)

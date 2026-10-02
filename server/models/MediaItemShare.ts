@@ -1,59 +1,57 @@
 import { DataTypes, Model } from 'sequelize'
 
-/**
- * @typedef MediaItemShareObject
- * @property {string} id
- * @property {string} mediaItemId
- * @property {string} mediaItemType
- * @property {string} slug
- * @property {string} pash
- * @property {string} userId
- * @property {Date} expiresAt
- * @property {Object} extraData
- * @property {Date} createdAt
- * @property {Date} updatedAt
- * @property {boolean} isDownloadable
- *
- * @typedef {MediaItemShareObject & MediaItemShare} MediaItemShareModel
- */
+interface MediaItemShareObject {
+  id: string
+  mediaItemId: string
+  mediaItemType: string
+  slug: string
+  pash: string
+  userId: string
+  expiresAt: Date
+  extraData: Object
+  createdAt: Date
+  updatedAt: Date
+  isDownloadable: boolean
+}
 
-/**
- * @typedef MediaItemShareForClient
- * @property {string} id
- * @property {string} mediaItemId
- * @property {string} mediaItemType
- * @property {string} slug
- * @property {Date} expiresAt
- * @property {Date} createdAt
- * @property {Date} updatedAt
- * @property {boolean} isDownloadable
- */
+type MediaItemShareModel = MediaItemShareObject & MediaItemShare
+
+interface MediaItemShareForClient {
+  id: string
+  mediaItemId: string
+  mediaItemType: string
+  slug: string
+  expiresAt: Date
+  createdAt: Date
+  updatedAt: Date
+  isDownloadable: boolean
+}
 
 class MediaItemShare extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {string} */
-  declare mediaItemId
+  declare mediaItemId: string
   /** @type {string} */
-  declare mediaItemType
+  declare mediaItemType: string
   /** @type {string} */
-  declare slug
+  declare slug: string
   /** @type {string} */
-  declare pash
+  declare pash: string
   /** @type {string} */
-  declare userId
+  declare userId: string
   /** @type {Date} */
-  declare expiresAt
+  declare expiresAt: Date
   /** @type {Object} */
-  declare extraData
+  declare extraData: object
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
   /** @type {Date} */
-  declare updatedAt
+  declare updatedAt: Date
   /** @type {boolean} */
-  declare isDownloadable
+  declare isDownloadable: boolean
   /** @type {import('./Book')|import('./PodcastEpisode')} */
-  declare mediaItem
+  declare mediaItem: import('./Book') | import('./PodcastEpisode')
 
   constructor(values, options) {
     super(values, options)
@@ -83,9 +81,9 @@ class MediaItemShare extends Model {
    * @param {string} mediaItemType
    * @returns {Promise<import('./LibraryItem').LibraryItemExpanded>}
    */
-  static async getMediaItemsLibraryItem(mediaItemId, mediaItemType) {
+  static async getMediaItemsLibraryItem(mediaItemId: string, mediaItemType: string): Promise<import('./LibraryItem').LibraryItemExpanded> {
     /** @type {typeof import('./LibraryItem')} */
-    const libraryItemModel = this.sequelize.models.libraryItem
+    const libraryItemModel: typeof import('./LibraryItem') = this.sequelize.models.libraryItem
 
     if (mediaItemType === 'book') {
       const libraryItem = await libraryItemModel.findOneExpanded({ mediaId: mediaItemId }, null, {
@@ -103,7 +101,7 @@ class MediaItemShare extends Model {
    * @param {import('sequelize').FindOptions} options
    * @returns {Promise<import('./Book')|import('./PodcastEpisode')>}
    */
-  getMediaItem(options) {
+  getMediaItem(options: import('sequelize').FindOptions): Promise<import('./Book') | import('./PodcastEpisode')> {
     if (!this.mediaItemType) return Promise.resolve(null)
     const mixinMethodName = `get${this.sequelize.uppercaseFirst(this.mediaItemType)}`
     return this[mixinMethodName](options)
@@ -114,7 +112,7 @@ class MediaItemShare extends Model {
    *
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {

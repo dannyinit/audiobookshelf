@@ -25,17 +25,24 @@ import libraryItemsPodcastFilters = require('../utils/queries/libraryItemsPodcas
 import authorFilters = require('../utils/queries/authorFilters')
 import zipHelpers = require('../utils/zipHelpers')
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- *
- * @typedef RequestEntityObject
- * @property {import('../models/Library')} library
- *
- * @typedef {RequestWithUser & RequestEntityObject} LibraryControllerRequest
- */
+interface LibraryReorderObj {
+  id: string
+  newOrder: number
+}
+
+type LibraryReorderRequest = Request<{}, {}, LibraryReorderObj[], {}> & RequestUserObject
+
+interface RequestUserObject {
+  user: import('../models/User')
+}
+
+type RequestWithUser = Request & RequestUserObject
+
+interface RequestEntityObject {
+  library: import('../models/Library')
+}
+
+type LibraryControllerRequest = RequestWithUser & RequestEntityObject
 
 class LibraryController {
   constructor() {}
@@ -47,7 +54,7 @@ class LibraryController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async create(req, res) {
+  async create(req: RequestWithUser, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[LibraryController] Non-admin user "${req.user.username}" attempted to create library`)
       return res.sendStatus(403)
@@ -185,7 +192,7 @@ class LibraryController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async findAll(req, res) {
+  async findAll(req: RequestWithUser, res: Response) {
     let libraries = await Database.libraryModel.getAllWithFolders()
 
     const librariesAccessible = req.user.permissions?.librariesAccessible || []
@@ -217,7 +224,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async findOne(req, res) {
+  async findOne(req: LibraryControllerRequest, res: Response) {
     const includeArray = (req.query.include || '').split(',')
     if (includeArray.includes('filterdata')) {
       const filterdata = await libraryFilters.getFilterData(req.library.mediaType, req.library.id)
@@ -239,7 +246,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async getEpisodeDownloadQueue(req, res) {
+  async getEpisodeDownloadQueue(req: LibraryControllerRequest, res: Response) {
     const libraryDownloadQueueDetails = this.podcastManager.getDownloadQueueDetails(req.library.id)
     res.json(libraryDownloadQueueDetails)
   }
@@ -252,7 +259,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async update(req, res) {
+  async update(req: LibraryControllerRequest, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[LibraryController] Non-admin user "${req.user.username}" attempted to update library`)
       return res.sendStatus(403)
@@ -522,7 +529,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async delete(req, res) {
+  async delete(req: LibraryControllerRequest, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[LibraryController] Non-admin user "${req.user.username}" attempted to delete library`)
       return res.sendStatus(403)
@@ -601,7 +608,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async getLibraryItems(req, res) {
+  async getLibraryItems(req: LibraryControllerRequest, res: Response) {
     const include = (req.query.include || '')
       .split(',')
       .map((v) => v.trim().toLowerCase())
@@ -647,7 +654,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async removeLibraryItemsWithIssues(req, res) {
+  async removeLibraryItemsWithIssues(req: LibraryControllerRequest, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[LibraryController] Non-admin user "${req.user.username}" attempted to delete library items missing or invalid`)
       return res.sendStatus(403)
@@ -739,7 +746,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async getAllSeriesForLibrary(req, res) {
+  async getAllSeriesForLibrary(req: LibraryControllerRequest, res: Response) {
     const include = (req.query.include || '')
       .split(',')
       .map((v) => v.trim().toLowerCase())
@@ -775,7 +782,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res - Series
    */
-  async getSeriesForLibrary(req, res) {
+  async getSeriesForLibrary(req: LibraryControllerRequest, res: Response) {
     const include = (req.query.include || '')
       .split(',')
       .map((v) => v.trim().toLowerCase())
@@ -811,7 +818,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async getCollectionsForLibrary(req, res) {
+  async getCollectionsForLibrary(req: LibraryControllerRequest, res: Response) {
     const include = (req.query.include || '')
       .split(',')
       .map((v) => v.trim().toLowerCase())
@@ -850,7 +857,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async getUserPlaylistsForLibrary(req, res) {
+  async getUserPlaylistsForLibrary(req: LibraryControllerRequest, res: Response) {
     let playlistsForUser = await Database.playlistModel.getOldPlaylistsForUserAndLibrary(req.user.id, req.library.id)
 
     const payload = {
@@ -875,7 +882,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async getLibraryFilterData(req, res) {
+  async getLibraryFilterData(req: LibraryControllerRequest, res: Response) {
     const filterData = await libraryFilters.getFilterData(req.library.mediaType, req.library.id)
     res.json(filterData)
   }
@@ -887,7 +894,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async getUserPersonalizedShelves(req, res) {
+  async getUserPersonalizedShelves(req: LibraryControllerRequest, res: Response) {
     const limitPerShelf = req.query.limit || 10
     const include = (req.query.include || '')
       .split(',')
@@ -901,16 +908,10 @@ class LibraryController {
    * POST: /api/libraries/order
    * Change the display order of libraries
    *
-   * @typedef LibraryReorderObj
-   * @property {string} id
-   * @property {number} newOrder
-   *
-   * @typedef {Request<{}, {}, LibraryReorderObj[], {}> & RequestUserObject} LibraryReorderRequest
-   *
    * @param {LibraryReorderRequest} req
    * @param {Response} res
    */
-  async reorder(req, res) {
+  async reorder(req: LibraryReorderRequest, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[LibraryController] Non-admin user "${req.user}" attempted to reorder libraries`)
       return res.sendStatus(403)
@@ -956,7 +957,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async search(req, res) {
+  async search(req: LibraryControllerRequest, res: Response) {
     if (!req.query.q || typeof req.query.q !== 'string') {
       return res.status(400).send('Invalid request. Query param "q" must be a string')
     }
@@ -975,7 +976,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async stats(req, res) {
+  async stats(req: LibraryControllerRequest, res: Response) {
     const stats = {
       largestItems: await libraryItemFilters.getLargestItems(req.library.id, 10)
     }
@@ -1018,7 +1019,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async getAuthors(req, res) {
+  async getAuthors(req: LibraryControllerRequest, res: Response) {
     const isPaginated = req.query.limit && !isNaN(req.query.limit) && !isNaN(req.query.page)
 
     const payload = {
@@ -1107,7 +1108,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async getNarrators(req, res) {
+  async getNarrators(req: LibraryControllerRequest, res: Response) {
     // Get all books with narrators
     const booksWithNarrators = await Database.bookModel.findAll({
       where: Sequelize.where(Sequelize.fn('json_array_length', Sequelize.col('narrators')), {
@@ -1154,7 +1155,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async updateNarrator(req, res) {
+  async updateNarrator(req: LibraryControllerRequest, res: Response) {
     if (!req.user.canUpdate) {
       Logger.error(`[LibraryController] Unauthorized user "${req.user.username}" attempted to update narrator`)
       return res.sendStatus(403)
@@ -1202,7 +1203,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async removeNarrator(req, res) {
+  async removeNarrator(req: LibraryControllerRequest, res: Response) {
     if (!req.user.canUpdate) {
       Logger.error(`[LibraryController] Unauthorized user "${req.user.username}" attempted to remove narrator`)
       return res.sendStatus(403)
@@ -1242,7 +1243,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async matchAll(req, res) {
+  async matchAll(req: LibraryControllerRequest, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[LibraryController] Non-root user "${req.user.username}" attempted to match library items`)
       return res.sendStatus(403)
@@ -1259,7 +1260,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async scan(req, res) {
+  async scan(req: LibraryControllerRequest, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[LibraryController] Non-admin user "${req.user.username}" attempted to scan library`)
       return res.sendStatus(403)
@@ -1280,7 +1281,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async getRecentEpisodes(req, res) {
+  async getRecentEpisodes(req: LibraryControllerRequest, res: Response) {
     if (req.library.mediaType !== 'podcast') {
       return res.sendStatus(404)
     }
@@ -1303,7 +1304,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async getOPMLFile(req, res) {
+  async getOPMLFile(req: LibraryControllerRequest, res: Response) {
     const userPermissionPodcastWhere = libraryItemsPodcastFilters.getUserPermissionPodcastWhereQuery(req.user)
     const podcasts = await Database.podcastModel.findAll({
       attributes: ['id', 'feedURL', 'title', 'description', 'itunesPageURL', 'language'],
@@ -1330,7 +1331,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async removeAllMetadataFiles(req, res) {
+  async removeAllMetadataFiles(req: LibraryControllerRequest, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[LibraryController] Non-admin user "${req.user.username}" attempted to remove all metadata files`)
       return res.sendStatus(403)
@@ -1383,7 +1384,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async getPodcastTitles(req, res) {
+  async getPodcastTitles(req: LibraryControllerRequest, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[LibraryController] Non-admin user "${req.user.username}" attempted to get podcast titles`)
       return res.sendStatus(403)
@@ -1419,7 +1420,7 @@ class LibraryController {
    * @param {LibraryControllerRequest} req
    * @param {Response} res
    */
-  async downloadMultiple(req, res) {
+  async downloadMultiple(req: LibraryControllerRequest, res: Response) {
     if (!req.user.canDownload) {
       Logger.warn(`User "${req.user.username}" attempted to download without permission`)
       return res.sendStatus(403)
@@ -1472,7 +1473,7 @@ class LibraryController {
    * @param {Response} res
    * @param {NextFunction} next
    */
-  async middleware(req, res, next) {
+  async middleware(req: RequestWithUser, res: Response, next: NextFunction) {
     if (!req.user.checkCanAccessLibrary(req.params.id)) {
       Logger.warn(`[LibraryController] Library ${req.params.id} not accessible to user ${req.user.username}`)
       return res.sendStatus(403)

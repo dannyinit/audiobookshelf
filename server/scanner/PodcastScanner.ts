@@ -14,7 +14,6 @@ import AbsMetadataFileScanner = require('./AbsMetadataFileScanner')
 import htmlSanitizer = require('../utils/htmlSanitizer')
 
 /**
- * Metadata for podcasts pulled from files
  * @typedef PodcastMetadataObject
  * @property {string} title
  * @property {string} titleIgnorePrefix
@@ -32,6 +31,10 @@ import htmlSanitizer = require('../utils/htmlSanitizer')
  * @property {boolean} explicit
  */
 
+/**
+ * Metadata for podcasts pulled from files
+ */
+
 class PodcastScanner {
   constructor() {}
 
@@ -42,9 +45,9 @@ class PodcastScanner {
    * @param {import('./LibraryScan')} libraryScan
    * @returns {Promise<{libraryItem:import('../models/LibraryItem'), wasUpdated:boolean}>}
    */
-  async rescanExistingPodcastLibraryItem(existingLibraryItem, libraryItemData, librarySettings, libraryScan) {
+  async rescanExistingPodcastLibraryItem(existingLibraryItem: import('../models/LibraryItem'), libraryItemData: import('./LibraryItemScanData'), librarySettings: import('../models/Library').LibrarySettingsObject, libraryScan: import('./LibraryScan')): Promise<{ libraryItem: import('../models/LibraryItem'); wasUpdated: boolean }> {
     /** @type {import('../models/Podcast')} */
-    const media = await existingLibraryItem.getMedia({
+    const media: import('../models/Podcast') = await existingLibraryItem.getMedia({
       include: [
         {
           model: Database.podcastEpisodeModel
@@ -53,10 +56,10 @@ class PodcastScanner {
     })
 
     /** @type {import('../models/PodcastEpisode')[]} */
-    let existingPodcastEpisodes = media.podcastEpisodes
+    let existingPodcastEpisodes: import('../models/PodcastEpisode')[] = media.podcastEpisodes
 
     /** @type {AudioFile[]} */
-    let newAudioFiles = []
+    let newAudioFiles: AudioFile[] = []
 
     // Track episode add/remove/update so item_updated includes the current episode list
     let hasEpisodeChanges = false
@@ -271,7 +274,7 @@ class PodcastScanner {
    * @param {import('./LibraryScan')} libraryScan
    * @returns {Promise<import('../models/LibraryItem')>}
    */
-  async scanNewPodcastLibraryItem(libraryItemData, librarySettings, libraryScan) {
+  async scanNewPodcastLibraryItem(libraryItemData: import('./LibraryItemScanData'), librarySettings: import('../models/Library').LibrarySettingsObject, libraryScan: import('./LibraryScan')): Promise<import('../models/LibraryItem')> {
     // Scan audio files found
     let scannedAudioFiles = await AudioFileScanner.executeMediaFileScans(libraryItemData.mediaType, libraryItemData, libraryItemData.audioLibraryFiles)
 
@@ -380,7 +383,7 @@ class PodcastScanner {
    * @param {string} [existingLibraryItemId]
    * @returns {Promise<PodcastMetadataObject>}
    */
-  async getPodcastMetadataFromScanData(podcastEpisodes, libraryItemData, libraryScan, existingLibraryItemId = null) {
+  async getPodcastMetadataFromScanData(podcastEpisodes: PodcastEpisode[], libraryItemData: import('./LibraryItemScanData'), libraryScan: import('./LibraryScan'), existingLibraryItemId: string = null): Promise<PodcastMetadataObject> {
     const podcastMetadata = {
       title: libraryItemData.mediaMetadata.title,
       titleIgnorePrefix: undefined,
@@ -422,7 +425,7 @@ class PodcastScanner {
    * @param {import('./LibraryScan')} libraryScan
    * @returns {Promise}
    */
-  async saveMetadataFile(libraryItem, libraryScan) {
+  async saveMetadataFile(libraryItem: import('../models/LibraryItem'), libraryScan: import('./LibraryScan')): Promise<any> {
     let metadataPath = Path.join(global.MetadataPath, 'items', libraryItem.id)
     let storeMetadataWithItem = global.ServerSettings.storeMetadataWithItem
     if (storeMetadataWithItem) {

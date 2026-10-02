@@ -15,17 +15,21 @@ import htmlSanitizer = require('../utils/htmlSanitizer')
 import Scanner = require('../scanner/Scanner')
 import CoverManager = require('../managers/CoverManager')
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- *
- * @typedef RequestEntityObject
- * @property {import('../models/LibraryItem')} libraryItem
- *
- * @typedef {RequestWithUser & RequestEntityObject} RequestWithLibraryItem
- */
+interface getPodcastFeedReqBody {
+  rssFeed: string
+}
+
+interface RequestUserObject {
+  user: import('../models/User')
+}
+
+type RequestWithUser = Request & RequestUserObject
+
+interface RequestEntityObject {
+  libraryItem: import('../models/LibraryItem')
+}
+
+type RequestWithLibraryItem = RequestWithUser & RequestEntityObject
 
 class PodcastController {
   /**
@@ -37,7 +41,7 @@ class PodcastController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async create(req, res) {
+  async create(req: RequestWithUser, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[PodcastController] Non-admin user "${req.user.username}" attempted to create podcast`)
       return res.sendStatus(403)
@@ -191,13 +195,10 @@ class PodcastController {
   /**
    * POST: /api/podcasts/feed
    *
-   * @typedef getPodcastFeedReqBody
-   * @property {string} rssFeed
-   *
    * @param {Request<{}, {}, getPodcastFeedReqBody, {}> & RequestUserObject} req
    * @param {Response} res
    */
-  async getPodcastFeed(req, res) {
+  async getPodcastFeed(req: Request<{}, {}, getPodcastFeedReqBody, {}> & RequestUserObject, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[PodcastController] Non-admin user "${req.user.username}" attempted to get podcast feed`)
       return res.sendStatus(403)
@@ -223,7 +224,7 @@ class PodcastController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async getFeedsFromOPMLText(req, res) {
+  async getFeedsFromOPMLText(req: RequestWithUser, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[PodcastController] Non-admin user "${req.user.username}" attempted to get feeds from opml`)
       return res.sendStatus(403)
@@ -246,7 +247,7 @@ class PodcastController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async bulkCreatePodcastsFromOpmlFeedUrls(req, res) {
+  async bulkCreatePodcastsFromOpmlFeedUrls(req: RequestWithUser, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[PodcastController] Non-admin user "${req.user.username}" attempted to bulk create podcasts`)
       return res.sendStatus(403)
@@ -281,7 +282,7 @@ class PodcastController {
    * @param {RequestWithLibraryItem} req
    * @param {Response} res
    */
-  async checkNewEpisodes(req, res) {
+  async checkNewEpisodes(req: RequestWithLibraryItem, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[PodcastController] Non-admin user "${req.user.username}" attempted to check/download episodes`)
       return res.sendStatus(403)
@@ -308,7 +309,7 @@ class PodcastController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  clearEpisodeDownloadQueue(req, res) {
+  clearEpisodeDownloadQueue(req: RequestWithUser, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[PodcastController] Non-admin user "${req.user.username}" attempting to clear download queue`)
       return res.sendStatus(403)
@@ -325,7 +326,7 @@ class PodcastController {
    * @param {RequestWithLibraryItem} req
    * @param {Response} res
    */
-  getEpisodeDownloads(req, res) {
+  getEpisodeDownloads(req: RequestWithLibraryItem, res: Response) {
     const downloadsInQueue = this.podcastManager.getEpisodeDownloadsInQueue(req.libraryItem.id)
     res.json({
       downloads: downloadsInQueue.map((d) => d.toJSONForClient())
@@ -339,7 +340,7 @@ class PodcastController {
    * @param {RequestWithLibraryItem} req
    * @param {Response} res
    */
-  async findEpisode(req, res) {
+  async findEpisode(req: RequestWithLibraryItem, res: Response) {
     const rssFeedUrl = req.libraryItem.media.feedURL
     if (!rssFeedUrl) {
       Logger.error(`[PodcastController] findEpisode: Podcast has no feed url`)
@@ -364,7 +365,7 @@ class PodcastController {
    * @param {RequestWithLibraryItem} req
    * @param {Response} res
    */
-  async downloadEpisodes(req, res) {
+  async downloadEpisodes(req: RequestWithLibraryItem, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[PodcastController] Non-admin user "${req.user.username}" attempted to download episodes`)
       return res.sendStatus(403)
@@ -387,7 +388,7 @@ class PodcastController {
    * @param {RequestWithLibraryItem} req
    * @param {Response} res
    */
-  async quickMatchEpisodes(req, res) {
+  async quickMatchEpisodes(req: RequestWithLibraryItem, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[PodcastController] Non-admin user "${req.user.username}" attempted to download episodes`)
       return res.sendStatus(403)
@@ -410,9 +411,9 @@ class PodcastController {
    * @param {RequestWithLibraryItem} req
    * @param {Response} res
    */
-  async updateEpisode(req, res) {
+  async updateEpisode(req: RequestWithLibraryItem, res: Response) {
     /** @type {import('../models/PodcastEpisode')} */
-    const episode = req.libraryItem.media.podcastEpisodes.find((ep) => ep.id === req.params.episodeId)
+    const episode: import('../models/PodcastEpisode') = req.libraryItem.media.podcastEpisodes.find((ep) => ep.id === req.params.episodeId)
     if (!episode) {
       return res.status(404).send('Episode not found')
     }
@@ -476,11 +477,11 @@ class PodcastController {
    * @param {RequestWithLibraryItem} req
    * @param {Response} res
    */
-  async getEpisode(req, res) {
+  async getEpisode(req: RequestWithLibraryItem, res: Response) {
     const episodeId = req.params.episodeId
 
     /** @type {import('../models/PodcastEpisode')} */
-    const episode = req.libraryItem.media.podcastEpisodes.find((ep) => ep.id === episodeId)
+    const episode: import('../models/PodcastEpisode') = req.libraryItem.media.podcastEpisodes.find((ep) => ep.id === episodeId)
     if (!episode) {
       Logger.error(`[PodcastController] getEpisode episode ${episodeId} not found for item ${req.libraryItem.id}`)
       return res.sendStatus(404)
@@ -495,12 +496,12 @@ class PodcastController {
    * @param {RequestWithLibraryItem} req
    * @param {Response} res
    */
-  async removeEpisode(req, res) {
+  async removeEpisode(req: RequestWithLibraryItem, res: Response) {
     const episodeId = req.params.episodeId
     const hardDelete = req.query.hard === '1'
 
     /** @type {import('../models/PodcastEpisode')} */
-    const episode = req.libraryItem.media.podcastEpisodes.find((ep) => ep.id === episodeId)
+    const episode: import('../models/PodcastEpisode') = req.libraryItem.media.podcastEpisodes.find((ep) => ep.id === episodeId)
     if (!episode) {
       Logger.error(`[PodcastController] removeEpisode episode ${episodeId} not found for item ${req.libraryItem.id}`)
       return res.sendStatus(404)
@@ -557,7 +558,7 @@ class PodcastController {
    * @param {Response} res
    * @param {NextFunction} next
    */
-  async middleware(req, res, next) {
+  async middleware(req: RequestWithUser, res: Response, next: NextFunction) {
     const libraryItem = await Database.libraryItemModel.getExpandedById(req.params.id)
     if (!libraryItem?.media) return res.sendStatus(404)
 

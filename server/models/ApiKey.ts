@@ -46,29 +46,29 @@ const apiKeyCache = new ApiKeyCache()
 
 class ApiKey extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {string} */
-  declare name
+  declare name: string
   /** @type {string} */
-  declare description
+  declare description: string
   /** @type {Date} */
-  declare expiresAt
+  declare expiresAt: Date
   /** @type {Date} */
-  declare lastUsedAt
+  declare lastUsedAt: Date
   /** @type {boolean} */
-  declare isActive
+  declare isActive: boolean
   /** @type {ApiKeyPermissions} */
-  declare permissions
+  declare permissions: ApiKeyPermissions
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
   /** @type {Date} */
-  declare updatedAt
+  declare updatedAt: Date
   /** @type {string} */
-  declare userId
+  declare userId: string
   /** @type {string} */
-  declare createdByUserId
+  declare createdByUserId: string
   /** @type {import('./User').User} */
-  declare user
+  declare user: import('./User').User
 
   constructor(values, options) {
     super(values, options)
@@ -82,7 +82,7 @@ class ApiKey extends Model {
    * Same properties as User.getDefaultPermissions
    * @returns {ApiKeyPermissions}
    */
-  static getDefaultPermissions() {
+  static getDefaultPermissions(): ApiKeyPermissions {
     return {
       download: true,
       update: true,
@@ -103,7 +103,7 @@ class ApiKey extends Model {
    * @param {ApiKeyPermissions} reqPermissions
    * @returns {ApiKeyPermissions}
    */
-  static mergePermissionsWithDefault(reqPermissions) {
+  static mergePermissionsWithDefault(reqPermissions: ApiKeyPermissions): ApiKeyPermissions {
     const permissions = this.getDefaultPermissions()
 
     if (!reqPermissions || typeof reqPermissions !== 'object') {
@@ -139,7 +139,7 @@ class ApiKey extends Model {
    * Deactivate expired api keys
    * @returns {Promise<number>} Number of api keys affected
    */
-  static async deactivateExpiredApiKeys() {
+  static async deactivateExpiredApiKeys(): Promise<number> {
     const [affectedCount] = await ApiKey.update(
       {
         isActive: false
@@ -164,7 +164,7 @@ class ApiKey extends Model {
    * @param {number} [expiresIn] - Seconds until the api key expires or undefined for no expiration
    * @returns {Promise<string>}
    */
-  static async generateApiKey(tokenSecret, keyId, name, expiresIn) {
+  static async generateApiKey(tokenSecret: string, keyId: string, name: string, expiresIn: number): Promise<string> {
     const options = {}
     if (expiresIn && !isNaN(expiresIn) && expiresIn > 0) {
       options.expiresIn = expiresIn
@@ -196,7 +196,7 @@ class ApiKey extends Model {
    * @param {string} apiKeyId
    * @returns {Promise<ApiKey | null>}
    */
-  static async getById(apiKeyId) {
+  static async getById(apiKeyId: string): Promise<ApiKey | null> {
     if (!apiKeyId) return null
 
     const cachedApiKey = apiKeyCache.getById(apiKeyId)
@@ -213,7 +213,7 @@ class ApiKey extends Model {
    * Initialize model
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {

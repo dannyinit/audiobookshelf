@@ -18,7 +18,7 @@ import TrackProgressMonitor = require('../objects/TrackProgressMonitor')
 
 class AbMergeManager {
   /** @type {Task[]} */
-  pendingTasks
+  pendingTasks: Task[]
 
   constructor() {
     this.itemsCacheDir = Path.join(global.MetadataPath, 'cache/items')
@@ -31,7 +31,7 @@ class AbMergeManager {
    * @param {string} libraryItemId
    * @returns {Task|null}
    */
-  getPendingTaskByLibraryItemId(libraryItemId) {
+  getPendingTaskByLibraryItemId(libraryItemId: string): Task | null {
     return this.pendingTasks.find((t) => t.task.data.libraryItemId === libraryItemId)
   }
 
@@ -41,7 +41,7 @@ class AbMergeManager {
    * @param {Task} task
    * @returns {Promise<void>}
    */
-  cancelEncode(task) {
+  cancelEncode(task: Task): Promise<void> {
     const taskFailedString = {
       text: 'Task canceled by user',
       key: 'MessageTaskCanceledByUser'
@@ -56,7 +56,7 @@ class AbMergeManager {
    * @param {import('../models/LibraryItem')} libraryItem
    * @param {AbMergeEncodeOptions} [options={}]
    */
-  async startAudiobookMerge(userId, libraryItem, options = {}) {
+  async startAudiobookMerge(userId: string, libraryItem: import('../models/LibraryItem'), options: AbMergeEncodeOptions = {}) {
     const task = new Task()
 
     const audiobookBaseName = libraryItem.isFile ? Path.basename(libraryItem.path, Path.extname(libraryItem.path)) : Path.basename(libraryItem.path)
@@ -109,7 +109,7 @@ class AbMergeManager {
    * @param {Task} task
    * @param {AbMergeEncodeOptions} encodingOptions
    */
-  async runAudiobookMerge(libraryItem, task, encodingOptions) {
+  async runAudiobookMerge(libraryItem: import('../models/LibraryItem'), task: Task, encodingOptions: AbMergeEncodeOptions) {
     // Make sure the target directory is writable
     if (!(await isWritable(task.data.libraryItemDir))) {
       Logger.error(`[AbMergeManager] Target directory is not writable: ${task.data.libraryItemDir}`)
@@ -259,7 +259,7 @@ class AbMergeManager {
    * @param {Task} task
    * @param {boolean} [removeTempFilepath=false]
    */
-  async removeTask(task, removeTempFilepath = false) {
+  async removeTask(task: Task, removeTempFilepath: boolean = false) {
     Logger.info('[AbMergeManager] Removing task ' + task.id)
 
     const pendingTask = this.pendingTasks.find((d) => d.id === task.id)

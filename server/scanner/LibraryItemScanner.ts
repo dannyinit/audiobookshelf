@@ -26,7 +26,7 @@ class LibraryItemScanner {
    * @param {{relPath:string, path:string}} [updateLibraryItemDetails] used by watcher when item folder was renamed
    * @returns {number} ScanResult
    */
-  async scanLibraryItem(libraryItemId, updateLibraryItemDetails = null) {
+  async scanLibraryItem(libraryItemId: string, updateLibraryItemDetails: { relPath: string; path: string } = null): number {
     // TODO: Add task manager
     const libraryItem = await Database.libraryItemModel.findByPk(libraryItemId)
     if (!libraryItem) {
@@ -81,7 +81,7 @@ class LibraryItemScanner {
    * @param {ScanLogger} scanLogger
    * @returns {Promise}
    */
-  async finalizeAuthorsAndSeriesFromScan(libraryId, scanLogger) {
+  async finalizeAuthorsAndSeriesFromScan(libraryId: string, scanLogger: ScanLogger): Promise<any> {
     await BookScanner.emitAuthorsNumBooksUpdated(libraryId, scanLogger)
     if (scanLogger.authorsRemovedFromBooks.length) {
       await BookScanner.checkAuthorsRemovedFromBooks(libraryId, scanLogger)
@@ -99,7 +99,7 @@ class LibraryItemScanner {
    * @param {boolean} isSingleMediaItem
    * @returns {Promise<LibraryItemScanData>}
    */
-  async getLibraryItemScanData(libraryItemPath, library, folder, isSingleMediaItem) {
+  async getLibraryItemScanData(libraryItemPath: string, library: import('../models/Library'), folder: import('../models/LibraryFolder'), isSingleMediaItem: boolean): Promise<LibraryItemScanData> {
     const libraryFolderPath = fileUtils.filePathToPOSIX(folder.path)
     const libraryItemDir = libraryItemPath.replace(libraryFolderPath, '').slice(1)
 
@@ -168,7 +168,7 @@ class LibraryItemScanner {
    * @param {LibraryScan} libraryScan
    * @returns {Promise<{libraryItem:LibraryItem, wasUpdated:boolean}>}
    */
-  rescanLibraryItemMedia(existingLibraryItem, libraryItemData, librarySettings, libraryScan) {
+  rescanLibraryItemMedia(existingLibraryItem: import('../models/LibraryItem'), libraryItemData: LibraryItemScanData, librarySettings: import('../models/Library').LibrarySettingsObject, libraryScan: LibraryScan): Promise<{ libraryItem: LibraryItem; wasUpdated: boolean }> {
     if (existingLibraryItem.mediaType === 'book') {
       return BookScanner.rescanExistingBookLibraryItem(existingLibraryItem, libraryItemData, librarySettings, libraryScan)
     } else {
@@ -183,7 +183,7 @@ class LibraryItemScanner {
    * @param {LibraryScan} libraryScan
    * @returns {Promise<LibraryItem>}
    */
-  async scanNewLibraryItem(libraryItemData, librarySettings, libraryScan) {
+  async scanNewLibraryItem(libraryItemData: LibraryItemScanData, librarySettings: import('../models/Library').LibrarySettingsObject, libraryScan: LibraryScan): Promise<LibraryItem> {
     let newLibraryItem = null
     if (libraryItemData.mediaType === 'book') {
       newLibraryItem = await BookScanner.scanNewBookLibraryItem(libraryItemData, librarySettings, libraryScan)
@@ -204,7 +204,7 @@ class LibraryItemScanner {
    * @param {boolean} isSingleMediaItem
    * @returns {Promise<LibraryItem>} ScanResult
    */
-  async scanPotentialNewLibraryItem(libraryItemPath, library, folder, isSingleMediaItem) {
+  async scanPotentialNewLibraryItem(libraryItemPath: string, library: import('../models/Library'), folder: import('../models/LibraryFolder'), isSingleMediaItem: boolean): Promise<LibraryItem> {
     const libraryItemScanData = await this.getLibraryItemScanData(libraryItemPath, library, folder, isSingleMediaItem)
 
     if (!libraryItemScanData.libraryFiles.length) {

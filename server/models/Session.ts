@@ -2,25 +2,25 @@ import { DataTypes, Model, Op } from 'sequelize'
 
 class Session extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {string} */
-  declare ipAddress
+  declare ipAddress: string
   /** @type {string} */
-  declare userAgent
+  declare userAgent: string
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
   /** @type {Date} */
-  declare updatedAt
+  declare updatedAt: Date
   /** @type {string} */
-  declare userId
+  declare userId: string
   /** @type {Date} */
-  declare expiresAt
+  declare expiresAt: Date
   /** @type {string} */
-  declare lastRefreshToken
+  declare lastRefreshToken: string
   /** @type {Date} */
-  declare lastRefreshTokenExpiresAt
+  declare lastRefreshTokenExpiresAt: Date
   /** @type {import('./User').User} */
-  declare user
+  declare user: import('./User').User
 
   constructor(values, options) {
     super(values, options)
@@ -39,7 +39,7 @@ class Session extends Model {
    * Clean up expired sessions from the database
    * @returns {Promise<number>} Number of sessions deleted
    */
-  static async cleanupExpiredSessions() {
+  static async cleanupExpiredSessions(): Promise<number> {
     const deletedCount = await Session.destroy({
       where: {
         expiresAt: {
@@ -54,7 +54,7 @@ class Session extends Model {
    * Initialize model
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {

@@ -59,7 +59,7 @@ export const isNullOrNaN = (num) => {
  * @param {number} max
  * @returns {number|null}
  */
-export const clampPositiveInt = (value, max) => {
+export const clampPositiveInt = (value: number | null | undefined, max: number): number | null => {
   if (value == null || !Number.isFinite(value) || value <= 0) return null
   return Math.min(Math.floor(value), max)
 }
@@ -89,7 +89,7 @@ export const getId = (prepend = '') => {
  * @param {number} seconds
  * @returns {string}
  */
-function elapsedPretty(seconds) {
+function elapsedPretty(seconds: number): string {
   if (seconds > 0 && seconds < 1) {
     return `${Math.floor(seconds * 1000)} ms`
   }
@@ -197,7 +197,7 @@ const getTitleParts = (title) => {
  * @param {string} title
  * @returns {string}
  */
-export const getTitleIgnorePrefix = (title) => {
+export const getTitleIgnorePrefix = (title: string): string => {
   return getTitleParts(title)[0]
 }
 
@@ -207,7 +207,7 @@ export const getTitleIgnorePrefix = (title) => {
  * @param {string} title
  * @returns {string}
  */
-export const getTitlePrefixAtEnd = (title) => {
+export const getTitlePrefixAtEnd = (title: string): string => {
   let [sort, prefix] = getTitleParts(title)
   return prefix ? `${sort}, ${prefix}` : title
 }
@@ -219,7 +219,7 @@ export const getTitlePrefixAtEnd = (title) => {
  * @param {string} str
  * @returns {string}
  */
-export const escapeRegExp = (str) => {
+export const escapeRegExp = (str: string): string => {
   if (typeof str !== 'string') return ''
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
@@ -230,7 +230,7 @@ export const escapeRegExp = (str) => {
  * @param {string} rawUrl
  * @returns {string} null if invalid
  */
-export const validateUrl = (rawUrl) => {
+export const validateUrl = (rawUrl: string): string => {
   if (!rawUrl || typeof rawUrl !== 'string') return null
   try {
     return new URL(rawUrl).toString()
@@ -246,7 +246,7 @@ export const validateUrl = (rawUrl) => {
  * @param {string} str
  * @returns {boolean}
  */
-export const isUUID = (str) => {
+export const isUUID = (str: string): boolean => {
   if (!str || typeof str !== 'string') return false
   return uuid.validate(str)
 }
@@ -257,7 +257,7 @@ export const isUUID = (str) => {
  * @param {string} str
  * @returns {boolean}
  */
-export const isValidASIN = (str) => {
+export const isValidASIN = (str: string): boolean => {
   if (!str || typeof str !== 'string') return false
   return /^[A-Z0-9]{10}$/.test(str)
 }
@@ -271,7 +271,7 @@ export const isValidASIN = (str) => {
  * @param {string} timestamp
  * @returns {number}
  */
-export const timestampToSeconds = (timestamp) => {
+export const timestampToSeconds = (timestamp: string): number => {
   if (typeof timestamp !== 'string') {
     return null
   }
@@ -323,7 +323,7 @@ export { NotFoundError }
  * @throws {ValidationError} If value is too long
  * @throws {ValidationError} If value is required but not provided
  */
-export const getQueryParamAsString = (query, paramName, defaultValue = '', required = false, maxLength = 1000) => {
+export const getQueryParamAsString = (query: object, paramName: string, defaultValue: string = '', required: boolean = false, maxLength: number = 1000): string => {
   const value = query[paramName]
   if (value === undefined || value === null) {
     if (required) {

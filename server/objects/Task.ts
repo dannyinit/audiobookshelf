@@ -9,39 +9,39 @@ const uuidv4 = require('uuid').v4
 
 class Task {
   /** @type {string} */
-  id
+  id: string
   /** @type {string} */
-  action
+  action: string
   /** @type {Object} custom data */
-  data
+  data: object
   /** @type {string} */
-  title
+  title: string
   /** @type {string} - Used for translation */
-  titleKey
+  titleKey: string
   /** @type {string[]} - Used for translation */
-  titleSubs
+  titleSubs: string[]
   /** @type {string} */
-  description
+  description: string
   /** @type {string} - Used for translation */
-  descriptionKey
+  descriptionKey: string
   /** @type {string[]} - Used for translation */
-  descriptionSubs
+  descriptionSubs: string[]
   /** @type {string} */
-  error
+  error: string
   /** @type {string} - Used for translation */
-  errorKey
+  errorKey: string
   /** @type {string[]} - Used for translation */
-  errorSubs
+  errorSubs: string[]
   /** @type {boolean} client should keep the task visible after success */
-  showSuccess
+  showSuccess: boolean
   /** @type {boolean} */
-  isFailed
+  isFailed: boolean
   /** @type {boolean} */
-  isFinished
+  isFinished: boolean
   /** @type {number} */
-  startedAt
+  startedAt: number
   /** @type {number} */
-  finishedAt
+  finishedAt: number
 
   constructor() {
     this.id = null
@@ -100,7 +100,7 @@ class Task {
    * @param {boolean} showSuccess
    * @param {Object} [data]
    */
-  setData(action, titleString, descriptionString, showSuccess, data = {}) {
+  setData(action: string, titleString: TaskString, descriptionString: TaskString | null, showSuccess: boolean, data: object = {}) {
     this.id = uuidv4()
     this.action = action
     this.data = { ...data }
@@ -119,7 +119,7 @@ class Task {
    *
    * @param {TaskString} messageString
    */
-  setFailed(messageString) {
+  setFailed(messageString: TaskString) {
     this.error = messageString.text
     this.errorKey = messageString.key || null
     this.errorSubs = messageString.subs || null
@@ -134,7 +134,7 @@ class Task {
    * @param {TaskString} [newDescriptionString] update description
    * @param {boolean} [clearDescription] clear description
    */
-  setFinished(newDescriptionString = null, clearDescription = false) {
+  setFinished(newDescriptionString: TaskString = null, clearDescription: boolean = false) {
     if (newDescriptionString) {
       this.description = newDescriptionString.text
       this.descriptionKey = newDescriptionString.key || null

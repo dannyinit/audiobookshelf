@@ -4,66 +4,65 @@ import Logger = require('../Logger')
 import libraryItemsPodcastFilters = require('../utils/queries/libraryItemsPodcastFilters')
 import htmlSanitizer = require('../utils/htmlSanitizer')
 
-/**
- * @typedef PodcastExpandedProperties
- * @property {import('./PodcastEpisode')[]} podcastEpisodes
- *
- * @typedef {Podcast & PodcastExpandedProperties} PodcastExpanded
- */
+interface PodcastExpandedProperties {
+  podcastEpisodes: import('./PodcastEpisode')[]
+}
+
+type PodcastExpanded = Podcast & PodcastExpandedProperties
 
 class Podcast extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {string} */
-  declare title
+  declare title: string
   /** @type {string} */
-  declare titleIgnorePrefix
+  declare titleIgnorePrefix: string
   /** @type {string} */
-  declare author
+  declare author: string
   /** @type {string} */
-  declare releaseDate
+  declare releaseDate: string
   /** @type {string} */
-  declare feedURL
+  declare feedURL: string
   /** @type {string} */
-  declare imageURL
+  declare imageURL: string
   /** @type {string} */
-  declare description
+  declare description: string
   /** @type {string} */
-  declare itunesPageURL
+  declare itunesPageURL: string
   /** @type {string} */
-  declare itunesId
+  declare itunesId: string
   /** @type {string} */
-  declare itunesArtistId
+  declare itunesArtistId: string
   /** @type {string} */
-  declare language
+  declare language: string
   /** @type {string} */
-  declare podcastType
+  declare podcastType: string
   /** @type {boolean} */
-  declare explicit
+  declare explicit: boolean
   /** @type {boolean} */
-  declare autoDownloadEpisodes
+  declare autoDownloadEpisodes: boolean
   /** @type {string} */
-  declare autoDownloadSchedule
+  declare autoDownloadSchedule: string
   /** @type {Date} */
-  declare lastEpisodeCheck
+  declare lastEpisodeCheck: Date
   /** @type {number} */
-  declare maxEpisodesToKeep
+  declare maxEpisodesToKeep: number
   /** @type {number} */
-  declare maxNewEpisodesToDownload
+  declare maxNewEpisodesToDownload: number
   /** @type {string} */
-  declare coverPath
+  declare coverPath: string
   /** @type {string[]} */
-  declare tags
+  declare tags: string[]
   /** @type {string[]} */
-  declare genres
+  declare genres: string[]
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
   /** @type {Date} */
-  declare updatedAt
+  declare updatedAt: Date
   /** @type {number} */
-  declare numEpisodes
+  declare numEpisodes: number
   /** @type {import('./PodcastEpisode')[]} */
-  declare podcastEpisodes
+  declare podcastEpisodes: import('./PodcastEpisode')[]
 
   constructor(values, options) {
     super(values, options)
@@ -77,7 +76,7 @@ class Podcast extends Model {
    * @param {Object} payload
    * @param {import('sequelize').Transaction} transaction
    */
-  static async createFromRequest(payload, transaction) {
+  static async createFromRequest(payload: object, transaction: import('sequelize').Transaction) {
     const title = typeof payload.metadata.title === 'string' ? payload.metadata.title : null
     // cron expression validated in controller
     const autoDownloadSchedule = typeof payload.autoDownloadSchedule === 'string' ? payload.autoDownloadSchedule : null
@@ -125,7 +124,7 @@ class Podcast extends Model {
    * Initialize model
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {
@@ -209,7 +208,7 @@ class Podcast extends Model {
    * @param {Object} payload - Old podcast object
    * @returns {Promise<boolean>}
    */
-  async updateFromRequest(payload) {
+  async updateFromRequest(payload: object): Promise<boolean> {
     if (!payload) return false
 
     let hasUpdates = false
@@ -322,7 +321,7 @@ class Podcast extends Model {
    * @param {string} episodeId
    * @returns {import('./Book').AudioTrack[]}
    */
-  getTracklist(libraryItemId, episodeId) {
+  getTracklist(libraryItemId: string, episodeId: string): import('./Book').AudioTrack[] {
     const episode = this.podcastEpisodes.find((ep) => ep.id === episodeId)
     if (!episode) {
       Logger.error(`[Podcast] getTracklist: episode not found`, episodeId)
@@ -338,7 +337,7 @@ class Podcast extends Model {
    * @param {string} episodeId
    * @returns {import('./PodcastEpisode').ChapterObject[]}
    */
-  getChapters(episodeId) {
+  getChapters(episodeId: string): import('./PodcastEpisode').ChapterObject[] {
     const episode = this.podcastEpisodes.find((ep) => ep.id === episodeId)
     if (!episode) {
       Logger.error(`[Podcast] getChapters: episode not found`, episodeId)
@@ -376,7 +375,7 @@ class Podcast extends Model {
    *
    * @returns {number} - Unix timestamp
    */
-  getLatestEpisodePublishedAt() {
+  getLatestEpisodePublishedAt(): number {
     return this.podcastEpisodes.reduce((latest, episode) => {
       if (episode.publishedAt?.valueOf() > latest) {
         return episode.publishedAt.valueOf()
@@ -391,7 +390,7 @@ class Podcast extends Model {
    * @param {import('../utils/podcastUtils').RssPodcastEpisode} feedEpisode - object from rss feed
    * @returns {boolean}
    */
-  checkHasEpisodeByFeedEpisode(feedEpisode) {
+  checkHasEpisodeByFeedEpisode(feedEpisode: import('../utils/podcastUtils').RssPodcastEpisode): boolean {
     const guid = feedEpisode.guid
     const url = feedEpisode.enclosure.url
     return this.podcastEpisodes.some((ep) => ep.checkMatchesGuidOrEnclosureUrl(guid, url))
@@ -429,7 +428,7 @@ class Podcast extends Model {
    *
    * @param {string} libraryItemId
    */
-  toOldJSON(libraryItemId) {
+  toOldJSON(libraryItemId: string) {
     if (!libraryItemId) {
       throw new Error(`[Podcast] Cannot convert to old JSON because libraryItemId is not provided`)
     }
@@ -480,7 +479,7 @@ class Podcast extends Model {
    *
    * @param {string} libraryItemId
    */
-  toOldJSONExpanded(libraryItemId) {
+  toOldJSONExpanded(libraryItemId: string) {
     if (!libraryItemId) {
       throw new Error(`[Podcast] Cannot convert to old JSON because libraryItemId is not provided`)
     }

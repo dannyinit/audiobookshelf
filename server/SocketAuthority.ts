@@ -15,7 +15,7 @@ import { LogLevel } from './utils/constants'
 
 class SocketAuthority {
   /** @type {Object.<string, SocketClient>} */
-  clients
+  clients: { [s: string]: SocketClient }
 
   constructor() {
     this.Server = null
@@ -29,7 +29,7 @@ class SocketAuthority {
    *  a user can have many socket connections
    * @returns {object[]}
    */
-  getUsersOnline() {
+  getUsersOnline(): object[] {
     const onlineUsersMap = {}
     Object.values(this.clients)
       .filter((c) => c.user)
@@ -56,7 +56,7 @@ class SocketAuthority {
    * @param {any} data
    * @param {Function} [filter] optional filter function to only send event to specific users
    */
-  emitter(evt, data, filter = null) {
+  emitter(evt: string, data: any, filter: Function = null) {
     for (const socketId in this.clients) {
       if (this.clients[socketId].user) {
         if (filter && !filter(this.clients[socketId].user)) continue
@@ -103,7 +103,7 @@ class SocketAuthority {
    * @param {string} evt
    * @param {import('./models/LibraryItem')} libraryItem
    */
-  libraryItemEmitter(evt, libraryItem) {
+  libraryItemEmitter(evt: string, libraryItem: import('./models/LibraryItem')) {
     for (const socketId in this.clients) {
       if (this.clients[socketId].user?.checkCanAccessLibraryItem(libraryItem)) {
         this.clients[socketId].socket.emit(evt, libraryItem.toOldJSONExpanded())
@@ -118,7 +118,7 @@ class SocketAuthority {
    * @param {string} evt
    * @param {import('./models/LibraryItem')[]} libraryItems
    */
-  libraryItemsEmitter(evt, libraryItems) {
+  libraryItemsEmitter(evt: string, libraryItems: import('./models/LibraryItem')[]) {
     for (const socketId in this.clients) {
       if (this.clients[socketId].user) {
         const libraryItemsAccessibleToUser = libraryItems.filter((li) => this.clients[socketId].user.checkCanAccessLibraryItem(li))
@@ -268,7 +268,7 @@ class SocketAuthority {
    * @param {SocketIO.Socket} socket
    * @param {string} token JWT
    */
-  async authenticateSocket(socket, token) {
+  async authenticateSocket(socket: SocketIO.Socket, token: string) {
     // we don't use passport to authenticate the jwt we get over the socket connection.
     // it's easier to directly verify/decode it.
     const token_data = TokenManager.validateAccessToken(token)
@@ -373,7 +373,7 @@ class SocketAuthority {
    * @param {SocketIO.Socket} socket
    * @param {Object} payload
    */
-  async handleCoverSearch(socket, payload) {
+  async handleCoverSearch(socket: SocketIO.Socket, payload: object) {
     const client = this.clients[socket.id]
     if (!client?.user) {
       Logger.error('[SocketAuthority] Unauthorized cover search request')
@@ -437,7 +437,7 @@ class SocketAuthority {
    * @param {SocketIO.Socket} socket
    * @param {string} requestId
    */
-  handleCancelCoverSearch(socket, requestId) {
+  handleCancelCoverSearch(socket: SocketIO.Socket, requestId: string) {
     const client = this.clients[socket.id]
     if (!client?.user) {
       Logger.error('[SocketAuthority] Unauthorized cancel cover search request')
@@ -456,7 +456,7 @@ class SocketAuthority {
    * Cancel all cover searches associated with a socket (called on disconnect)
    * @param {string} socketId
    */
-  cancelSocketCoverSearches(socketId) {
+  cancelSocketCoverSearches(socketId: string) {
     // Get all active search request IDs and cancel those that might belong to this socket
     // Since we don't track socket-to-request mapping, we log this for debugging
     // The client will handle reconnection gracefully

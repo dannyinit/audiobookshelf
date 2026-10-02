@@ -34,7 +34,7 @@ class Scanner {
    * @param {QuickMatchOptions} options
    * @returns {Promise<{updated: boolean, libraryItem: Object}>}
    */
-  async quickMatchLibraryItem(apiRouterCtx, libraryItem, options = {}) {
+  async quickMatchLibraryItem(apiRouterCtx: import('../routers/ApiRouter'), libraryItem: import('../models/LibraryItem'), options: QuickMatchOptions = {}): Promise<{ updated: boolean; libraryItem: object }> {
     const provider = options.provider || 'google'
     const searchTitle = options.title || libraryItem.media.title
     const searchAuthor = options.author || libraryItem.media.authorName
@@ -142,7 +142,7 @@ class Scanner {
    * @param {QuickMatchOptions} options
    * @returns {Map<string, any>} - Update payload
    */
-  quickMatchPodcastBuildUpdatePayload(libraryItem, matchData, options) {
+  quickMatchPodcastBuildUpdatePayload(libraryItem: import('../models/LibraryItem'), matchData: any, options: QuickMatchOptions): Map<string, any> {
     const updatePayload = {}
 
     const matchDataTransformed = {
@@ -191,7 +191,7 @@ class Scanner {
    * @param {QuickMatchOptions} options
    * @returns {Promise<{updatePayload: Map<string, any>, seriesIdsRemoved: string[], hasSeriesUpdates: boolean, authorIdsRemoved: string[], hasAuthorUpdates: boolean}>}
    */
-  async quickMatchBookBuildUpdatePayload(apiRouterCtx, libraryItem, matchData, options) {
+  async quickMatchBookBuildUpdatePayload(apiRouterCtx: import('../routers/ApiRouter'), libraryItem: import('../models/LibraryItem'), matchData: any, options: QuickMatchOptions): Promise<{ updatePayload: Map<string, any>; seriesIdsRemoved: string[]; hasSeriesUpdates: boolean; authorIdsRemoved: string[]; hasAuthorUpdates: boolean }> {
     // Update media metadata if not set OR overrideDetails flag
     const detailKeysToUpdate = ['title', 'subtitle', 'description', 'narrator', 'publisher', 'publishedYear', 'genres', 'tags', 'language', 'explicit', 'abridged', 'asin', 'isbn']
     const updatePayload = {}
@@ -356,9 +356,9 @@ class Scanner {
    * @param {QuickMatchOptions} options
    * @returns {Promise<number>} - Number of episodes updated
    */
-  async quickMatchPodcastEpisodes(libraryItem, options = {}) {
+  async quickMatchPodcastEpisodes(libraryItem: import('../models/LibraryItem'), options: QuickMatchOptions = {}): Promise<number> {
     /** @type {import('../models/PodcastEpisode')[]} */
-    const episodesToQuickMatch = libraryItem.media.podcastEpisodes.filter((ep) => !ep.enclosureURL) // Only quick match episodes that are not already matched
+    const episodesToQuickMatch: import('../models/PodcastEpisode')[] = libraryItem.media.podcastEpisodes.filter((ep) => !ep.enclosureURL) // Only quick match episodes that are not already matched
     if (!episodesToQuickMatch.length) return 0
 
     const feed = await getPodcastFeed(libraryItem.media.feedURL)
@@ -388,7 +388,7 @@ class Scanner {
    * @param {QuickMatchOptions} options
    * @returns {Promise<boolean>} - true if episode was updated
    */
-  async updateEpisodeWithMatch(episode, episodeToMatch, options = {}) {
+  async updateEpisodeWithMatch(episode: import('../models/PodcastEpisode'), episodeToMatch: import('../utils/podcastUtils').RssPodcastEpisode, options: QuickMatchOptions = {}): Promise<boolean> {
     Logger.debug(`[Scanner] quickMatchPodcastEpisodes: Found episode match for "${episode.title}" => ${episodeToMatch.title}`)
     const matchDataTransformed = {
       title: episodeToMatch.title || '',
@@ -432,7 +432,7 @@ class Scanner {
    * @param {LibraryScan} libraryScan
    * @returns {Promise<boolean>} false if scan canceled
    */
-  async matchLibraryItemsChunk(apiRouterCtx, library, libraryItems, libraryScan) {
+  async matchLibraryItemsChunk(apiRouterCtx: import('../routers/ApiRouter'), library: import('../models/Library'), libraryItems: import('../models/LibraryItem')[], libraryScan: LibraryScan): Promise<boolean> {
     for (let i = 0; i < libraryItems.length; i++) {
       const libraryItem = libraryItems[i]
 
@@ -469,7 +469,7 @@ class Scanner {
    * @param {import('../routers/ApiRouter')} apiRouterCtx
    * @param {import('../models/Library')} library
    */
-  async matchLibraryItems(apiRouterCtx, library) {
+  async matchLibraryItems(apiRouterCtx: import('../routers/ApiRouter'), library: import('../models/Library')) {
     if (library.mediaType === 'podcast') {
       Logger.error(`[Scanner] matchLibraryItems: Match all not supported for podcasts yet`)
       return

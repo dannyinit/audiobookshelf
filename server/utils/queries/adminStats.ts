@@ -3,13 +3,19 @@ import Database = require('../../Database')
 import PlaybackSession = require('../../models/PlaybackSession')
 import fsExtra = require('../../libs/fsExtra')
 
+/**
+ * @typedef {Object} SizeObject
+ * @property {number} totalSize
+ * @property {number} numItems
+ */
+
 export = {
   /**
    *
    * @param {number} year YYYY
    * @returns {Promise<PlaybackSession[]>}
    */
-  async getListeningSessionsForYear(year) {
+  async getListeningSessionsForYear(year: number): Promise<PlaybackSession[]> {
     const sessions = await Database.playbackSessionModel.findAll({
       where: {
         createdAt: {
@@ -26,7 +32,7 @@ export = {
    * @param {number} year YYYY
    * @returns {Promise<number>}
    */
-  async getNumAuthorsAddedForYear(year) {
+  async getNumAuthorsAddedForYear(year: number): Promise<number> {
     const count = await Database.authorModel.count({
       where: {
         createdAt: {
@@ -43,7 +49,7 @@ export = {
    * @param {number} year YYYY
    * @returns {Promise<import('../../models/Book')[]>}
    */
-  async getBooksAddedForYear(year) {
+  async getBooksAddedForYear(year: number): Promise<import('../../models/Book')[]> {
     const books = await Database.bookModel.findAll({
       attributes: ['id', 'title', 'coverPath', 'duration', 'createdAt'],
       where: {
@@ -66,7 +72,7 @@ export = {
    *
    * @param {number} year YYYY
    */
-  async getStatsForYear(year) {
+  async getStatsForYear(year: number) {
     const booksAdded = await this.getBooksAddedForYear(year)
 
     let totalBooksAddedSize = 0
@@ -172,13 +178,9 @@ export = {
   /**
    * Get total file size and number of items for books and podcasts
    *
-   * @typedef {Object} SizeObject
-   * @property {number} totalSize
-   * @property {number} numItems
-   *
    * @returns {Promise<{books: SizeObject, podcasts: SizeObject, total: SizeObject}}>}
    */
-  async getTotalSize() {
+  async getTotalSize(): Promise<{ books: SizeObject; podcasts: SizeObject; total: SizeObject }> {
     const [mediaTypeStats] = await Database.sequelize.query(`SELECT li.mediaType, SUM(li.size) AS totalSize, COUNT(*) AS numItems FROM libraryItems li group by li.mediaType;`)
     const bookStats = mediaTypeStats.find((m) => m.mediaType === 'book')
     const podcastStats = mediaTypeStats.find((m) => m.mediaType === 'podcast')
@@ -204,7 +206,7 @@ export = {
    *
    * @returns {Promise<{numBookAudioFiles: number, numPodcastAudioFiles: number, numAudioFiles: number}>}
    */
-  async getNumAudioFiles() {
+  async getNumAudioFiles(): Promise<{ numBookAudioFiles: number; numPodcastAudioFiles: number; numAudioFiles: number }> {
     const [numBookAudioFilesRow] = await Database.sequelize.query(`SELECT SUM(json_array_length(b.audioFiles)) AS numAudioFiles FROM books b;`)
     const numBookAudioFiles = numBookAudioFilesRow[0]?.numAudioFiles || 0
     const numPodcastAudioFiles = await Database.podcastEpisodeModel.count()

@@ -11,7 +11,7 @@ import { xmlToJSON } from '../index'
  * @param {string} filepath
  * @returns {Promise<string>}
  */
-async function extractFileFromEpub(epubPath, filepath) {
+async function extractFileFromEpub(epubPath: string, filepath: string): Promise<string> {
   const zip = new StreamZip.async({ file: epubPath })
   const data = await zip.entryData(filepath).catch((error) => {
     Logger.error(`[parseEpubMetadata] Failed to extract ${filepath} from epub at "${epubPath}"`, error)
@@ -31,7 +31,7 @@ async function extractFileFromEpub(epubPath, filepath) {
  * @param {string} xmlFilepath
  * @returns {Promise<Object>}
  */
-async function extractXmlToJson(epubPath, xmlFilepath) {
+async function extractXmlToJson(epubPath: string, xmlFilepath: string): Promise<object> {
   const filedata = await extractFileFromEpub(epubPath, xmlFilepath)
   if (!filedata) return null
   return xmlToJSON(filedata)
@@ -45,7 +45,7 @@ async function extractXmlToJson(epubPath, xmlFilepath) {
  * @param {string} outputCoverPath
  * @returns {Promise<boolean>}
  */
-async function extractCoverImage(epubPath, epubImageFilepath, outputCoverPath) {
+async function extractCoverImage(epubPath: string, epubImageFilepath: string, outputCoverPath: string): Promise<boolean> {
   const zip = new StreamZip.async({ file: epubPath })
 
   const success = await zip
@@ -70,7 +70,7 @@ export { extractCoverImage }
  * @param {import('../../models/Book').EBookFileObject} ebookFile
  * @returns {Promise<import('./parseEbookMetadata').EBookFileScanData>}
  */
-async function parse(ebookFile) {
+async function parse(ebookFile: import('../../models/Book').EBookFileObject): Promise<import('./parseEbookMetadata').EBookFileScanData> {
   const epubPath = ebookFile.metadata.path
   Logger.debug(`Parsing metadata from epub at "${epubPath}"`)
   // Entrypoint of the epub that contains the filepath to the package document (opf file)

@@ -45,7 +45,7 @@ const mediaTypeKeys = {
  * @param {"book" | "podcast"} mediaType
  * @returns {Object}
  */
-function parseJsonMetadataText(text, mediaType) {
+function parseJsonMetadataText(text: string, mediaType: "book" | "podcast"): object {
   try {
     const abmetadataData = JSON.parse(text)
 
@@ -111,7 +111,7 @@ export { parseJsonMetadataText as parseJson }
  * @param {string} expectedType
  * @returns {*|undefined} undefined excludes the key
  */
-function validateMetadataValue(key, value, expectedType) {
+function validateMetadataValue(key: string, value: any, expectedType: string): any | undefined {
   if (expectedType === 'string') {
     if (value === null) return null
     if (typeof value === 'number') return String(value)
@@ -153,7 +153,7 @@ function validateMetadataValue(key, value, expectedType) {
  * @param {string} mediaTitle
  * @returns {Object[]}
  */
-function cleanChaptersArray(chaptersArray, mediaTitle) {
+function cleanChaptersArray(chaptersArray: object[], mediaTitle: string): object[] {
   const chapters = []
   let index = 0
   for (const chap of chaptersArray) {

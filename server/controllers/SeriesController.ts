@@ -7,17 +7,17 @@ import RssFeedManager = require('../managers/RssFeedManager')
 
 import libraryItemsBookFilters = require('../utils/queries/libraryItemsBookFilters')
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- *
- * @typedef RequestEntityObject
- * @property {import('../models/Series')} series
- *
- * @typedef {RequestWithUser & RequestEntityObject} SeriesControllerRequest
- */
+interface RequestUserObject {
+  user: import('../models/User')
+}
+
+type RequestWithUser = Request & RequestUserObject
+
+interface RequestEntityObject {
+  series: import('../models/Series')
+}
+
+type SeriesControllerRequest = RequestWithUser & RequestEntityObject
 
 class SeriesController {
   constructor() {}
@@ -32,7 +32,7 @@ class SeriesController {
    * @param {SeriesControllerRequest} req
    * @param {Response} res
    */
-  async findOne(req, res) {
+  async findOne(req: SeriesControllerRequest, res: Response) {
     const include = (req.query.include || '')
       .split(',')
       .map((v) => v.trim())
@@ -67,7 +67,7 @@ class SeriesController {
    * @param {SeriesControllerRequest} req
    * @param {Response} res
    */
-  async update(req, res) {
+  async update(req: SeriesControllerRequest, res: Response) {
     const keysToUpdate = ['name', 'description']
     const payload = {}
     for (const key of keysToUpdate) {
@@ -92,7 +92,7 @@ class SeriesController {
    * @param {Response} res
    * @param {NextFunction} next
    */
-  async middleware(req, res, next) {
+  async middleware(req: RequestWithUser, res: Response, next: NextFunction) {
     const series = await Database.seriesModel.findByPk(req.params.id)
     if (!series) return res.sendStatus(404)
 

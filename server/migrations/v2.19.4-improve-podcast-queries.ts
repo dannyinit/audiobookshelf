@@ -1,13 +1,13 @@
 import util = require('util')
 
-/**
- * @typedef MigrationContext
- * @property {import('sequelize').QueryInterface} queryInterface - a suquelize QueryInterface object.
- * @property {import('../Logger')} logger - a Logger object.
- *
- * @typedef MigrationOptions
- * @property {MigrationContext} context - an object containing the migration context.
- */
+interface MigrationContext {
+  queryInterface: import('sequelize').QueryInterface
+  logger: import('../Logger')
+}
+
+interface MigrationOptions {
+  context: MigrationContext
+}
 
 const migrationVersion = '2.19.4'
 const migrationName = `${migrationVersion}-improve-podcast-queries`
@@ -22,7 +22,7 @@ const loggerPrefix = `[${migrationVersion} migration]`
  * @param {MigrationOptions} options - an object containing the migration context.
  * @returns {Promise<void>} - A promise that resolves when the migration is complete.
  */
-async function up({ context: { queryInterface, logger } }) {
+async function up({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   // Upwards migration script
   logger.info(`${loggerPrefix} UPGRADE BEGIN: ${migrationName}`)
 
@@ -56,7 +56,7 @@ async function up({ context: { queryInterface, logger } }) {
  * @param {MigrationOptions} options - an object containing the migration context.
  * @returns {Promise<void>} - A promise that resolves when the migration is complete.
  */
-async function down({ context: { queryInterface, logger } }) {
+async function down({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   // Downward migration script
   logger.info(`${loggerPrefix} DOWNGRADE BEGIN: ${migrationName}`)
 
@@ -102,7 +102,7 @@ async function populatePodcastId(queryInterface, logger) {
  * @param {string} column - the name of the column to add.
  * @param {Object} options - the options for the column.
  */
-async function addColumn(queryInterface, logger, table, column, options) {
+async function addColumn(queryInterface: import('sequelize').QueryInterface, logger: import('../Logger'), table: string, column: string, options: object) {
   logger.info(`${loggerPrefix} adding column "${column}" to table "${table}"`)
   const tableDescription = await queryInterface.describeTable(table)
   if (!tableDescription[column]) {
@@ -121,7 +121,7 @@ async function addColumn(queryInterface, logger, table, column, options) {
  * @param {string} table - the name of the table to remove the column from.
  * @param {string} column - the name of the column to remove.
  */
-async function removeColumn(queryInterface, logger, table, column) {
+async function removeColumn(queryInterface: import('sequelize').QueryInterface, logger: import('../Logger'), table: string, column: string) {
   logger.info(`${loggerPrefix} removing column "${column}" from table "${table}"`)
   const tableDescription = await queryInterface.describeTable(table)
   if (tableDescription[column]) {
@@ -146,7 +146,7 @@ async function removeColumn(queryInterface, logger, table, column) {
  * @param {string} targetColumn - the name of the column to update.
  * @param {string} targetIdColumn - the name of the id column of the target table.
  */
-async function addTrigger(queryInterface, logger, sourceTable, sourceColumn, sourceIdColumn, targetTable, targetColumn, targetIdColumn) {
+async function addTrigger(queryInterface: import('sequelize').QueryInterface, logger: import('../Logger'), sourceTable: string, sourceColumn: string, sourceIdColumn: string, targetTable: string, targetColumn: string, targetIdColumn: string) {
   logger.info(`${loggerPrefix} adding trigger to update ${targetTable}.${targetColumn} when ${sourceTable}.${sourceColumn} is updated`)
   const triggerName = convertToSnakeCase(`update_${targetTable}_${targetColumn}_from_${sourceTable}_${sourceColumn}`)
 
@@ -175,7 +175,7 @@ async function addTrigger(queryInterface, logger, sourceTable, sourceColumn, sou
  * @param {string} targetTable - the name of the target table.
  * @param {string} targetColumn - the name of the column to update.
  */
-async function removeTrigger(queryInterface, logger, sourceTable, sourceColumn, targetTable, targetColumn) {
+async function removeTrigger(queryInterface: import('sequelize').QueryInterface, logger: import('../Logger'), sourceTable: string, sourceColumn: string, targetTable: string, targetColumn: string) {
   logger.info(`${loggerPrefix} removing trigger to update ${targetTable}.${targetColumn}`)
   const triggerName = convertToSnakeCase(`update_${targetTable}_${targetColumn}_from_${sourceTable}_${sourceColumn}`)
   await queryInterface.sequelize.query(`DROP TRIGGER IF EXISTS ${triggerName}`)
@@ -195,7 +195,7 @@ async function removeTrigger(queryInterface, logger, sourceTable, sourceColumn, 
  * @param {string} targetColumn - the name of the column to copy to.
  * @param {string} targetIdColumn - the name of the id column of the target table.
  */
-async function copyColumn(queryInterface, logger, sourceTable, sourceColumn, sourceIdColumn, targetTable, targetColumn, targetIdColumn) {
+async function copyColumn(queryInterface: import('sequelize').QueryInterface, logger: import('../Logger'), sourceTable: string, sourceColumn: string, sourceIdColumn: string, targetTable: string, targetColumn: string, targetIdColumn: string) {
   logger.info(`${loggerPrefix} copying column "${sourceColumn}" from table "${sourceTable}" to table "${targetTable}"`)
   await queryInterface.sequelize.query(`
     UPDATE ${targetTable}
@@ -212,7 +212,7 @@ async function copyColumn(queryInterface, logger, sourceTable, sourceColumn, sou
  * @param {string} str - the string to convert to snake case.
  * @returns {string} - the string in snake case.
  */
-function convertToSnakeCase(str) {
+function convertToSnakeCase(str: string): string {
   return str.replace(/([A-Z])/g, '_$1').toLowerCase()
 }
 

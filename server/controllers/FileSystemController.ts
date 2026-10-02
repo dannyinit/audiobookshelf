@@ -6,12 +6,11 @@ import { toNumber } from '../utils/index'
 import fileUtils = require('../utils/fileUtils')
 import Database = require('../Database')
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- */
+interface RequestUserObject {
+  user: import('../models/User')
+}
+
+type RequestWithUser = Request & RequestUserObject
 
 class FileSystemController {
   constructor() {}
@@ -21,7 +20,7 @@ class FileSystemController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async getPaths(req, res) {
+  async getPaths(req: RequestWithUser, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[FileSystemController] Non-admin user "${req.user.username}" attempting to get filesystem paths`)
       return res.sendStatus(403)
@@ -82,7 +81,7 @@ class FileSystemController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async checkPathExists(req, res) {
+  async checkPathExists(req: RequestWithUser, res: Response) {
     if (!req.user.canUpload) {
       Logger.error(`[FileSystemController] User "${req.user.username}" without upload permissions attempting to check path exists`)
       return res.sendStatus(403)

@@ -12,7 +12,7 @@ import { areEquivalent, copyValue, isNullOrNaN } from '../../utils'
 // REF: https://nodemailer.com/smtp/
 class EmailSettings {
   /** @type {EreaderDeviceObject[]} */
-  ereaderDevices
+  ereaderDevices: EreaderDeviceObject[]
 
   constructor(settings = null) {
     this.id = 'email-settings'
@@ -145,7 +145,7 @@ class EmailSettings {
    * @param {import('../../models/User')} user
    * @returns {boolean}
    */
-  checkUserCanAccessDevice(device, user) {
+  checkUserCanAccessDevice(device: EreaderDeviceObject, user: import('../../models/User')): boolean {
     let deviceAvailability = device.availabilityOption || 'adminOrUp'
     if (deviceAvailability === 'adminOrUp' && user.isAdminOrUp) return true
     if (deviceAvailability === 'userOrUp' && (user.isAdminOrUp || user.isUser)) return true
@@ -163,7 +163,7 @@ class EmailSettings {
    * @param {import('../../models/User')} user
    * @returns {EreaderDeviceObject[]}
    */
-  getEReaderDevices(user) {
+  getEReaderDevices(user: import('../../models/User')): EreaderDeviceObject[] {
     return this.ereaderDevices.filter((device) => this.checkUserCanAccessDevice(device, user))
   }
 
@@ -173,7 +173,7 @@ class EmailSettings {
    * @param {string} deviceName
    * @returns {EreaderDeviceObject}
    */
-  getEReaderDevice(deviceName) {
+  getEReaderDevice(deviceName: string): EreaderDeviceObject {
     return this.ereaderDevices.find((d) => d.name === deviceName)
   }
 }

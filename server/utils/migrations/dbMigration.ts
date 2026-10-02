@@ -47,7 +47,7 @@ function getDeviceInfoString(deviceInfo, UserId) {
  * @param {object} LibraryItem models.LibraryItem object
  * @returns {object} { book: object, bookSeries: [], bookAuthor: [] }
  */
-function migrateBook(oldLibraryItem, LibraryItem) {
+function migrateBook(oldLibraryItem: objects.LibraryItem, LibraryItem: object): object {
   const oldBook = oldLibraryItem.media
 
   const _newRecords = {
@@ -149,7 +149,7 @@ function migrateBook(oldLibraryItem, LibraryItem) {
  * @param {object} LibraryItem models.LibraryItem object
  * @returns {object} { podcast: object, podcastEpisode: [] }
  */
-function migratePodcast(oldLibraryItem, LibraryItem) {
+function migratePodcast(oldLibraryItem: objects.LibraryItem, LibraryItem: object): object {
   const _newRecords = {
     podcast: null,
     podcastEpisode: []
@@ -231,7 +231,7 @@ function migratePodcast(oldLibraryItem, LibraryItem) {
  * @param {Array<objects.LibraryItem>} oldLibraryItems
  * @returns {object} { libraryItem: [], book: [], podcast: [], podcastEpisode: [], bookSeries: [], bookAuthor: [] }
  */
-function migrateLibraryItems(oldLibraryItems) {
+function migrateLibraryItems(oldLibraryItems: Array<objects.LibraryItem>): object {
   const _newRecords = {
     book: [],
     podcast: [],
@@ -321,7 +321,7 @@ function migrateLibraryItems(oldLibraryItems) {
  * @param {Array<objects.Library>} oldLibraries
  * @returns {object} { library: [], libraryFolder: [] }
  */
-function migrateLibraries(oldLibraries) {
+function migrateLibraries(oldLibraries: Array<objects.Library>): object {
   const _newRecords = {
     library: [],
     libraryFolder: []
@@ -375,7 +375,7 @@ function migrateLibraries(oldLibraries) {
  * @param {Array<objects.LibraryItem>} oldLibraryItems
  * @returns {Array<object>} Array of Author model objs
  */
-function migrateAuthors(oldAuthors, oldLibraryItems) {
+function migrateAuthors(oldAuthors: Array<objects.entities.Author>, oldLibraryItems: Array<objects.LibraryItem>): Array<object> {
   const _newRecords = []
   for (const oldAuthor of oldAuthors) {
     // Get an array of NEW library ids that have this author
@@ -425,7 +425,7 @@ function migrateAuthors(oldAuthors, oldLibraryItems) {
  * @param {Array<objects.LibraryItem>} oldLibraryItems
  * @returns {Array<object>} Array of Series model objs
  */
-function migrateSeries(oldSerieses, oldLibraryItems) {
+function migrateSeries(oldSerieses: Array<objects.entities.Series>, oldLibraryItems: Array<objects.LibraryItem>): Array<object> {
   const _newRecords = []
   // Originaly series were shared between libraries if they had the same name
   // Series will be separate between libraries
@@ -469,7 +469,7 @@ function migrateSeries(oldSerieses, oldLibraryItems) {
  * @param {Array<objects.User>} oldUsers
  * @returns {object} { user: [], mediaProgress: [] }
  */
-function migrateUsers(oldUsers) {
+function migrateUsers(oldUsers: Array<objects.User>): object {
   const _newRecords = {
     user: [],
     mediaProgress: []
@@ -574,7 +574,7 @@ function migrateUsers(oldUsers) {
  * @param {Array<objects.PlaybackSession>} oldSessions
  * @returns {object} { playbackSession: [], device: [] }
  */
-function migrateSessions(oldSessions) {
+function migrateSessions(oldSessions: Array<objects.PlaybackSession>): object {
   const _newRecords = {
     device: [],
     playbackSession: []
@@ -698,7 +698,7 @@ function migrateSessions(oldSessions) {
  * @param {Array<objects.Collection>} oldCollections
  * @returns {object} { collection: [], collectionBook: [] }
  */
-function migrateCollections(oldCollections) {
+function migrateCollections(oldCollections: Array<objects.Collection>): object {
   const _newRecords = {
     collection: [],
     collectionBook: []
@@ -747,7 +747,7 @@ function migrateCollections(oldCollections) {
  * @param {Array<objects.Playlist>} oldPlaylists
  * @returns {object} { playlist: [], playlistMediaItem: [] }
  */
-function migratePlaylists(oldPlaylists) {
+function migratePlaylists(oldPlaylists: Array<objects.Playlist>): object {
   const _newRecords = {
     playlist: [],
     playlistMediaItem: []
@@ -814,7 +814,7 @@ function migratePlaylists(oldPlaylists) {
  * @param {Array<objects.Feed>} oldFeeds
  * @returns {object} { feed: [], feedEpisode: [] }
  */
-function migrateFeeds(oldFeeds) {
+function migrateFeeds(oldFeeds: Array<objects.Feed>): object {
   const _newRecords = {
     feed: [],
     feedEpisode: []
@@ -915,7 +915,7 @@ function migrateFeeds(oldFeeds) {
  * @param {Array<objects.settings.*>} oldSettings
  * @returns {Array<object>} Array of Setting model objs
  */
-function migrateSettings(oldSettings) {
+function migrateSettings(oldSettings): Array<object> {
   const _newRecords = []
   const serverSettings = oldSettings.find((s) => s.id === 'server-settings')
   const notificationSettings = oldSettings.find((s) => s.id === 'notification-settings')
@@ -953,7 +953,7 @@ function migrateSettings(oldSettings) {
  * Load old libraries and bulkCreate new Library and LibraryFolder rows
  * @param {Map<string,Model>} DatabaseModels
  */
-async function handleMigrateLibraries(DatabaseModels) {
+async function handleMigrateLibraries(DatabaseModels: Map<string, Model>) {
   const oldLibraries = await oldDbFiles.loadOldData('libraries')
   const newLibraryRecords = migrateLibraries(oldLibraries)
   for (const model in newLibraryRecords) {
@@ -966,7 +966,7 @@ async function handleMigrateLibraries(DatabaseModels) {
  * Load old EmailSettings, NotificationSettings and ServerSettings and bulkCreate new Setting rows
  * @param {Map<string,Model>} DatabaseModels
  */
-async function handleMigrateSettings(DatabaseModels) {
+async function handleMigrateSettings(DatabaseModels: Map<string, Model>) {
   const oldSettings = await oldDbFiles.loadOldData('settings')
   const newSettings = migrateSettings(oldSettings)
   Logger.info(`[dbMigration] Inserting ${newSettings.length} setting rows`)
@@ -978,7 +978,7 @@ async function handleMigrateSettings(DatabaseModels) {
  * @param {Map<string,Model>} DatabaseModels
  * @param {Array<objects.LibraryItem>} oldLibraryItems
  */
-async function handleMigrateAuthors(DatabaseModels, oldLibraryItems) {
+async function handleMigrateAuthors(DatabaseModels: Map<string, Model>, oldLibraryItems: Array<objects.LibraryItem>) {
   const oldAuthors = await oldDbFiles.loadOldData('authors')
   const newAuthors = migrateAuthors(oldAuthors, oldLibraryItems)
   Logger.info(`[dbMigration] Inserting ${newAuthors.length} author rows`)
@@ -990,7 +990,7 @@ async function handleMigrateAuthors(DatabaseModels, oldLibraryItems) {
  * @param {Map<string,Model>} DatabaseModels
  * @param {Array<objects.LibraryItem>} oldLibraryItems
  */
-async function handleMigrateSeries(DatabaseModels, oldLibraryItems) {
+async function handleMigrateSeries(DatabaseModels: Map<string, Model>, oldLibraryItems: Array<objects.LibraryItem>) {
   const oldSeries = await oldDbFiles.loadOldData('series')
   const newSeries = migrateSeries(oldSeries, oldLibraryItems)
   Logger.info(`[dbMigration] Inserting ${newSeries.length} series rows`)
@@ -1002,7 +1002,7 @@ async function handleMigrateSeries(DatabaseModels, oldLibraryItems) {
  * @param {Map<string,Model>} DatabaseModels
  * @param {Array<objects.LibraryItem>} oldLibraryItems
  */
-async function handleMigrateLibraryItems(DatabaseModels, oldLibraryItems) {
+async function handleMigrateLibraryItems(DatabaseModels: Map<string, Model>, oldLibraryItems: Array<objects.LibraryItem>) {
   const newItemsBooksPodcasts = migrateLibraryItems(oldLibraryItems)
   for (const model in newItemsBooksPodcasts) {
     Logger.info(`[dbMigration] Inserting ${newItemsBooksPodcasts[model].length} ${model} rows`)
@@ -1015,7 +1015,7 @@ async function handleMigrateLibraryItems(DatabaseModels, oldLibraryItems) {
  * Authors and series require old library items loaded first
  * @param {Map<string,Model>} DatabaseModels
  */
-async function handleMigrateAuthorsSeriesAndLibraryItems(DatabaseModels) {
+async function handleMigrateAuthorsSeriesAndLibraryItems(DatabaseModels: Map<string, Model>) {
   const oldLibraryItems = await oldDbFiles.loadOldData('libraryItems')
   await handleMigrateAuthors(DatabaseModels, oldLibraryItems)
 
@@ -1033,7 +1033,7 @@ async function handleMigrateAuthorsSeriesAndLibraryItems(DatabaseModels) {
  * Load old users and bulkCreate new User rows
  * @param {Map<string,Model>} DatabaseModels
  */
-async function handleMigrateUsers(DatabaseModels) {
+async function handleMigrateUsers(DatabaseModels: Map<string, Model>) {
   const oldUsers = await oldDbFiles.loadOldData('users')
   const newUserRecords = migrateUsers(oldUsers)
   for (const model in newUserRecords) {
@@ -1046,7 +1046,7 @@ async function handleMigrateUsers(DatabaseModels) {
  * Load old sessions and bulkCreate new PlaybackSession & Device rows
  * @param {Map<string,Model>} DatabaseModels
  */
-async function handleMigrateSessions(DatabaseModels) {
+async function handleMigrateSessions(DatabaseModels: Map<string, Model>) {
   const oldSessions = await oldDbFiles.loadOldData('sessions')
 
   let chunkSize = 1000
@@ -1066,7 +1066,7 @@ async function handleMigrateSessions(DatabaseModels) {
  * Load old collections and bulkCreate new Collection, CollectionBook models
  * @param {Map<string,Model>} DatabaseModels
  */
-async function handleMigrateCollections(DatabaseModels) {
+async function handleMigrateCollections(DatabaseModels: Map<string, Model>) {
   const oldCollections = await oldDbFiles.loadOldData('collections')
   const newCollectionRecords = migrateCollections(oldCollections)
   for (const model in newCollectionRecords) {
@@ -1079,7 +1079,7 @@ async function handleMigrateCollections(DatabaseModels) {
  * Load old playlists and bulkCreate new Playlist, PlaylistMediaItem models
  * @param {Map<string,Model>} DatabaseModels
  */
-async function handleMigratePlaylists(DatabaseModels) {
+async function handleMigratePlaylists(DatabaseModels: Map<string, Model>) {
   const oldPlaylists = await oldDbFiles.loadOldData('playlists')
   const newPlaylistRecords = migratePlaylists(oldPlaylists)
   for (const model in newPlaylistRecords) {
@@ -1092,7 +1092,7 @@ async function handleMigratePlaylists(DatabaseModels) {
  * Load old feeds and bulkCreate new Feed, FeedEpisode models
  * @param {Map<string,Model>} DatabaseModels
  */
-async function handleMigrateFeeds(DatabaseModels) {
+async function handleMigrateFeeds(DatabaseModels: Map<string, Model>) {
   const oldFeeds = await oldDbFiles.loadOldData('feeds')
   const newFeedRecords = migrateFeeds(oldFeeds)
   for (const model in newFeedRecords) {
@@ -1149,7 +1149,7 @@ export const migrate = async (DatabaseModels) => {
 /**
  * @returns {boolean} true if old database exists
  */
-export const checkShouldMigrate = async () => {
+export const checkShouldMigrate = async (): boolean => {
   if (await oldDbFiles.checkHasOldDb()) return true
   return oldDbFiles.checkHasOldDbZip()
 }
@@ -1158,7 +1158,7 @@ export const checkShouldMigrate = async () => {
  * Migration from 2.3.0 to 2.3.1 - create extraData columns in LibraryItem and PodcastEpisode
  * @param {QueryInterface} queryInterface
  */
-async function migrationPatchNewColumns(queryInterface) {
+async function migrationPatchNewColumns(queryInterface: QueryInterface) {
   try {
     return queryInterface.sequelize.transaction((t) => {
       return Promise.all([
@@ -1289,7 +1289,7 @@ async function handleOldLibraries(ctx) {
  * Migration from 2.3.0 to 2.3.1 - fixing librariesAccessible and bookmarks
  * @param {import('../../Database')} ctx
  */
-async function handleOldUsers(ctx) {
+async function handleOldUsers(ctx: import('../../Database')) {
   const usersNew = await ctx.userModel.findAll({
     include: ctx.models.mediaProgress
   })
@@ -1401,7 +1401,7 @@ export const migrationPatch = async (ctx) => {
  * @param {/src/Database} ctx
  * @param {number} offset
  */
-async function migrationPatch2LibraryItems(ctx, offset = 0) {
+async function migrationPatch2LibraryItems(ctx, offset: number = 0) {
   const libraryItems = await ctx.models.libraryItem.findAll({
     limit: 500,
     offset
@@ -1443,7 +1443,7 @@ async function migrationPatch2LibraryItems(ctx, offset = 0) {
  * @param {/src/Database} ctx
  * @param {number} offset
  */
-async function migrationPatch2Books(ctx, offset = 0) {
+async function migrationPatch2Books(ctx, offset: number = 0) {
   const books = await ctx.models.book.findAll({
     limit: 500,
     offset
@@ -1489,7 +1489,7 @@ async function migrationPatch2Books(ctx, offset = 0) {
  * @param {/src/Database} ctx
  * @param {number} offset
  */
-async function migrationPatch2Podcasts(ctx, offset = 0) {
+async function migrationPatch2Podcasts(ctx, offset: number = 0) {
   const podcasts = await ctx.models.podcast.findAll({
     limit: 500,
     offset
@@ -1523,7 +1523,7 @@ async function migrationPatch2Podcasts(ctx, offset = 0) {
  * @param {/src/Database} ctx
  * @param {number} offset
  */
-async function migrationPatch2Series(ctx, offset = 0) {
+async function migrationPatch2Series(ctx, offset: number = 0) {
   const allSeries = await ctx.models.series.findAll({
     limit: 500,
     offset
@@ -1557,7 +1557,7 @@ async function migrationPatch2Series(ctx, offset = 0) {
  * @param {/src/Database} ctx
  * @param {number} offset
  */
-async function migrationPatch2Authors(ctx, offset = 0) {
+async function migrationPatch2Authors(ctx, offset: number = 0) {
   const authors = await ctx.models.author.findAll({
     limit: 500,
     offset
@@ -1593,7 +1593,7 @@ async function migrationPatch2Authors(ctx, offset = 0) {
  * @param {/src/Database} ctx
  * @param {number} offset
  */
-async function migrationPatch2BookAuthors(ctx, offset = 0) {
+async function migrationPatch2BookAuthors(ctx, offset: number = 0) {
   const bookAuthors = await ctx.models.bookAuthor.findAll({
     include: {
       model: ctx.models.author
@@ -1628,7 +1628,7 @@ async function migrationPatch2BookAuthors(ctx, offset = 0) {
  * @param {/src/Database} ctx
  * @param {number} offset
  */
-async function migrationPatch2BookSeries(ctx, offset = 0) {
+async function migrationPatch2BookSeries(ctx, offset: number = 0) {
   const allBookSeries = await ctx.models.bookSeries.findAll({
     include: {
       model: ctx.models.series

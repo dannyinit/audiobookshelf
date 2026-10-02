@@ -1,11 +1,11 @@
-/**
- * @typedef MigrationContext
- * @property {import('sequelize').QueryInterface} queryInterface - a Sequelize QueryInterface object.
- * @property {import('../Logger')} logger - a Logger object.
- *
- * @typedef MigrationOptions
- * @property {MigrationContext} context - an object containing the migration context.
- */
+interface MigrationContext {
+  queryInterface: import('sequelize').QueryInterface
+  logger: import('../Logger')
+}
+
+interface MigrationOptions {
+  context: MigrationContext
+}
 
 const migrationVersion = '2.35.0'
 const migrationName = `${migrationVersion}-add-last-refresh-token`
@@ -17,7 +17,7 @@ const loggerPrefix = `[${migrationVersion} migration]`
  * @param {MigrationOptions} options - an object containing the migration context.
  * @returns {Promise<void>} - A promise that resolves when the migration is complete.
  */
-async function up({ context: { queryInterface, logger } }) {
+async function up({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   logger.info(`${loggerPrefix} UPGRADE BEGIN: ${migrationName}`)
 
   if (await queryInterface.tableExists('sessions')) {
@@ -55,7 +55,7 @@ async function up({ context: { queryInterface, logger } }) {
  * @param {MigrationOptions} options - an object containing the migration context.
  * @returns {Promise<void>} - A promise that resolves when the migration is complete.
  */
-async function down({ context: { queryInterface, logger } }) {
+async function down({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   logger.info(`${loggerPrefix} DOWNGRADE BEGIN: ${migrationName}`)
 
   if (await queryInterface.tableExists('sessions')) {

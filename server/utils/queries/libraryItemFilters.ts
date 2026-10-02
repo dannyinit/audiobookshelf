@@ -9,7 +9,7 @@ export = {
    * @param {string[]} tags
    * @returns {Promise<import('../../models/LibraryItem')[]>}
    */
-  async getAllLibraryItemsWithTags(tags) {
+  async getAllLibraryItemsWithTags(tags: string[]): Promise<import('../../models/LibraryItem')[]> {
     const libraryItems = []
     const booksWithTag = await Database.bookModel.findAll({
       where: Sequelize.where(Sequelize.literal(`(SELECT count(*) FROM json_each(tags) WHERE json_valid(tags) AND json_each.value IN (:tags))`), {
@@ -74,7 +74,7 @@ export = {
    * @param {string[]} genres
    * @returns {Promise<import('../../models/LibraryItem')[]>}
    */
-  async getAllLibraryItemsWithGenres(genres) {
+  async getAllLibraryItemsWithGenres(genres: string[]): Promise<import('../../models/LibraryItem')[]> {
     const libraryItems = []
     const booksWithGenre = await Database.bookModel.findAll({
       where: Sequelize.where(Sequelize.literal(`(SELECT count(*) FROM json_each(genres) WHERE json_valid(genres) AND json_each.value IN (:genres))`), {
@@ -136,7 +136,7 @@ export = {
    * @param {string} libraryId
    * @returns {Promise<import('../../models/LibraryItem')[]>}
    */
-  async getAllLibraryItemsWithNarrators(narrators, libraryId) {
+  async getAllLibraryItemsWithNarrators(narrators: string[], libraryId: string): Promise<import('../../models/LibraryItem')[]> {
     const libraryItems = []
     const booksWithGenre = await Database.bookModel.findAll({
       where: Sequelize.where(Sequelize.literal(`(SELECT count(*) FROM json_each(narrators) WHERE json_valid(narrators) AND json_each.value IN (:narrators))`), {
@@ -180,7 +180,7 @@ export = {
    * @param {number} limit
    * @returns {{book:object[], narrators:object[], authors:object[], tags:object[], series:object[], podcast:object[]}}
    */
-  search(user, library, query, limit) {
+  search(user: import('../../models/User'), library: import('../../models/Library'), query: string, limit: number): { book: object[]; narrators: object[]; authors: object[]; tags: object[]; series: object[]; podcast: object[] } {
     if (library.isBook) {
       return libraryItemsBookFilters.search(user, library, query, limit, 0)
     } else {
@@ -194,7 +194,7 @@ export = {
    * @param {number} limit
    * @returns {Promise<{ id:string, title:string, size:number }[]>}
    */
-  async getLargestItems(libraryId, limit) {
+  async getLargestItems(libraryId: string, limit: number): Promise<{ id: string; title: string; size: number }[]> {
     const libraryItems = await Database.libraryItemModel.findAll({
       attributes: ['id', 'mediaId', 'mediaType', 'size'],
       where: {

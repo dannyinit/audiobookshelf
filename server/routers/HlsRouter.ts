@@ -36,7 +36,7 @@ class HlsRouter {
    * @param {string} filepath 
    * @returns {boolean}
    */
-  validateStreamFilePath(streamDir, filepath) {
+  validateStreamFilePath(streamDir: string, filepath: string): boolean {
     const relative = Path.relative(streamDir, filepath)
     return relative && !relative.startsWith('..') && !Path.isAbsolute(relative)
   }
@@ -48,7 +48,7 @@ class HlsRouter {
    * @param {express.Request} req 
    * @param {express.Response} res 
    */
-  async streamFileRequest(req, res) {
+  async streamFileRequest(req: express.Request, res: express.Response) {
     const streamId = req.params.stream
     // Ensure stream is open
     const stream = this.playbackSessionManager.getStream(streamId)

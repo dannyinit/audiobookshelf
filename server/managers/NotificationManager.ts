@@ -19,7 +19,7 @@ class NotificationManager {
    * @param {import('../models/LibraryItem')} libraryItem
    * @param {import('../models/PodcastEpisode')} episode
    */
-  async onPodcastEpisodeDownloaded(libraryItem, episode) {
+  async onPodcastEpisodeDownloaded(libraryItem: import('../models/LibraryItem'), episode: import('../models/PodcastEpisode')) {
     if (!Database.notificationSettings.isUseable) return
 
     if (!Database.notificationSettings.getHasActiveNotificationsForEvent('onPodcastEpisodeDownloaded')) {
@@ -52,7 +52,7 @@ class NotificationManager {
    * @param {number} totalBackupCount
    * @param {boolean} removedOldest - If oldest backup was removed
    */
-  async onBackupCompleted(backup, totalBackupCount, removedOldest) {
+  async onBackupCompleted(backup: import('../objects/Backup'), totalBackupCount: number, removedOldest: boolean) {
     if (!Database.notificationSettings.isUseable) return
 
     if (!Database.notificationSettings.getHasActiveNotificationsForEvent('onBackupCompleted')) {
@@ -78,7 +78,7 @@ class NotificationManager {
    * @param {number} numFailed
    * @param {string} title
    */
-  async onRSSFeedFailed(feedUrl, numFailed, title) {
+  async onRSSFeedFailed(feedUrl: string, numFailed: number, title: string) {
     if (!Database.notificationSettings.isUseable) return
 
     if (!Database.notificationSettings.getHasActiveNotificationsForEvent('onRSSFeedFailed')) {
@@ -102,7 +102,7 @@ class NotificationManager {
    * @param {number} numFailed
    * @param {string} title
    */
-  async onRSSFeedDisabled(feedUrl, numFailed, title) {
+  async onRSSFeedDisabled(feedUrl: string, numFailed: number, title: string) {
     if (!Database.notificationSettings.isUseable) return
 
     if (!Database.notificationSettings.getHasActiveNotificationsForEvent('onRSSFeedDisabled')) {
@@ -123,7 +123,7 @@ class NotificationManager {
    *
    * @param {string} errorMsg
    */
-  async onBackupFailed(errorMsg) {
+  async onBackupFailed(errorMsg: string) {
     if (!Database.notificationSettings.isUseable) return
 
     if (!Database.notificationSettings.getHasActiveNotificationsForEvent('onBackupFailed')) {
@@ -148,7 +148,7 @@ class NotificationManager {
    * @param {any} eventData
    * @param {boolean} [intentionallyFail=false] - If true, will intentionally fail the notification
    */
-  async triggerNotification(eventName, eventData, intentionallyFail = false) {
+  async triggerNotification(eventName: string, eventData: any, intentionallyFail: boolean = false) {
     if (!Database.notificationSettings.isUseable) return
 
     // Will queue the notification if sendingNotification and queue is not full
@@ -183,7 +183,7 @@ class NotificationManager {
    * @param {any} eventData
    * @returns {boolean} - TRUE if notification should be triggered now
    */
-  checkTriggerNotification(eventName, eventData) {
+  checkTriggerNotification(eventName: string, eventData: any): boolean {
     if (this.sendingNotification) {
       if (this.notificationQueue.length >= Database.notificationSettings.maxNotificationQueue) {
         Logger.warn(`[NotificationManager] Notification queue is full - ignoring event ${eventName}`)

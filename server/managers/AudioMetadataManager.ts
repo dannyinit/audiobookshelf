@@ -26,7 +26,7 @@ class AudioMetadataMangaer {
    * Get queued task data
    * @return {Array}
    */
-  getQueuedTaskData() {
+  getQueuedTaskData(): Array<any> {
     return this.tasksQueued.map((t) => t.data)
   }
 
@@ -39,7 +39,7 @@ class AudioMetadataMangaer {
    * @param {import('../models/LibraryItem')} libraryItem
    * @returns
    */
-  getMetadataObjectForApi(libraryItem) {
+  getMetadataObjectForApi(libraryItem: import('../models/LibraryItem')) {
     return ffmpegHelpers.getFFMetadataObject(libraryItem, libraryItem.media.includedAudioFiles.length)
   }
 
@@ -49,7 +49,7 @@ class AudioMetadataMangaer {
    * @param {import('../models/LibraryItem')[]} libraryItems
    * @param {UpdateMetadataOptions} options
    */
-  handleBatchEmbed(userId, libraryItems, options = {}) {
+  handleBatchEmbed(userId: string, libraryItems: import('../models/LibraryItem')[], options: UpdateMetadataOptions = {}) {
     libraryItems.forEach((li) => {
       this.updateMetadataForItem(userId, li, options)
     })
@@ -61,7 +61,7 @@ class AudioMetadataMangaer {
    * @param {import('../models/LibraryItem')} libraryItem
    * @param {UpdateMetadataOptions} [options={}]
    */
-  async updateMetadataForItem(userId, libraryItem, options = {}) {
+  async updateMetadataForItem(userId: string, libraryItem: import('../models/LibraryItem'), options: UpdateMetadataOptions = {}) {
     const forceEmbedChapters = !!options.forceEmbedChapters
     const backupFiles = !!options.backup
 
@@ -130,7 +130,7 @@ class AudioMetadataMangaer {
    *
    * @param {import('../objects/Task')} task
    */
-  async runMetadataEmbed(task) {
+  async runMetadataEmbed(task: import('../objects/Task')) {
     this.tasksRunning.push(task)
     TaskManager.addTask(task)
 

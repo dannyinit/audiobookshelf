@@ -11,7 +11,7 @@ export = {
    * @param {number} year YYYY
    * @returns {Promise<PlaybackSession[]>}
    */
-  async getUserListeningSessionsForYear(userId, year) {
+  async getUserListeningSessionsForYear(userId: string, year: number): Promise<PlaybackSession[]> {
     const sessions = await Database.playbackSessionModel.findAll({
       where: {
         userId,
@@ -40,7 +40,7 @@ export = {
    * @param {number} year YYYY
    * @returns {Promise<MediaProgress[]>}
    */
-  async getBookMediaProgressFinishedForYear(userId, year) {
+  async getBookMediaProgressFinishedForYear(userId: string, year: number): Promise<MediaProgress[]> {
     const progresses = await Database.mediaProgressModel.findAll({
       where: {
         userId,
@@ -68,7 +68,7 @@ export = {
    * @param {string} userId
    * @param {number} year YYYY
    */
-  async getStatsForYear(userId, year) {
+  async getStatsForYear(userId: string, year: number) {
     const listeningSessions = await this.getUserListeningSessionsForYear(userId, year)
     const bookProgressesFinished = await this.getBookMediaProgressFinishedForYear(userId, year)
 

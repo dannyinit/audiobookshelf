@@ -4,9 +4,9 @@ import FileMetadata = require('../metadata/FileMetadata')
 
 class AudioFile {
   /** @type {FileMetadata} */
-  metadata
+  metadata: FileMetadata
   /** @type {AudioMetaTags} */
-  metaTags
+  metaTags: AudioMetaTags
 
   constructor(data) {
     this.index = null
@@ -171,7 +171,7 @@ class AudioFile {
    * @param {AudioFile} scannedAudioFile 
    * @returns {boolean} true if updates were made
    */
-  updateFromScan(scannedAudioFile) {
+  updateFromScan(scannedAudioFile: AudioFile): boolean {
     let hasUpdated = false
 
     const newjson = scannedAudioFile.toJSON()

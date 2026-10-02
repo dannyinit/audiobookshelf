@@ -3,27 +3,27 @@ import oldDevice = require('../objects/DeviceInfo')
 
 class Device extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {string} */
-  declare deviceId
+  declare deviceId: string
   /** @type {string} */
-  declare clientName
+  declare clientName: string
   /** @type {string} */
-  declare clientVersion
+  declare clientVersion: string
   /** @type {string} */
-  declare ipAddress
+  declare ipAddress: string
   /** @type {string} */
-  declare deviceName
+  declare deviceName: string
   /** @type {string} */
-  declare deviceVersion
+  declare deviceVersion: string
   /** @type {object} */
-  declare extraData
+  declare extraData: object
   /** @type {string} */
-  declare userId
+  declare userId: string
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
   /** @type {Date} */
-  declare updatedAt
+  declare updatedAt: Date
 
   constructor(values, options) {
     super(values, options)
@@ -90,7 +90,7 @@ class Device extends Model {
    * Initialize model
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {

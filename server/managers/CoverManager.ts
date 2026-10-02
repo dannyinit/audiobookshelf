@@ -85,7 +85,7 @@ class CoverManager {
    * @param {*} coverFile - file object from req.files
    * @returns {Promise<{error:string}|{cover:string}>}
    */
-  async uploadCover(libraryItem, coverFile) {
+  async uploadCover(libraryItem: import('../models/LibraryItem'), coverFile: any): Promise<{ error: string } | { cover: string }> {
     const extname = Path.extname(coverFile.name.toLowerCase())
     if (!extname || !globals.SupportedImageTypes.includes(extname.slice(1))) {
       return {
@@ -129,7 +129,7 @@ class CoverManager {
    * @param {import('../models/LibraryItem')} libraryItem
    * @returns {Promise<{error:string}|{cover:string,updated:boolean}>}
    */
-  async validateCoverPath(coverPath, libraryItem) {
+  async validateCoverPath(coverPath: string, libraryItem: import('../models/LibraryItem')): Promise<{ error: string } | { cover: string; updated: boolean }> {
     // Invalid cover path
     if (!coverPath || coverPath.startsWith('http:') || coverPath.startsWith('https:')) {
       Logger.error(`[CoverManager] validate cover path invalid http url "${coverPath}"`)
@@ -222,7 +222,7 @@ class CoverManager {
    * @param {string} [libraryItemPath] null for isFile library items
    * @returns {Promise<string>} returns cover path
    */
-  async saveEmbeddedCoverArt(audioFiles, libraryItemId, libraryItemPath) {
+  async saveEmbeddedCoverArt(audioFiles: import('../models/Book').AudioFileObject[], libraryItemId: string, libraryItemPath: string): Promise<string> {
     let audioFileWithCover = audioFiles.find((af) => af.embeddedCoverArt)
     if (!audioFileWithCover) return null
 
@@ -259,7 +259,7 @@ class CoverManager {
    * @param {string} [libraryItemPath] null for isFile library items
    * @returns {Promise<string>} returns cover path
    */
-  async saveEbookCoverArt(ebookFileScanData, libraryItemId, libraryItemPath) {
+  async saveEbookCoverArt(ebookFileScanData: import('../utils/parsers/parseEbookMetadata').EBookFileScanData, libraryItemId: string, libraryItemPath: string): Promise<string> {
     if (!ebookFileScanData?.ebookCoverPath) return null
 
     let coverDirPath = null
@@ -297,7 +297,7 @@ class CoverManager {
    * @param {boolean} [forceLibraryItemFolder=false] - force save cover with library item (used for adding new podcasts)
    * @returns {Promise<{error:string}|{cover:string}>}
    */
-  async downloadCoverFromUrlNew(url, libraryItemId, libraryItemPath, forceLibraryItemFolder = false) {
+  async downloadCoverFromUrlNew(url: string, libraryItemId: string, libraryItemPath: string, forceLibraryItemFolder: boolean = false): Promise<{ error: string } | { cover: string }> {
     try {
       let coverDirPath = null
       if ((global.ServerSettings.storeCoverWithItem || forceLibraryItemFolder) && libraryItemPath) {

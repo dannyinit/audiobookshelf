@@ -12,7 +12,7 @@ class PodcastFinder {
    * @param {{country:string}} options
    * @returns {Promise<import('../providers/iTunes').iTunesPodcastSearchResult[]>}
    */
-  async search(term, options = {}) {
+  async search(term: string, options: { country: string } = {}): Promise<import('../providers/iTunes').iTunesPodcastSearchResult[]> {
     if (!term) return null
     Logger.debug(`[iTunes] Searching for podcast with term "${term}"`)
     const results = await this.iTunesApi.searchPodcasts(term, options)
@@ -24,7 +24,7 @@ class PodcastFinder {
    * @param {string} term
    * @returns {Promise<string[]>}
    */
-  async findCovers(term) {
+  async findCovers(term: string): Promise<string[]> {
     if (!term) return null
     Logger.debug(`[iTunes] Searching for podcast covers with term "${term}"`)
     const results = await this.iTunesApi.searchPodcasts(term)

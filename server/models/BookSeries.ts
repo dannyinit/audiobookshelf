@@ -2,15 +2,15 @@ import { DataTypes, Model } from 'sequelize'
 
 class BookSeries extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {string} */
-  declare sequence
+  declare sequence: string
   /** @type {string} */
-  declare bookId
+  declare bookId: string
   /** @type {string} */
-  declare seriesId
+  declare seriesId: string
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
 
   constructor(values, options) {
     super(values, options)
@@ -30,7 +30,7 @@ class BookSeries extends Model {
    * Initialize model
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {

@@ -3,12 +3,11 @@ import Database = require('../Database')
 import { version } from '../../package.json'
 import NotificationManager = require('../managers/NotificationManager')
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- */
+interface RequestUserObject {
+  user: import('../models/User')
+}
+
+type RequestWithUser = Request & RequestUserObject
 
 class NotificationController {
   constructor() {}
@@ -22,7 +21,7 @@ class NotificationController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  get(req, res) {
+  get(req: RequestWithUser, res: Response) {
     res.json({
       data: NotificationManager.getData(),
       settings: Database.notificationSettings
@@ -35,7 +34,7 @@ class NotificationController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async update(req, res) {
+  async update(req: RequestWithUser, res: Response) {
     const updated = Database.notificationSettings.update(req.body)
     if (updated) {
       await Database.updateSetting(Database.notificationSettings)
@@ -52,7 +51,7 @@ class NotificationController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  getData(req, res) {
+  getData(req: RequestWithUser, res: Response) {
     res.json(NotificationManager.getData())
   }
 
@@ -64,7 +63,7 @@ class NotificationController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async fireTestEvent(req, res) {
+  async fireTestEvent(req: RequestWithUser, res: Response) {
     await NotificationManager.triggerNotification('onTest', { version: `v${version}` }, req.query.fail === '1')
     res.sendStatus(200)
   }
@@ -75,7 +74,7 @@ class NotificationController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async createNotification(req, res) {
+  async createNotification(req: RequestWithUser, res: Response) {
     const success = Database.notificationSettings.createNotification(req.body)
 
     if (success) {
@@ -90,7 +89,7 @@ class NotificationController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async deleteNotification(req, res) {
+  async deleteNotification(req: RequestWithUser, res: Response) {
     if (Database.notificationSettings.removeNotification(req.notification.id)) {
       await Database.updateSetting(Database.notificationSettings)
     }
@@ -103,7 +102,7 @@ class NotificationController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async updateNotification(req, res) {
+  async updateNotification(req: RequestWithUser, res: Response) {
     const success = Database.notificationSettings.updateNotification(req.body)
     if (success) {
       await Database.updateSetting(Database.notificationSettings)
@@ -119,7 +118,7 @@ class NotificationController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async sendNotificationTest(req, res) {
+  async sendNotificationTest(req: RequestWithUser, res: Response) {
     if (!Database.notificationSettings.isUseable) return res.status(400).send('Apprise is not configured')
 
     const success = await NotificationManager.sendTestNotification(req.notification)
@@ -134,7 +133,7 @@ class NotificationController {
    * @param {Response} res
    * @param {NextFunction} next
    */
-  middleware(req, res, next) {
+  middleware(req: RequestWithUser, res: Response, next: NextFunction) {
     if (!req.user.isAdminOrUp) {
       return res.sendStatus(403)
     }

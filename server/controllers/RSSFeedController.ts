@@ -4,12 +4,11 @@ import Database = require('../Database')
 
 import RssFeedManager = require('../managers/RssFeedManager')
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- */
+interface RequestUserObject {
+  user: import('../models/User')
+}
+
+type RequestWithUser = Request & RequestUserObject
 
 class RSSFeedController {
   constructor() {}
@@ -22,7 +21,7 @@ class RSSFeedController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async getAll(req, res) {
+  async getAll(req: RequestWithUser, res: Response) {
     const feeds = await RssFeedManager.getFeeds()
     res.json({
       feeds: feeds.map((f) => f.toOldJSON()),
@@ -38,7 +37,7 @@ class RSSFeedController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async openRSSFeedForItem(req, res) {
+  async openRSSFeedForItem(req: RequestWithUser, res: Response) {
     const reqBody = req.body || {}
 
     const itemExpanded = await Database.libraryItemModel.getExpandedById(req.params.itemId)
@@ -87,7 +86,7 @@ class RSSFeedController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async openRSSFeedForCollection(req, res) {
+  async openRSSFeedForCollection(req: RequestWithUser, res: Response) {
     const reqBody = req.body || {}
 
     // Check request body options exist
@@ -130,7 +129,7 @@ class RSSFeedController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async openRSSFeedForSeries(req, res) {
+  async openRSSFeedForSeries(req: RequestWithUser, res: Response) {
     const reqBody = req.body || {}
 
     // Check request body options exist
@@ -173,7 +172,7 @@ class RSSFeedController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async closeRSSFeed(req, res) {
+  async closeRSSFeed(req: RequestWithUser, res: Response) {
     const feed = await Database.feedModel.findByPk(req.params.id)
     if (!feed) {
       Logger.error(`[RSSFeedController] Cannot close RSS feed because feed "${req.params.id}" does not exist`)
@@ -191,7 +190,7 @@ class RSSFeedController {
    * @param {Response} res
    * @param {NextFunction} next
    */
-  middleware(req, res, next) {
+  middleware(req: RequestWithUser, res: Response, next: NextFunction) {
     if (!req.user.isAdminOrUp) {
       // Only admins can manage rss feeds
       Logger.error(`[RSSFeedController] Non-admin user "${req.user.username}" attempted to make a request to an RSS feed route`)

@@ -20,22 +20,23 @@ import CacheManager = require('../managers/CacheManager')
 import CoverManager = require('../managers/CoverManager')
 import ShareManager = require('../managers/ShareManager')
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- *
- * @typedef RequestEntityObject
- * @property {import('../models/LibraryItem')} libraryItem
- *
- * @typedef {RequestWithUser & RequestEntityObject} LibraryItemControllerRequest
- *
- * @typedef RequestLibraryFileObject
- * @property {import('../objects/files/LibraryFile')} libraryFile
- *
- * @typedef {RequestWithUser & RequestEntityObject & RequestLibraryFileObject} LibraryItemControllerRequestWithFile
- */
+interface RequestUserObject {
+  user: import('../models/User')
+}
+
+type RequestWithUser = Request & RequestUserObject
+
+interface RequestEntityObject {
+  libraryItem: import('../models/LibraryItem')
+}
+
+type LibraryItemControllerRequest = RequestWithUser & RequestEntityObject
+
+interface RequestLibraryFileObject {
+  libraryFile: import('../objects/files/LibraryFile')
+}
+
+type LibraryItemControllerRequestWithFile = RequestWithUser & RequestEntityObject & RequestLibraryFileObject
 
 /**
  * Enforce per-item access for batch item routes
@@ -45,7 +46,7 @@ import ShareManager = require('../managers/ShareManager')
  * @param {import('../models/LibraryItem')[]} libraryItems
  * @returns {boolean} true if the user may access every item; false if 403 was sent
  */
-function ensureUserCanAccessLibraryItemsForBatch(req, res, libraryItems) {
+function ensureUserCanAccessLibraryItemsForBatch(req: RequestWithUser, res: Response, libraryItems: import('../models/LibraryItem')[]): boolean {
   for (const libraryItem of libraryItems) {
     if (!req.user.checkCanAccessLibraryItem(libraryItem)) {
       res.sendStatus(403)
@@ -67,7 +68,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequest} req
    * @param {Response} res
    */
-  async findOne(req, res) {
+  async findOne(req: LibraryItemControllerRequest, res: Response) {
     const includeEntities = (req.query.include || '').split(',')
     if (req.query.expanded == 1) {
       const item = req.libraryItem.toOldJSONExpanded()
@@ -111,7 +112,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequest} req
    * @param {Response} res
    */
-  async delete(req, res) {
+  async delete(req: LibraryItemControllerRequest, res: Response) {
     const hardDelete = req.query.hard == 1 // Delete from file system
     const libraryItemPath = req.libraryItem.path
 
@@ -166,7 +167,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequest} req
    * @param {Response} res
    */
-  async download(req, res) {
+  async download(req: LibraryItemControllerRequest, res: Response) {
     if (!req.user.canDownload) {
       Logger.warn(`User "${req.user.username}" attempted to download without permission`)
       return res.sendStatus(403)
@@ -205,7 +206,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequest} req
    * @param {Response} res
    */
-  async updateMedia(req, res) {
+  async updateMedia(req: LibraryItemControllerRequest, res: Response) {
     const mediaPayload = req.body
 
     if (mediaPayload.url) {
@@ -292,7 +293,7 @@ class LibraryItemController {
    * @param {Response} res
    * @param {boolean} [updateAndReturnJson=true] - Allows the function to be used for both direct API calls and internally
    */
-  async uploadCover(req, res, updateAndReturnJson = true) {
+  async uploadCover(req: LibraryItemControllerRequest, res: Response, updateAndReturnJson: boolean = true) {
     if (!req.user.canUpload) {
       Logger.warn(`User "${req.user.username}" attempted to upload a cover without permission`)
       return res.sendStatus(403)
@@ -341,7 +342,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequest} req
    * @param {Response} res
    */
-  async updateCover(req, res) {
+  async updateCover(req: LibraryItemControllerRequest, res: Response) {
     if (!req.body.cover) {
       return res.status(400).send('Invalid request no cover path')
     }
@@ -374,7 +375,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequest} req
    * @param {Response} res
    */
-  async removeCover(req, res) {
+  async removeCover(req: LibraryItemControllerRequest, res: Response) {
     if (req.libraryItem.media.coverPath) {
       req.libraryItem.media.coverPath = null
       req.libraryItem.media.changed('coverPath', true)
@@ -398,7 +399,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequest} req
    * @param {Response} res
    */
-  async getCover(req, res) {
+  async getCover(req: LibraryItemControllerRequest, res: Response) {
     const {
       query: { width, height, format, raw }
     } = req
@@ -440,7 +441,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequest} req
    * @param {Response} res
    */
-  startPlaybackSession(req, res) {
+  startPlaybackSession(req: LibraryItemControllerRequest, res: Response) {
     if (!req.libraryItem.hasAudioTracks) {
       Logger.error(`[LibraryItemController] startPlaybackSession cannot playback ${req.libraryItem.id}`)
       return res.sendStatus(404)
@@ -457,7 +458,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequest} req
    * @param {Response} res
    */
-  startEpisodePlaybackSession(req, res) {
+  startEpisodePlaybackSession(req: LibraryItemControllerRequest, res: Response) {
     if (!req.libraryItem.isPodcast) {
       Logger.error(`[LibraryItemController] startEpisodePlaybackSession invalid media type ${req.libraryItem.id}`)
       return res.sendStatus(400)
@@ -478,7 +479,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequest} req
    * @param {Response} res
    */
-  async updateTracks(req, res) {
+  async updateTracks(req: LibraryItemControllerRequest, res: Response) {
     const orderedFileData = req.body?.orderedFileData
 
     if (!req.libraryItem.isBook) {
@@ -523,7 +524,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequest} req
    * @param {Response} res
    */
-  async match(req, res) {
+  async match(req: LibraryItemControllerRequest, res: Response) {
     const reqBody = req.body || {}
 
     const options = {}
@@ -555,7 +556,7 @@ class LibraryItemController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async batchDelete(req, res) {
+  async batchDelete(req: RequestWithUser, res: Response) {
     if (!req.user.canDelete) {
       Logger.warn(`[LibraryItemController] User "${req.user.username}" attempted to delete without permission`)
       return res.sendStatus(403)
@@ -627,7 +628,7 @@ class LibraryItemController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async batchUpdate(req, res) {
+  async batchUpdate(req: RequestWithUser, res: Response) {
     if (!req.user.canUpdate) {
       Logger.warn(`[LibraryItemController] User "${req.user.username}" attempted to batch update without permission`)
       return res.sendStatus(403)
@@ -737,7 +738,7 @@ class LibraryItemController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async batchGet(req, res) {
+  async batchGet(req: RequestWithUser, res: Response) {
     const libraryItemIds = req.body.libraryItemIds || []
     if (!libraryItemIds.length) {
       return res.status(403).send('Invalid payload')
@@ -760,7 +761,7 @@ class LibraryItemController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async batchQuickMatch(req, res) {
+  async batchQuickMatch(req: RequestWithUser, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.warn(`Non-admin user "${req.user.username}" other than admin attempted to batch quick match library items`)
       return res.sendStatus(403)
@@ -817,7 +818,7 @@ class LibraryItemController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async batchScan(req, res) {
+  async batchScan(req: RequestWithUser, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.warn(`Non-admin user "${req.user.username}" other than admin attempted to batch scan library items`)
       return res.sendStatus(403)
@@ -857,7 +858,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequest} req
    * @param {Response} res
    */
-  async scan(req, res) {
+  async scan(req: LibraryItemControllerRequest, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[LibraryItemController] Non-admin user "${req.user.username}" attempted to scan library item`)
       return res.sendStatus(403)
@@ -881,7 +882,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequest} req
    * @param {Response} res
    */
-  getMetadataObject(req, res) {
+  getMetadataObject(req: LibraryItemControllerRequest, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[LibraryItemController] Non-admin user "${req.user.username}" attempted to get metadata object`)
       return res.sendStatus(403)
@@ -901,7 +902,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequest} req
    * @param {Response} res
    */
-  async updateMediaChapters(req, res) {
+  async updateMediaChapters(req: LibraryItemControllerRequest, res: Response) {
     if (!req.user.canUpdate) {
       Logger.error(`[LibraryItemController] User "${req.user.username}" attempted to update chapters with invalid permissions`)
       return res.sendStatus(403)
@@ -964,7 +965,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequest} req
    * @param {Response} res
    */
-  async getFFprobeData(req, res) {
+  async getFFprobeData(req: LibraryItemControllerRequest, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[LibraryItemController] Non-admin user "${req.user.username}" attempted to get ffprobe data`)
       return res.sendStatus(403)
@@ -986,7 +987,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequestWithFile} req
    * @param {Response} res
    */
-  async getLibraryFile(req, res) {
+  async getLibraryFile(req: LibraryItemControllerRequestWithFile, res: Response) {
     const libraryFile = req.libraryFile
 
     if (global.XAccel) {
@@ -1009,7 +1010,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequestWithFile} req
    * @param {Response} res
    */
-  async deleteLibraryFile(req, res) {
+  async deleteLibraryFile(req: LibraryItemControllerRequestWithFile, res: Response) {
     const libraryFile = req.libraryFile
 
     Logger.info(`[LibraryItemController] User "${req.user.username}" requested file delete at "${libraryFile.metadata.path}"`)
@@ -1070,7 +1071,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequestWithFile} req
    * @param {Response} res
    */
-  async downloadLibraryFile(req, res) {
+  async downloadLibraryFile(req: LibraryItemControllerRequestWithFile, res: Response) {
     const libraryFile = req.libraryFile
     const ua = uaParserJs(req.headers['user-agent'])
 
@@ -1118,7 +1119,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequest} req
    * @param {Response} res
    */
-  async getEBookFile(req, res) {
+  async getEBookFile(req: LibraryItemControllerRequest, res: Response) {
     let ebookFile = null
     if (req.params.fileid) {
       ebookFile = req.libraryItem.getLibraryFileWithIno(req.params.fileid)
@@ -1162,7 +1163,7 @@ class LibraryItemController {
    * @param {LibraryItemControllerRequestWithFile} req
    * @param {Response} res
    */
-  async updateEbookFileStatus(req, res) {
+  async updateEbookFileStatus(req: LibraryItemControllerRequestWithFile, res: Response) {
     if (!req.libraryItem.isBook) {
       Logger.error(`[LibraryItemController] Invalid media type for ebook file status update`)
       return res.sendStatus(400)
@@ -1217,7 +1218,7 @@ class LibraryItemController {
    * @param {Response} res
    * @param {NextFunction} next
    */
-  async middleware(req, res, next) {
+  async middleware(req: RequestWithUser, res: Response, next: NextFunction) {
     req.libraryItem = await Database.libraryItemModel.getExpandedById(req.params.id)
     if (!req.libraryItem?.media) return res.sendStatus(404)
 

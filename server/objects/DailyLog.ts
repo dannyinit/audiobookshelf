@@ -6,15 +6,15 @@ import Logger = require('../Logger')
 
 class DailyLog {
   /** @type {import('../managers/LogManager').LogObject[]} */
-  logs
+  logs: import('../managers/LogManager').LogObject[]
   /** @type {string[]} */
-  bufferedLogLines
+  bufferedLogLines: string[]
 
   /**
    * 
    * @param {string} dailyLogDirPath Path to daily logs /metadata/logs/daily
    */
-  constructor(dailyLogDirPath) {
+  constructor(dailyLogDirPath: string) {
     this.id = date.format(new Date(), 'YYYY-MM-DD')
 
     this.dailyLogDirPath = dailyLogDirPath
@@ -65,7 +65,7 @@ class DailyLog {
    * 
    * @param {import('../managers/LogManager').LogObject} logObj 
    */
-  appendLog(logObj) {
+  appendLog(logObj: import('../managers/LogManager').LogObject) {
     this.logs.push(logObj)
     return this.appendLogLine(JSON.stringify(logObj) + '\n')
   }
@@ -75,7 +75,7 @@ class DailyLog {
    * 
    * @param {string} line 
    */
-  async appendLogLine(line) {
+  async appendLogLine(line: string) {
     if (this.locked) {
       this.bufferedLogLines.push(line)
       return

@@ -290,7 +290,7 @@ function parseProbeData(data, verbose = false) {
  * @param {boolean} [verbose=false]
  * @returns {import('../scanner/MediaProbeData')|{error:string}}
  */
-function probe(filepath, verbose = false) {
+function probe(filepath: string, verbose: boolean = false): import('../scanner/MediaProbeData') | { error: string } {
   if (process.env.FFPROBE_PATH) {
     ffprobe.FFPROBE_PATH = process.env.FFPROBE_PATH
   }
@@ -328,7 +328,7 @@ export { probe }
  * @param {string} filepath
  * @returns {Object} ffprobe json output
  */
-function rawProbe(filepath) {
+function rawProbe(filepath: string): object {
   if (process.env.FFPROBE_PATH) {
     ffprobe.FFPROBE_PATH = process.env.FFPROBE_PATH
   }

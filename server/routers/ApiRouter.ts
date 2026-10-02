@@ -38,21 +38,21 @@ import ApiKeyController = require('../controllers/ApiKeyController')
 
 class ApiRouter {
   /** @type {import('../Auth')} */
-  auth
+  auth: import('../Auth')
   /** @type {import('../managers/PlaybackSessionManager')} */
-  playbackSessionManager
+  playbackSessionManager: import('../managers/PlaybackSessionManager')
   /** @type {import('../managers/AbMergeManager')} */
-  abMergeManager
+  abMergeManager: import('../managers/AbMergeManager')
   /** @type {import('../managers/BackupManager')} */
-  backupManager
+  backupManager: import('../managers/BackupManager')
   /** @type {import('../managers/PodcastManager')} */
-  podcastManager
+  podcastManager: import('../managers/PodcastManager')
   /** @type {import('../managers/AudioMetadataManager')} */
-  audioMetadataManager
+  audioMetadataManager: import('../managers/AudioMetadataManager')
   /** @type {import('../managers/CronManager')} */
-  cronManager
+  cronManager: import('../managers/CronManager')
   /** @type {import('../managers/EmailManager')} */
-  emailManager
+  emailManager: import('../managers/EmailManager')
 
   constructor(Server) {
     this.auth = Server.auth
@@ -379,7 +379,7 @@ class ApiRouter {
    * @param {string[]} mediaItemIds array of bookId or podcastEpisodeId
    * @param {string} libraryId
    */
-  async handleDeleteLibraryItem(libraryItemId, mediaItemIds, libraryId) {
+  async handleDeleteLibraryItem(libraryItemId: string, mediaItemIds: string[], libraryId: string) {
     const numProgressRemoved = await Database.mediaProgressModel.destroy({
       where: {
         mediaItemId: mediaItemIds
@@ -420,7 +420,7 @@ class ApiRouter {
    *
    * @param {string[]} seriesIds
    */
-  async checkRemoveEmptySeries(seriesIds) {
+  async checkRemoveEmptySeries(seriesIds: string[]) {
     if (!seriesIds?.length) return
 
     const transaction = await Database.sequelize.transaction()
@@ -478,7 +478,7 @@ class ApiRouter {
    * @param {string[]} authorIds
    * @returns {Promise<void>}
    */
-  async checkRemoveAuthorsWithNoBooks(authorIds) {
+  async checkRemoveAuthorsWithNoBooks(authorIds: string[]): Promise<void> {
     if (!authorIds?.length) return
 
     const transaction = await Database.sequelize.transaction()

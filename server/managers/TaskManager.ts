@@ -10,7 +10,7 @@ import Task = require('../objects/Task')
 
 class TaskManager {
   /** @type {Task[]} */
-  tasks
+  tasks: Task[]
 
   constructor() {
     this.tasks = []
@@ -21,7 +21,7 @@ class TaskManager {
    *
    * @param {Task} task
    */
-  addTask(task) {
+  addTask(task: Task) {
     this.tasks.push(task)
     SocketAuthority.emitter('task_started', task.toJSON())
   }
@@ -31,7 +31,7 @@ class TaskManager {
    *
    * @param {Task} task
    */
-  taskFinished(task) {
+  taskFinished(task: Task) {
     if (this.tasks.some((t) => t.id === task.id)) {
       this.tasks = this.tasks.filter((t) => t.id !== task.id)
       SocketAuthority.emitter('task_finished', task.toJSON())
@@ -47,7 +47,7 @@ class TaskManager {
    * @param {boolean} showSuccess
    * @param {Object} [data]
    */
-  createAndAddTask(action, titleString, descriptionString, showSuccess, data = {}) {
+  createAndAddTask(action: string, titleString: TaskString, descriptionString: TaskString | null, showSuccess: boolean, data: object = {}) {
     const task = new Task()
     task.setData(action, titleString, descriptionString, showSuccess, data)
     this.addTask(task)
@@ -62,7 +62,7 @@ class TaskManager {
    * @param {TaskString|null} descriptionString
    * @param {TaskString} errorMessageString
    */
-  createAndEmitFailedTask(action, titleString, descriptionString, errorMessageString) {
+  createAndEmitFailedTask(action: string, titleString: TaskString, descriptionString: TaskString | null, errorMessageString: TaskString) {
     const task = new Task()
     task.setData(action, titleString, descriptionString, false)
     task.setFailed(errorMessageString)

@@ -2,15 +2,15 @@ import { DataTypes, Model } from 'sequelize'
 
 class LibraryFolder extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {string} */
-  declare path
+  declare path: string
   /** @type {string} */
-  declare libraryId
+  declare libraryId: string
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
   /** @type {Date} */
-  declare updatedAt
+  declare updatedAt: Date
 
   constructor(values, options) {
     super(values, options)
@@ -21,7 +21,7 @@ class LibraryFolder extends Model {
    * Initialize model
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {

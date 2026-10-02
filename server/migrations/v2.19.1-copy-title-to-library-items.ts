@@ -1,13 +1,13 @@
 import util = require('util')
 
-/**
- * @typedef MigrationContext
- * @property {import('sequelize').QueryInterface} queryInterface - a suquelize QueryInterface object.
- * @property {import('../Logger')} logger - a Logger object.
- *
- * @typedef MigrationOptions
- * @property {MigrationContext} context - an object containing the migration context.
- */
+interface MigrationContext {
+  queryInterface: import('sequelize').QueryInterface
+  logger: import('../Logger')
+}
+
+interface MigrationOptions {
+  context: MigrationContext
+}
 
 const migrationVersion = '2.19.1'
 const migrationName = `${migrationVersion}-copy-title-to-library-items`
@@ -21,7 +21,7 @@ const loggerPrefix = `[${migrationVersion} migration]`
  * @param {MigrationOptions} options - an object containing the migration context.
  * @returns {Promise<void>} - A promise that resolves when the migration is complete.
  */
-async function up({ context: { queryInterface, logger } }) {
+async function up({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   // Upwards migration script
   logger.info(`${loggerPrefix} UPGRADE BEGIN: ${migrationName}`)
 
@@ -47,7 +47,7 @@ async function up({ context: { queryInterface, logger } }) {
  * @param {MigrationOptions} options - an object containing the migration context.
  * @returns {Promise<void>} - A promise that resolves when the migration is complete.
  */
-async function down({ context: { queryInterface, logger } }) {
+async function down({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   // Downward migration script
   logger.info(`${loggerPrefix} DOWNGRADE BEGIN: ${migrationName}`)
 
@@ -72,7 +72,7 @@ async function down({ context: { queryInterface, logger } }) {
  * @param {string} tableName
  * @param {string[]} columns
  */
-async function addIndex(queryInterface, logger, tableName, columns) {
+async function addIndex(queryInterface: import('sequelize').QueryInterface, logger: import('../Logger'), tableName: string, columns: string[]) {
   const columnString = columns.map((column) => util.inspect(column)).join(', ')
   const indexName = convertToSnakeCase(`${tableName}_${columns.map((column) => (typeof column === 'string' ? column : column.name)).join('_')}`)
   try {
@@ -97,7 +97,7 @@ async function addIndex(queryInterface, logger, tableName, columns) {
  * @param {string} tableName
  * @param {string[]} columns
  */
-async function removeIndex(queryInterface, logger, tableName, columns) {
+async function removeIndex(queryInterface: import('sequelize').QueryInterface, logger: import('../Logger'), tableName: string, columns: string[]) {
   logger.info(`${loggerPrefix} removing index [${columns.join(', ')}] from table "${tableName}"`)
   await queryInterface.removeIndex(tableName, columns)
   logger.info(`${loggerPrefix} removed index [${columns.join(', ')}] from table "${tableName}"`)

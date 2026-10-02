@@ -2,19 +2,19 @@ import { DataTypes, Model, Sequelize } from 'sequelize'
 
 class Collection extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {string} */
-  declare name
+  declare name: string
   /** @type {string} */
-  declare description
+  declare description: string
   /** @type {string} */
-  declare libraryId
+  declare libraryId: string
   /** @type {Date} */
-  declare updatedAt
+  declare updatedAt: Date
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
   /** @type {import('./Book').BookExpandedWithLibraryItem[]} - only set when expanded */
-  declare books
+  declare books: import('./Book').BookExpandedWithLibraryItem[]
 
   constructor(values, options) {
     super(values, options)
@@ -32,7 +32,7 @@ class Collection extends Model {
    * @param {string[]} [include]
    * @async
    */
-  static async getOldCollectionsJsonExpanded(user, libraryId, include) {
+  static async getOldCollectionsJsonExpanded(user: import('./User'), libraryId: string, include: string[]) {
     let collectionWhere = null
     if (libraryId) {
       collectionWhere = {
@@ -116,7 +116,7 @@ class Collection extends Model {
    * @param {string} collectionId
    * @returns {Promise<Collection>}
    */
-  static async getExpandedById(collectionId) {
+  static async getExpandedById(collectionId: string): Promise<Collection> {
     return this.findByPk(collectionId, {
       include: [
         {
@@ -149,7 +149,7 @@ class Collection extends Model {
    * @param {string} libraryId
    * @returns {Promise<number>} number of collections destroyed
    */
-  static async removeAllForLibrary(libraryId) {
+  static async removeAllForLibrary(libraryId: string): Promise<number> {
     if (!libraryId) return 0
     return this.destroy({
       where: {
@@ -162,7 +162,7 @@ class Collection extends Model {
    * Initialize model
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {
@@ -190,7 +190,7 @@ class Collection extends Model {
    *
    * @returns {Promise<import('./Book').BookExpandedWithLibraryItem[]>}
    */
-  getBooksExpandedWithLibraryItem() {
+  getBooksExpandedWithLibraryItem(): Promise<import('./Book').BookExpandedWithLibraryItem[]> {
     return this.getBooks({
       include: [
         {
@@ -220,7 +220,7 @@ class Collection extends Model {
    * @param {string[]} [include]
    * @async
    */
-  async getOldJsonExpanded(user, include) {
+  async getOldJsonExpanded(user: import('./User') | null, include: string[]) {
     this.books = await this.getBooksExpandedWithLibraryItem()
 
     // Filter books using user permissions
@@ -261,7 +261,7 @@ class Collection extends Model {
    * @param {string[]} [libraryItemIds=[]]
    * @returns
    */
-  toOldJSON(libraryItemIds = []) {
+  toOldJSON(libraryItemIds: string[] = []) {
     return {
       id: this.id,
       libraryId: this.libraryId,

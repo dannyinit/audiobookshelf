@@ -5,7 +5,7 @@
  * @param {import('express').Request} req
  * @returns {boolean}
  */
-function isRequestSecure(req) {
+function isRequestSecure(req: import('express').Request): boolean {
   if (req.secure) return true
   const xfp = (req.get('x-forwarded-proto') || '').toLowerCase()
   // Nginx Proxy Manager sends "http, https"; see https://github.com/advplyr/audiobookshelf/pull/4635
@@ -22,7 +22,7 @@ function isRequestSecure(req) {
  * @param {import('express').Request} req
  * @returns {'https' | 'http'}
  */
-function getRequestProtocol(req) {
+function getRequestProtocol(req: import('express').Request): 'https' | 'http' {
   return isRequestSecure(req) ? 'https' : 'http'
 }
 
@@ -30,7 +30,7 @@ function getRequestProtocol(req) {
  * @param {import('express').Request} req
  * @returns {{ protocol: 'https' | 'http', host: string, origin: string }}
  */
-function getRequestOrigin(req) {
+function getRequestOrigin(req: import('express').Request): { protocol: 'https' | 'http'; host: string; origin: string } {
   const protocol = getRequestProtocol(req)
   const host = req.get('host')
   return { protocol, host, origin: `${protocol}://${host}` }

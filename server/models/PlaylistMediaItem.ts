@@ -2,19 +2,19 @@ import { DataTypes, Model } from 'sequelize'
 
 class PlaylistMediaItem extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {string} */
-  declare mediaItemId
+  declare mediaItemId: string
   /** @type {string} */
-  declare mediaItemType
+  declare mediaItemType: string
   /** @type {number} */
-  declare order
+  declare order: number
   /** @type {string} */
-  declare playlistId
+  declare playlistId: string
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
   /** @type {import('./Book')|import('./PodcastEpisode')} - only set when expanded */
-  declare mediaItem
+  declare mediaItem: import('./Book') | import('./PodcastEpisode')
 
   constructor(values, options) {
     super(values, options)
@@ -34,7 +34,7 @@ class PlaylistMediaItem extends Model {
    * Initialize model
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {

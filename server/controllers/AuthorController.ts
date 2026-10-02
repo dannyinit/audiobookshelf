@@ -16,17 +16,17 @@ const naturalSort = createNewSortInstance({
   comparer: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare
 })
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- *
- * @typedef RequestEntityObject
- * @property {import('../models/Author')} author
- *
- * @typedef {RequestWithUser & RequestEntityObject} AuthorControllerRequest
- */
+interface RequestUserObject {
+  user: import('../models/User')
+}
+
+type RequestWithUser = Request & RequestUserObject
+
+interface RequestEntityObject {
+  author: import('../models/Author')
+}
+
+type AuthorControllerRequest = RequestWithUser & RequestEntityObject
 
 class AuthorController {
   constructor() {}
@@ -37,7 +37,7 @@ class AuthorController {
    * @param {AuthorControllerRequest} req
    * @param {Response} res
    */
-  async findOne(req, res) {
+  async findOne(req: AuthorControllerRequest, res: Response) {
     const include = (req.query.include || '').split(',')
 
     const authorJson = req.author.toOldJSON()
@@ -93,7 +93,7 @@ class AuthorController {
    * @param {AuthorControllerRequest} req
    * @param {Response} res
    */
-  async update(req, res) {
+  async update(req: AuthorControllerRequest, res: Response) {
     const keysToUpdate = ['name', 'description', 'asin']
     const payload = {}
     for (const key in req.body) {
@@ -230,7 +230,7 @@ class AuthorController {
    * @param {AuthorControllerRequest} req
    * @param {Response} res
    */
-  async delete(req, res) {
+  async delete(req: AuthorControllerRequest, res: Response) {
     Logger.info(`[AuthorController] Removing author "${req.author.name}"`)
 
     if (req.author.imagePath) {
@@ -264,7 +264,7 @@ class AuthorController {
    * @param {AuthorControllerRequest} req
    * @param {Response} res
    */
-  async uploadImage(req, res) {
+  async uploadImage(req: AuthorControllerRequest, res: Response) {
     if (!req.user.canUpload) {
       Logger.warn(`User "${req.user.username}" attempted to upload an image without permission`)
       return res.sendStatus(403)
@@ -310,7 +310,7 @@ class AuthorController {
    * @param {AuthorControllerRequest} req
    * @param {Response} res
    */
-  async deleteImage(req, res) {
+  async deleteImage(req: AuthorControllerRequest, res: Response) {
     if (!req.author.imagePath) {
       Logger.error(`[AuthorController] Author "${req.author.imagePath}" has no imagePath set`)
       return res.status(400).send('Author has no image path set')
@@ -334,7 +334,7 @@ class AuthorController {
    * @param {AuthorControllerRequest} req
    * @param {Response} res
    */
-  async match(req, res) {
+  async match(req: AuthorControllerRequest, res: Response) {
     let authorData = null
     const region = req.body.region || 'us'
     if (req.body.asin && isValidASIN(req.body.asin.toUpperCase?.())) {
@@ -388,7 +388,7 @@ class AuthorController {
    * @param {AuthorControllerRequest} req
    * @param {Response} res
    */
-  async getImage(req, res) {
+  async getImage(req: AuthorControllerRequest, res: Response) {
     const {
       query: { width, height, format, raw }
     } = req
@@ -424,7 +424,7 @@ class AuthorController {
    * @param {Response} res
    * @param {NextFunction} next
    */
-  async middleware(req, res, next) {
+  async middleware(req: RequestWithUser, res: Response, next: NextFunction) {
     const author = await Database.authorModel.findByPk(req.params.id)
     if (!author) return res.sendStatus(404)
     if (!req.user.checkCanAccessLibrary(author.libraryId)) return res.sendStatus(404)

@@ -4,21 +4,21 @@ import SocketAuthority = require('../SocketAuthority')
 
 class Playlist extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {string} */
-  declare name
+  declare name: string
   /** @type {string} */
-  declare description
+  declare description: string
   /** @type {string} */
-  declare libraryId
+  declare libraryId: string
   /** @type {string} */
-  declare userId
+  declare userId: string
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
   /** @type {Date} */
-  declare updatedAt
+  declare updatedAt: Date
   /** @type {import('./PlaylistMediaItem')[]} - only set when expanded */
-  declare playlistMediaItems
+  declare playlistMediaItems: import('./PlaylistMediaItem')[]
 
   constructor(values, options) {
     super(values, options)
@@ -35,7 +35,7 @@ class Playlist extends Model {
    * @param {string} libraryId
    * @async
    */
-  static async getOldPlaylistsForUserAndLibrary(userId, libraryId) {
+  static async getOldPlaylistsForUserAndLibrary(userId: string, libraryId: string) {
     if (!userId && !libraryId) return []
 
     const whereQuery = {}
@@ -94,7 +94,7 @@ class Playlist extends Model {
    * @param {string} libraryId
    * @returns
    */
-  static async getNumPlaylistsForUserAndLibrary(userId, libraryId) {
+  static async getNumPlaylistsForUserAndLibrary(userId: string, libraryId: string) {
     return this.count({
       where: {
         userId,
@@ -108,7 +108,7 @@ class Playlist extends Model {
    * @param {string[]} mediaItemIds
    * @returns {Promise<Playlist[]>}
    */
-  static async getPlaylistsForMediaItemIds(mediaItemIds) {
+  static async getPlaylistsForMediaItemIds(mediaItemIds: string[]): Promise<Playlist[]> {
     if (!mediaItemIds?.length) return []
 
     const playlistMediaItemsExpanded = await this.sequelize.models.playlistMediaItem.findAll({
@@ -170,7 +170,7 @@ class Playlist extends Model {
    *
    * @param {string[]} mediaItemIds
    */
-  static async removeMediaItemsFromPlaylists(mediaItemIds) {
+  static async removeMediaItemsFromPlaylists(mediaItemIds: string[]) {
     if (!mediaItemIds?.length) return
 
     const playlistsWithItem = await this.getPlaylistsForMediaItemIds(mediaItemIds)
@@ -212,7 +212,7 @@ class Playlist extends Model {
    * Initialize model
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {
@@ -270,7 +270,7 @@ class Playlist extends Model {
    *
    * @returns {Promise<import('./PlaylistMediaItem')[]>}
    */
-  getMediaItemsExpandedWithLibraryItem() {
+  getMediaItemsExpandedWithLibraryItem(): Promise<import('./PlaylistMediaItem')[]> {
     return this.getPlaylistMediaItems({
       include: [
         {
@@ -323,7 +323,7 @@ class Playlist extends Model {
    * @param {string} libraryItemId
    * @param {string} [episodeId]
    */
-  checkHasMediaItem(libraryItemId, episodeId) {
+  checkHasMediaItem(libraryItemId: string, episodeId: string) {
     if (!this.playlistMediaItems) {
       throw new Error('playlistMediaItems are required to check Playlist')
     }

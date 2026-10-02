@@ -12,7 +12,7 @@ export = {
    * @param {import('../../models/User')} user
    * @returns {{ podcastWhere:Sequelize.WhereOptions, replacements:object }}
    */
-  getUserPermissionPodcastWhereQuery(user) {
+  getUserPermissionPodcastWhereQuery(user: import('../../models/User')): { podcastWhere: Sequelize.WhereOptions; replacements: object } {
     const podcastWhere = []
     const replacements = {}
     if (!user.canAccessExplicitContent) {
@@ -46,7 +46,7 @@ export = {
    * @param {[string]} value
    * @returns {object} { Sequelize.WhereOptions, string[] }
    */
-  getMediaGroupQuery(group, value) {
+  getMediaGroupQuery(group: string, value: [string]): object {
     if (!group) return { mediaWhere: {}, replacements: {} }
 
     let mediaWhere = {}
@@ -75,7 +75,7 @@ export = {
    * @param {boolean} sortDesc
    * @returns {Sequelize.order}
    */
-  getOrder(sortBy, sortDesc) {
+  getOrder(sortBy: string, sortDesc: boolean): Sequelize.order {
     const dir = sortDesc ? 'DESC' : 'ASC'
     if (sortBy === 'addedAt') {
       return [[Sequelize.literal('libraryItem.createdAt'), dir]]
@@ -143,7 +143,7 @@ export = {
    * @param {number} offset
    * @returns {Promise<{ libraryItems: import('../../models/LibraryItem')[], count: number }>}
    */
-  async getFilteredLibraryItems(libraryId, user, filterGroup, filterValue, sortBy, sortDesc, include, limit, offset) {
+  async getFilteredLibraryItems(libraryId: string, user: import('../../models/User'), filterGroup: [string], filterValue: [string], sortBy: string, sortDesc: string, include: string[], limit: number, offset: number): Promise<{ libraryItems: import('../../models/LibraryItem')[]; count: number }> {
     const includeRSSFeed = include.includes('rssfeed')
     const includeNumEpisodesIncomplete = include.includes('numepisodesincomplete')
 
@@ -253,7 +253,7 @@ export = {
    * @param {boolean} isHomePage for home page shelves
    * @returns {Promise<{ libraryItems: import('../../models/LibraryItem')[], count: number }>}
    */
-  async getFilteredPodcastEpisodes(libraryId, user, filterGroup, filterValue, sortBy, sortDesc, limit, offset, isHomePage = false) {
+  async getFilteredPodcastEpisodes(libraryId: string, user: import('../../models/User'), filterGroup: [string], filterValue: [string], sortBy: string, sortDesc: string, limit: number, offset: number, isHomePage: boolean = false): Promise<{ libraryItems: import('../../models/LibraryItem')[]; count: number }> {
     if (sortBy === 'progress' && filterGroup !== 'progress') {
       Logger.warn('Cannot sort podcast episodes by progress without filtering by progress')
       sortBy = 'createdAt'
@@ -358,7 +358,7 @@ export = {
    * @param {number} offset
    * @returns {{podcast:object[], tags:object[]}}
    */
-  async search(user, library, query, limit, offset) {
+  async search(user: import('../../models/User'), library: import('../../models/Library'), query: string, limit: number, offset: number): { podcast: object[]; tags: object[] } {
     const userPermissionPodcastWhere = this.getUserPermissionPodcastWhereQuery(user)
 
     const textSearchQuery = await Database.createTextSearchQuery(query)
@@ -503,7 +503,7 @@ export = {
    * @param {number} offset
    * @returns {Promise<object[]>}
    */
-  async getRecentEpisodes(user, library, limit, offset) {
+  async getRecentEpisodes(user: import('../../models/User'), library: import('../../models/Library'), limit: number, offset: number): Promise<object[]> {
     const userPermissionPodcastWhere = this.getUserPermissionPodcastWhereQuery(user)
 
     const findOptions = {
@@ -562,7 +562,7 @@ export = {
    * @param {string} libraryId
    * @returns {Promise<{ totalSize:number, totalDuration:number, numAudioFiles:number, totalItems:number}>}
    */
-  async getPodcastLibraryStats(libraryId) {
+  async getPodcastLibraryStats(libraryId: string): Promise<{ totalSize: number; totalDuration: number; numAudioFiles: number; totalItems: number }> {
     const [sizeResults] = await Database.sequelize.query(`SELECT SUM(li.size) AS totalSize FROM libraryItems li WHERE li.mediaType = "podcast" AND li.libraryId = :libraryId;`, {
       replacements: {
         libraryId
@@ -586,7 +586,7 @@ export = {
    * @param {string} libraryId
    * @returns {{genre:string, count:number}[]}
    */
-  async getGenresWithCount(libraryId) {
+  async getGenresWithCount(libraryId: string): { genre: string; count: number }[] {
     const genres = []
     const [genreResults] = await Database.sequelize.query(`SELECT value, count(*) AS numItems FROM podcasts p, libraryItems li, json_each(p.genres) WHERE json_valid(p.genres) AND p.id = li.mediaId AND li.libraryId = :libraryId GROUP BY value ORDER BY numItems DESC;`, {
       replacements: {
@@ -609,7 +609,7 @@ export = {
    * @param {number} limit
    * @returns {Promise<{ id:string, title:string, duration:number }[]>}
    */
-  async getLongestPodcasts(libraryId, limit) {
+  async getLongestPodcasts(libraryId: string, limit: number): Promise<{ id: string; title: string; duration: number }[]> {
     const podcasts = await Database.podcastModel.findAll({
       attributes: ['id', 'title', [Sequelize.literal(`(SELECT SUM(json_extract(pe.audioFile, '$.duration')) FROM podcastEpisodes pe WHERE pe.podcastId = podcast.id)`), 'duration']],
       include: {

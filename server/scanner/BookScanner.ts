@@ -27,7 +27,6 @@ import NfoFileScanner = require('./NfoFileScanner')
 import AbsMetadataFileScanner = require('./AbsMetadataFileScanner')
 
 /**
- * Metadata for books pulled from files
  * @typedef BookMetadataObject
  * @property {string} title
  * @property {string} titleIgnorePrefix
@@ -49,6 +48,10 @@ import AbsMetadataFileScanner = require('./AbsMetadataFileScanner')
  * @property {string} coverPath
  */
 
+/**
+ * Metadata for books pulled from files
+ */
+
 class BookScanner {
   constructor() {}
 
@@ -59,9 +62,9 @@ class BookScanner {
    * @param {LibraryScan} libraryScan
    * @returns {Promise<{libraryItem:import('../models/LibraryItem'), wasUpdated:boolean}>}
    */
-  async rescanExistingBookLibraryItem(existingLibraryItem, libraryItemData, librarySettings, libraryScan) {
+  async rescanExistingBookLibraryItem(existingLibraryItem: import('../models/LibraryItem'), libraryItemData: import('./LibraryItemScanData'), librarySettings: import('../models/Library').LibrarySettingsObject, libraryScan: LibraryScan): Promise<{ libraryItem: import('../models/LibraryItem'); wasUpdated: boolean }> {
     /** @type {import('../models/Book')} */
-    const media = await existingLibraryItem.getMedia({
+    const media: import('../models/Book') = await existingLibraryItem.getMedia({
       include: [
         {
           model: Database.authorModel,
@@ -444,7 +447,7 @@ class BookScanner {
    * @param {LibraryScan} libraryScan
    * @returns {Promise<import('../models/LibraryItem')>}
    */
-  async scanNewBookLibraryItem(libraryItemData, librarySettings, libraryScan) {
+  async scanNewBookLibraryItem(libraryItemData: import('./LibraryItemScanData'), librarySettings: import('../models/Library').LibrarySettingsObject, libraryScan: LibraryScan): Promise<import('../models/LibraryItem')> {
     // Scan audio files found
     let scannedAudioFiles = await AudioFileScanner.executeMediaFileScans(libraryItemData.mediaType, libraryItemData, libraryItemData.audioLibraryFiles)
     scannedAudioFiles = AudioFileScanner.runSmartTrackOrder(libraryItemData.relPath, scannedAudioFiles)
@@ -657,7 +660,7 @@ class BookScanner {
    * @param {string} [existingLibraryItemId]
    * @returns {Promise<BookMetadataObject>}
    */
-  async getBookMetadataFromScanData(audioFiles, ebookFileScanData, libraryItemData, libraryScan, librarySettings, existingLibraryItemId = null) {
+  async getBookMetadataFromScanData(audioFiles: import('../models/Book').AudioFileObject[], ebookFileScanData: import('../utils/parsers/parseEbookMetadata').EBookFileScanData, libraryItemData: import('./LibraryItemScanData'), libraryScan: LibraryScan, librarySettings: import('../models/Library').LibrarySettingsObject, existingLibraryItemId: string = null): Promise<BookMetadataObject> {
     // First set book metadata from folder/file names
     const bookMetadata = {
       title: libraryItemData.mediaMetadata.title, // required
@@ -716,7 +719,7 @@ class BookScanner {
      * @param {LibraryScan} libraryScan
      * @param {string} existingLibraryItemId
      */
-    constructor(bookMetadata, audioFiles, ebookFileScanData, libraryItemData, libraryScan, existingLibraryItemId) {
+    constructor(bookMetadata: object, audioFiles: import('../models/Book').AudioFileObject[], ebookFileScanData: import('../utils/parsers/parseEbookMetadata').EBookFileScanData, libraryItemData: import('./LibraryItemScanData'), libraryScan: LibraryScan, existingLibraryItemId: string) {
       this.bookMetadata = bookMetadata
       this.audioFiles = audioFiles
       this.ebookFileScanData = ebookFileScanData
@@ -822,7 +825,7 @@ class BookScanner {
    * @param {LibraryScan} libraryScan
    * @returns {Promise}
    */
-  async saveMetadataFile(libraryItem, libraryScan) {
+  async saveMetadataFile(libraryItem: import('../models/LibraryItem'), libraryScan: LibraryScan): Promise<any> {
     let metadataPath = Path.join(global.MetadataPath, 'items', libraryItem.id)
     let storeMetadataWithItem = global.ServerSettings.storeMetadataWithItem
     if (storeMetadataWithItem && !libraryItem.isFile) {
@@ -908,7 +911,7 @@ class BookScanner {
    * @param {import('./LibraryScan')|import('./ScanLogger')} scanLogger
    * @returns {Promise}
    */
-  async emitAuthorsNumBooksUpdated(libraryId, scanLogger) {
+  async emitAuthorsNumBooksUpdated(libraryId: string, scanLogger: import('./LibraryScan') | import('./ScanLogger')): Promise<any> {
     if (!scanLogger.authorsNumBooksChangedIds?.size) return
 
     const authorIds = [...scanLogger.authorsNumBooksChangedIds]
@@ -936,7 +939,7 @@ class BookScanner {
    * @param {import('./ScanLogger')} scanLogger
    * @returns {Promise}
    */
-  async checkAuthorsRemovedFromBooks(libraryId, scanLogger) {
+  async checkAuthorsRemovedFromBooks(libraryId: string, scanLogger: import('./ScanLogger')): Promise<any> {
     const bookAuthorsToRemove = (
       await Database.authorModel.findAll({
         where: [
@@ -979,7 +982,7 @@ class BookScanner {
    * @param {import('./ScanLogger')} scanLogger
    * @returns {Promise}
    */
-  async checkSeriesRemovedFromBooks(libraryId, scanLogger) {
+  async checkSeriesRemovedFromBooks(libraryId: string, scanLogger: import('./ScanLogger')): Promise<any> {
     const bookSeriesToRemove = (
       await Database.seriesModel.findAll({
         where: [
@@ -1018,7 +1021,7 @@ class BookScanner {
    * @param {LibraryScan} libraryScan
    * @returns {Promise<string>} path to downloaded cover or null if no cover found
    */
-  async searchForCover(libraryItemId, libraryItemPath, title, author, libraryScan) {
+  async searchForCover(libraryItemId: string, libraryItemPath: string, title: string, author: string, libraryScan: LibraryScan): Promise<string> {
     const options = {
       titleDistance: 2,
       authorDistance: 2

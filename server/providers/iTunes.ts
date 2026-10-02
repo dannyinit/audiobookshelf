@@ -2,30 +2,28 @@ import axios = require('axios')
 import Logger = require('../Logger')
 import htmlSanitizer = require('../utils/htmlSanitizer')
 
-/**
- * @typedef iTunesSearchParams
- * @property {string} term
- * @property {string} country
- * @property {string} media
- * @property {string} entity
- * @property {number} limit
- */
+interface iTunesSearchParams {
+  term: string
+  country: string
+  media: string
+  entity: string
+  limit: number
+}
 
-/**
- * @typedef iTunesPodcastSearchResult
- * @property {string} id
- * @property {string} artistId
- * @property {string} title
- * @property {string} artistName
- * @property {string} description
- * @property {string} descriptionPlain
- * @property {string} releaseDate
- * @property {string[]} genres
- * @property {string} cover
- * @property {string} feedUrl
- * @property {string} pageUrl
- * @property {boolean} explicit
- */
+interface iTunesPodcastSearchResult {
+  id: string
+  artistId: string
+  title: string
+  artistName: string
+  description: string
+  descriptionPlain: string
+  releaseDate: string
+  genres: string[]
+  cover: string
+  feedUrl: string
+  pageUrl: string
+  explicit: boolean
+}
 
 class iTunes {
   #responseTimeout = 10000
@@ -39,7 +37,7 @@ class iTunes {
    * @param {number} [timeout] response timeout in ms
    * @returns {Promise<Object[]>}
    */
-  search(options, timeout = this.#responseTimeout) {
+  search(options: iTunesSearchParams, timeout: number = this.#responseTimeout): Promise<object[]> {
     if (!options.term) {
       Logger.error('[iTunes] Invalid search options - no term')
       return []
@@ -125,7 +123,7 @@ class iTunes {
    * @param {number} [timeout] response timeout in ms
    * @returns {Promise<Object[]>}
    */
-  searchAudiobooks(term, timeout = this.#responseTimeout) {
+  searchAudiobooks(term: string, timeout: number = this.#responseTimeout): Promise<object[]> {
     return this.search({ term, entity: 'audiobook', media: 'audiobook' }, timeout).then((results) => {
       return results.map(this.cleanAudiobook.bind(this))
     })
@@ -136,7 +134,7 @@ class iTunes {
    * @param {Object} data
    * @returns {iTunesPodcastSearchResult}
    */
-  cleanPodcast(data) {
+  cleanPodcast(data: object): iTunesPodcastSearchResult {
     return {
       id: data.collectionId,
       artistId: data.artistId || null,
@@ -161,7 +159,7 @@ class iTunes {
    * @param {number} [timeout] response timeout in ms
    * @returns {Promise<iTunesPodcastSearchResult[]>}
    */
-  searchPodcasts(term, options = {}, timeout = this.#responseTimeout) {
+  searchPodcasts(term: string, options: { country: string } = {}, timeout: number = this.#responseTimeout): Promise<iTunesPodcastSearchResult[]> {
     return this.search({ term, entity: 'podcast', media: 'podcast', ...options }, timeout).then((results) => {
       return results.map(this.cleanPodcast.bind(this))
     })

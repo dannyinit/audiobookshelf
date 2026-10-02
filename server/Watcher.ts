@@ -16,21 +16,21 @@ import { filePathToPOSIX, isSameOrSubPath, getFileMTimeMs, shouldIgnoreFile } fr
  */
 class FolderWatcher extends EventEmitter {
   /** @type {{id:string, name:string, libraryFolders:import('./models/Folder')[], paths:string[], watcher:Watcher[]}[]} */
-  declare libraryWatchers
+  declare libraryWatchers: { id: string; name: string; libraryFolders: import('./models/Folder')[]; paths: string[]; watcher: Watcher[] }[]
   /** @type {PendingFileUpdate[]} */
-  declare pendingFileUpdates
+  declare pendingFileUpdates: PendingFileUpdate[]
   /** @type {NodeJS.Timeout} */
-  declare pendingTimeout
+  declare pendingTimeout: NodeJS.Timeout
   /** @type {Task} */
-  declare pendingTask
+  declare pendingTask: Task
   /** @type {Set<string>} */
-  declare ignoreFilePathsDownloading
+  declare ignoreFilePathsDownloading: Set<string>
   /** @type {string[]} */
-  declare ignoreDirs
+  declare ignoreDirs: string[]
   /** @type {string[]} */
-  declare pendingDirsToRemoveFromIgnore
+  declare pendingDirsToRemoveFromIgnore: string[]
   /** @type {NodeJS.Timeout} */
-  declare removeFromIgnoreTimer
+  declare removeFromIgnoreTimer: NodeJS.Timeout
 
   constructor() {
     super()
@@ -59,7 +59,7 @@ class FolderWatcher extends EventEmitter {
    *
    * @param {import('./models/Library')} library
    */
-  buildLibraryWatcher(library) {
+  buildLibraryWatcher(library: import('./models/Library')) {
     if (this.libraryWatchers.find((w) => w.id === library.id)) {
       Logger.warn('[Watcher] Already watching library', library.name)
       return
@@ -114,7 +114,7 @@ class FolderWatcher extends EventEmitter {
    *
    * @param {import('./models/Library')[]} libraries
    */
-  initWatcher(libraries) {
+  initWatcher(libraries: import('./models/Library')[]) {
     libraries.forEach((lib) => {
       if (!lib.settings.disableWatcher) {
         this.buildLibraryWatcher(lib)
@@ -126,7 +126,7 @@ class FolderWatcher extends EventEmitter {
    *
    * @param {import('./models/Library')} library
    */
-  addLibrary(library) {
+  addLibrary(library: import('./models/Library')) {
     if (this.disabled || library.settings.disableWatcher) return
     this.buildLibraryWatcher(library)
   }
@@ -135,7 +135,7 @@ class FolderWatcher extends EventEmitter {
    *
    * @param {import('./models/Library')} library
    */
-  updateLibrary(library) {
+  updateLibrary(library: import('./models/Library')) {
     if (this.disabled) return
 
     const libwatcher = this.libraryWatchers.find((lib) => lib.id === library.id)
@@ -172,7 +172,7 @@ class FolderWatcher extends EventEmitter {
    *
    * @param {import('./models/Library')} library
    */
-  removeLibrary(library) {
+  removeLibrary(library: import('./models/Library')) {
     if (this.disabled) return
     var libwatcher = this.libraryWatchers.find((lib) => lib.id === library.id)
     if (libwatcher) {
@@ -194,7 +194,7 @@ class FolderWatcher extends EventEmitter {
    * @param {string} libraryId
    * @param {string} path
    */
-  onFileAdded(libraryId, path) {
+  onFileAdded(libraryId: string, path: string) {
     if (this.checkShouldIgnorePath(path)) {
       return
     }
@@ -215,7 +215,7 @@ class FolderWatcher extends EventEmitter {
    * @param {string} libraryId
    * @param {string} path
    */
-  onFileRemoved(libraryId, path) {
+  onFileRemoved(libraryId: string, path: string) {
     if (this.checkShouldIgnorePath(path)) {
       return
     }
@@ -229,7 +229,7 @@ class FolderWatcher extends EventEmitter {
    * @param {string} libraryId
    * @param {string} path
    */
-  onFileRename(libraryId, pathFrom, pathTo) {
+  onFileRename(libraryId: string, pathFrom, pathTo) {
     if (this.checkShouldIgnorePath(pathTo)) {
       return
     }
@@ -245,7 +245,7 @@ class FolderWatcher extends EventEmitter {
    * @param {number} [lastMTimeMs=0]
    * @param {number} [loop=0]
    */
-  async waitForFileToAdd(path, lastMTimeMs = 0, loop = 0) {
+  async waitForFileToAdd(path: string, lastMTimeMs: number = 0, loop: number = 0) {
     // Safety to catch infinite loop (600s)
     if (loop >= 200) {
       Logger.warn(`[Watcher] Waiting to add file at "${path}" timeout (loop ${loop}) - bailing`)
@@ -274,7 +274,7 @@ class FolderWatcher extends EventEmitter {
    * @param {string} type
    * @returns {boolean} - If file was added to pending updates
    */
-  addFileUpdate(libraryId, path, type) {
+  addFileUpdate(libraryId: string, path: string, type: string): boolean {
     if (this.pendingFilePaths.includes(path)) return false
 
     // Get file library
@@ -362,7 +362,7 @@ class FolderWatcher extends EventEmitter {
    * @param {string} path
    * @returns {boolean}
    */
-  checkShouldIgnorePath(path) {
+  checkShouldIgnorePath(path: string): boolean {
     return !!this.ignoreDirs.find((dirpath) => {
       return isSameOrSubPath(dirpath, path)
     })
@@ -375,7 +375,7 @@ class FolderWatcher extends EventEmitter {
    * @param {string} path
    * @returns {boolean}
    */
-  checkShouldIgnoreFilePath(path) {
+  checkShouldIgnoreFilePath(path: string): boolean {
     if (this.pendingFilePaths.includes(path)) return true
     return this.ignoreFilePathsDownloading.has(path)
   }
@@ -385,7 +385,7 @@ class FolderWatcher extends EventEmitter {
    * @param {string} path
    * @returns {string}
    */
-  cleanDirPath(path) {
+  cleanDirPath(path: string): string {
     path = filePathToPOSIX(path)
     if (path.endsWith('/')) path = path.slice(0, -1)
     return path
@@ -395,7 +395,7 @@ class FolderWatcher extends EventEmitter {
    * Ignore this directory if files are picked up by watcher
    * @param {string} path
    */
-  addIgnoreDir(path) {
+  addIgnoreDir(path: string) {
     path = this.cleanDirPath(path)
     this.pendingDirsToRemoveFromIgnore = this.pendingDirsToRemoveFromIgnore.filter((p) => p !== path)
     if (this.ignoreDirs.includes(path)) {
@@ -413,7 +413,7 @@ class FolderWatcher extends EventEmitter {
    *
    * @param {string} path
    */
-  removeIgnoreDir(path) {
+  removeIgnoreDir(path: string) {
     path = this.cleanDirPath(path)
     if (!this.ignoreDirs.includes(path)) {
       Logger.debug(`[Watcher] removeIgnoreDir: Path is not being ignored "${path}"`)

@@ -13,7 +13,7 @@ class OpenLibrary {
    * @param {number} timeout
    * @returns {Promise<Object>}
    */
-  get(uri, timeout = this.#responseTimeout) {
+  get(uri: string, timeout: number = this.#responseTimeout): Promise<object> {
     if (!timeout || isNaN(timeout)) timeout = this.#responseTimeout
     return axios
       .get(`${this.baseUrl}/${uri}`, {
@@ -106,7 +106,7 @@ class OpenLibrary {
    * @param {number} timeout
    * @returns {Promise<Object[]>}
    */
-  async searchTitle(title, timeout = this.#responseTimeout) {
+  async searchTitle(title: string, timeout: number = this.#responseTimeout): Promise<object[]> {
     title = encodeURIComponent(title)
     var lookupData = await this.get(`/search.json?title=${title}`, timeout)
     if (!lookupData) {

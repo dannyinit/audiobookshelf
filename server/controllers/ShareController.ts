@@ -12,12 +12,11 @@ import zipHelpers = require('../utils/zipHelpers')
 import PlaybackSession = require('../objects/PlaybackSession')
 import ShareManager = require('../managers/ShareManager')
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- */
+interface RequestUserObject {
+  user: import('../models/User')
+}
+
+type RequestWithUser = Request & RequestUserObject
 
 class ShareController {
   constructor() {}
@@ -32,7 +31,7 @@ class ShareController {
    * @param {Request} req
    * @param {Response} res
    */
-  async getMediaItemShareBySlug(req, res) {
+  async getMediaItemShareBySlug(req: Request, res: Response) {
     const { slug } = req.params
     // Optional start time
     let startTime = req.query.t && !isNaN(req.query.t) ? Math.max(0, parseInt(req.query.t)) : 0
@@ -137,7 +136,7 @@ class ShareController {
    * @param {Request} req
    * @param {Response} res
    */
-  async getMediaItemShareCoverImage(req, res) {
+  async getMediaItemShareCoverImage(req: Request, res: Response) {
     if (!req.cookies.share_session_id) {
       return res.status(404).send('Share session not set')
     }
@@ -177,7 +176,7 @@ class ShareController {
    * @param {Request} req
    * @param {Response} res
    */
-  async getMediaItemShareAudioTrack(req, res) {
+  async getMediaItemShareAudioTrack(req: Request, res: Response) {
     if (!req.cookies.share_session_id) {
       return res.status(404).send('Share session not set')
     }
@@ -223,7 +222,7 @@ class ShareController {
    * @param {Request} req
    * @param {Response} res
    */
-  async downloadMediaItemShare(req, res) {
+  async downloadMediaItemShare(req: Request, res: Response) {
     if (!req.cookies.share_session_id) {
       return res.status(404).send('Share session not set')
     }
@@ -282,7 +281,7 @@ class ShareController {
    * @param {Request} req
    * @param {Response} res
    */
-  async updateMediaItemShareProgress(req, res) {
+  async updateMediaItemShareProgress(req: Request, res: Response) {
     if (!req.cookies.share_session_id) {
       return res.status(404).send('Share session not set')
     }
@@ -316,7 +315,7 @@ class ShareController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async createMediaItemShare(req, res) {
+  async createMediaItemShare(req: RequestWithUser, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[ShareController] Non-admin user "${req.user.username}" attempted to create item share`)
       return res.sendStatus(403)
@@ -381,7 +380,7 @@ class ShareController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async deleteMediaItemShare(req, res) {
+  async deleteMediaItemShare(req: RequestWithUser, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[ShareController] Non-admin user "${req.user.username}" attempted to delete item share`)
       return res.sendStatus(403)

@@ -28,12 +28,11 @@ const providerMap = {
   audnexus: 'Audnexus'
 }
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- */
+interface RequestUserObject {
+  user: import('../models/User')
+}
+
+type RequestWithUser = Request & RequestUserObject
 
 class SearchController {
   constructor() {}
@@ -44,7 +43,7 @@ class SearchController {
    * @param {string} methodName - Name of the calling method for logging
    * @returns {Promise<import('../models/LibraryItem').LibraryItemExpanded>}
    */
-  static async fetchLibraryItem(id) {
+  static async fetchLibraryItem(id: string): Promise<import('../models/LibraryItem').LibraryItemExpanded> {
     const libraryItem = await Database.libraryItemModel.getExpandedById(id)
     if (!libraryItem) {
       throw new NotFoundError(`library item "${id}" not found`)
@@ -57,7 +56,7 @@ class SearchController {
    * @param {Array} providers - Array of custom provider objects
    * @returns {Array<{value: string, text: string}>}
    */
-  static mapCustomProviders(providers) {
+  static mapCustomProviders(providers: Array<any>): Array<{ value: string; text: string }> {
     return providers.map((provider) => ({
       value: provider.getSlug(),
       text: provider.name
@@ -69,7 +68,7 @@ class SearchController {
    * @param {string} providerValue - Provider identifier
    * @returns {{value: string, text: string}}
    */
-  static formatProvider(providerValue) {
+  static formatProvider(providerValue: string): { value: string; text: string } {
     return {
       value: providerValue,
       text: providerMap[providerValue] || providerValue
@@ -82,7 +81,7 @@ class SearchController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async findBooks(req, res) {
+  async findBooks(req: RequestWithUser, res: Response) {
     try {
       const query = req.query
       const provider = getQueryParamAsString(query, 'provider', 'google')
@@ -110,7 +109,7 @@ class SearchController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async findCovers(req, res) {
+  async findCovers(req: RequestWithUser, res: Response) {
     try {
       const query = req.query
       const podcast = query.podcast === '1' || query.podcast === 1
@@ -138,7 +137,7 @@ class SearchController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async findPodcasts(req, res) {
+  async findPodcasts(req: RequestWithUser, res: Response) {
     try {
       const query = req.query
       const term = getQueryParamAsString(query, 'term', '', true)
@@ -162,7 +161,7 @@ class SearchController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async findAuthor(req, res) {
+  async findAuthor(req: RequestWithUser, res: Response) {
     try {
       const query = getQueryParamAsString(req.query, 'q', '', true)
 
@@ -183,7 +182,7 @@ class SearchController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async findChapters(req, res) {
+  async findChapters(req: RequestWithUser, res: Response) {
     try {
       const query = req.query
       const asin = getQueryParamAsString(query, 'asin', '', true)
@@ -217,7 +216,7 @@ class SearchController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async getAllProviders(req, res) {
+  async getAllProviders(req: RequestWithUser, res: Response) {
     const customProviders = await Database.customMetadataProviderModel.findAll()
 
     const customBookProviders = customProviders.filter((p) => p.mediaType === 'book')

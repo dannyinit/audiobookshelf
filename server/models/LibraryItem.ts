@@ -8,75 +8,73 @@ import LibraryFile = require('../objects/files/LibraryFile')
 import Book = require('./Book')
 import Podcast = require('./Podcast')
 
-/**
- * @typedef LibraryFileObject
- * @property {string} ino
- * @property {boolean} isSupplementary
- * @property {number} addedAt
- * @property {number} updatedAt
- * @property {{filename:string, ext:string, path:string, relPath:string, size:number, mtimeMs:number, ctimeMs:number, birthtimeMs:number}} metadata
- */
+interface LibraryFileObject {
+  ino: string
+  isSupplementary: boolean
+  addedAt: number
+  updatedAt: number
+  metadata: { filename: string; ext: string; path: string; relPath: string; size: number; mtimeMs: number; ctimeMs: number; birthtimeMs: number} 
+}
 
-/**
- * @typedef LibraryItemExpandedProperties
- * @property {Book.BookExpanded|Podcast.PodcastExpanded} media
- *
- * @typedef {LibraryItem & LibraryItemExpandedProperties} LibraryItemExpanded
- */
+interface LibraryItemExpandedProperties {
+  media: Book.BookExpanded | Podcast.PodcastExpanded
+}
+
+type LibraryItemExpanded = LibraryItem & LibraryItemExpandedProperties
 
 class LibraryItem extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {string} */
-  declare ino
+  declare ino: string
   /** @type {string} */
-  declare path
+  declare path: string
   /** @type {string} */
-  declare relPath
+  declare relPath: string
   /** @type {string} */
-  declare mediaId
+  declare mediaId: string
   /** @type {string} */
-  declare mediaType
+  declare mediaType: string
   /** @type {boolean} */
-  declare isFile
+  declare isFile: boolean
   /** @type {boolean} */
-  declare isMissing
+  declare isMissing: boolean
   /** @type {boolean} */
-  declare isInvalid
+  declare isInvalid: boolean
   /** @type {Date} */
-  declare mtime
+  declare mtime: Date
   /** @type {Date} */
-  declare ctime
+  declare ctime: Date
   /** @type {Date} */
-  declare birthtime
+  declare birthtime: Date
   /** @type {BigInt} */
-  declare size
+  declare size: BigInt
   /** @type {Date} */
-  declare lastScan
+  declare lastScan: Date
   /** @type {string} */
-  declare lastScanVersion
+  declare lastScanVersion: string
   /** @type {LibraryFileObject[]} */
-  declare libraryFiles
+  declare libraryFiles: LibraryFileObject[]
   /** @type {Object} */
-  declare extraData
+  declare extraData: object
   /** @type {string} */
-  declare libraryId
+  declare libraryId: string
   /** @type {string} */
-  declare libraryFolderId
+  declare libraryFolderId: string
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
   /** @type {Date} */
-  declare updatedAt
+  declare updatedAt: Date
   /** @type {Book.BookExpanded|Podcast.PodcastExpanded} - only set when expanded */
-  declare media
+  declare media: Book.BookExpanded | Podcast.PodcastExpanded
   /** @type {string} */
-  declare title
+  declare title: string
   /** @type {string} */
-  declare titleIgnorePrefix
+  declare titleIgnorePrefix: string
   /** @type {string} */
-  declare authorNamesFirstLast
+  declare authorNamesFirstLast: string
   /** @type {string} */
-  declare authorNamesLastFirst
+  declare authorNamesLastFirst: string
 
   constructor(values, options) {
     super(values, options)
@@ -96,7 +94,7 @@ class LibraryItem extends Model {
    * @param {number} limit
    * @returns {Promise<LibraryItem[]>} LibraryItem
    */
-  static getLibraryItemsIncrement(offset, limit, where = null) {
+  static getLibraryItemsIncrement(offset: number, limit: number, where = null): Promise<LibraryItem[]> {
     return this.findAll({
       where,
       include: [
@@ -138,7 +136,7 @@ class LibraryItem extends Model {
    * @param {string} libraryItemId
    * @returns {Promise<number>} The number of destroyed rows
    */
-  static removeById(libraryItemId) {
+  static removeById(libraryItemId: string): Promise<number> {
     return this.destroy({
       where: {
         id: libraryItemId
@@ -152,7 +150,7 @@ class LibraryItem extends Model {
    * @param {import('sequelize').WhereOptions} where
    * @returns {Promise<LibraryItemExpanded[]>}
    */
-  static async findAllExpandedWhere(where = null) {
+  static async findAllExpandedWhere(where: import('sequelize').WhereOptions = null): Promise<LibraryItemExpanded[]> {
     return this.findAll({
       where,
       include: [
@@ -193,7 +191,7 @@ class LibraryItem extends Model {
    * @param {string} libraryItemId
    * @returns {Promise<LibraryItemExpanded>}
    */
-  static async getExpandedById(libraryItemId) {
+  static async getExpandedById(libraryItemId: string): Promise<LibraryItemExpanded> {
     if (!libraryItemId) return null
 
     const libraryItem = await this.findByPk(libraryItemId)
@@ -244,7 +242,7 @@ class LibraryItem extends Model {
    * @param {import('sequelize').IncludeOptions} [include]
    * @returns {Promise<LibraryItemExpanded>}
    */
-  static async findOneExpanded(where, replacements = null, include = null) {
+  static async findOneExpanded(where: import('sequelize').WhereOptions, replacements: import('sequelize').BindOrReplacements = null, include: import('sequelize').IncludeOptions = null): Promise<LibraryItemExpanded> {
     const libraryItem = await this.findOne({
       where,
       replacements,
@@ -296,7 +294,7 @@ class LibraryItem extends Model {
    * @param {object} options
    * @returns {{ libraryItems:Object[], count:number }}
    */
-  static async getByFilterAndSort(library, user, options) {
+  static async getByFilterAndSort(library: import('./Library'), user: import('./User'), options: object): { libraryItems: object[]; count: number } {
     let start = Date.now()
     const { libraryItems, count } = await libraryFilters.getFilteredLibraryItems(library.id, user, options)
     Logger.debug(`Loaded ${libraryItems.length} of ${count} items for libary page in ${((Date.now() - start) / 1000).toFixed(2)}s`)
@@ -340,7 +338,7 @@ class LibraryItem extends Model {
    * @param {number} limit
    * @returns {object[]} array of shelf objects
    */
-  static async getPersonalizedShelves(library, user, include, limit) {
+  static async getPersonalizedShelves(library: import('./Library'), user: import('./User'), include: string[], limit: number): object[] {
     const fullStart = Date.now() // Used for testing load times
 
     const shelves = []
@@ -569,7 +567,7 @@ class LibraryItem extends Model {
    * @param {import('./User')} user
    * @returns {Promise<LibraryItemExpanded[]>}
    */
-  static async getForAuthor(author, user = null) {
+  static async getForAuthor(author: import('./Author'), user: import('./User') = null): Promise<LibraryItemExpanded[]> {
     const { libraryItems } = await libraryFilters.getLibraryItemsForAuthor(author, user, undefined, undefined)
     return libraryItems
   }
@@ -579,7 +577,7 @@ class LibraryItem extends Model {
    * @param {string} libraryItemId
    * @returns {Promise<boolean>}
    */
-  static async checkExistsById(libraryItemId) {
+  static async checkExistsById(libraryItemId: string): Promise<boolean> {
     return (await this.count({ where: { id: libraryItemId } })) > 0
   }
 
@@ -588,7 +586,7 @@ class LibraryItem extends Model {
    * @param {string} libraryItemId
    * @returns {Promise<string>}
    */
-  static async getCoverPath(libraryItemId) {
+  static async getCoverPath(libraryItemId: string): Promise<string> {
     const libraryItem = await this.findByPk(libraryItemId, {
       attributes: ['id', 'mediaType', 'mediaId', 'libraryId'],
       include: [
@@ -614,7 +612,7 @@ class LibraryItem extends Model {
    *
    * @returns {Promise}
    */
-  async saveMetadataFile() {
+  async saveMetadataFile(): Promise<any> {
     let metadataPath = Path.join(global.MetadataPath, 'items', this.id)
     let storeMetadataWithItem = global.ServerSettings.storeMetadataWithItem
     if (storeMetadataWithItem && !this.isFile) {
@@ -720,7 +718,7 @@ class LibraryItem extends Model {
    * Initialize model
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {
@@ -859,7 +857,7 @@ class LibraryItem extends Model {
    *
    * @returns {boolean}
    */
-  get hasAudioTracks() {
+  get hasAudioTracks(): boolean {
     if (!this.media) {
       Logger.error(`[LibraryItem] hasAudioTracks: Library item "${this.id}" does not have media`)
       return false
@@ -872,7 +870,7 @@ class LibraryItem extends Model {
    * @param {import('sequelize').FindOptions} options
    * @returns {Promise<Book|Podcast>}
    */
-  getMedia(options) {
+  getMedia(options: import('sequelize').FindOptions): Promise<Book | Podcast> {
     if (!this.mediaType) return Promise.resolve(null)
     const mixinMethodName = `get${this.sequelize.uppercaseFirst(this.mediaType)}`
     return this[mixinMethodName](options)
@@ -882,7 +880,7 @@ class LibraryItem extends Model {
    *
    * @returns {Promise<Book|Podcast>}
    */
-  getMediaExpanded() {
+  getMediaExpanded(): Promise<Book | Podcast> {
     if (this.mediaType === 'podcast') {
       return this.getMedia({
         include: [
@@ -920,7 +918,7 @@ class LibraryItem extends Model {
    * @param {string} ino
    * @returns {import('./Book').AudioFileObject}
    */
-  getAudioFileWithIno(ino) {
+  getAudioFileWithIno(ino: string): import('./Book').AudioFileObject {
     if (!this.media) {
       Logger.error(`[LibraryItem] getAudioFileWithIno: Library item "${this.id}" does not have media`)
       return null
@@ -940,7 +938,7 @@ class LibraryItem extends Model {
    * @param {string} [episodeId]
    * @returns {import('./Book').AudioTrack[]}
    */
-  getTrackList(episodeId) {
+  getTrackList(episodeId: string): import('./Book').AudioTrack[] {
     if (!this.media) {
       Logger.error(`[LibraryItem] getTrackList: Library item "${this.id}" does not have media`)
       return []
@@ -953,7 +951,7 @@ class LibraryItem extends Model {
    * @param {string} ino
    * @returns {LibraryFile}
    */
-  getLibraryFileWithIno(ino) {
+  getLibraryFileWithIno(ino: string): LibraryFile {
     const libraryFile = this.libraryFiles.find((lf) => lf.ino === ino)
     if (!libraryFile) return null
     return new LibraryFile(libraryFile)

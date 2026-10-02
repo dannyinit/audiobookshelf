@@ -14,7 +14,7 @@ import AudioTrack = require('./files/AudioTrack')
 
 class Stream extends EventEmitter {
   /** @type {import('../models/LibraryItem')} */
-  declare libraryItem
+  declare libraryItem: import('../models/LibraryItem')
 
   constructor(sessionId, streamPath, user, libraryItem, episodeId, startTime, transcodeOptions = {}) {
     super()
@@ -46,7 +46,7 @@ class Stream extends EventEmitter {
   /**
    * @returns {import('../models/PodcastEpisode') | null}
    */
-  get episode() {
+  get episode(): import('../models/PodcastEpisode') | null {
     if (!this.libraryItem.isPodcast) return null
     return this.libraryItem.media.podcastEpisodes.find((ep) => ep.id === this.episodeId)
   }

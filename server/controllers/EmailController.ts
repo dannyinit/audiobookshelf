@@ -3,12 +3,11 @@ import Logger = require('../Logger')
 import SocketAuthority = require('../SocketAuthority')
 import Database = require('../Database')
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- */
+interface RequestUserObject {
+  user: import('../models/User')
+}
+
+type RequestWithUser = Request & RequestUserObject
 
 class EmailController {
   constructor() {}
@@ -19,7 +18,7 @@ class EmailController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  getSettings(req, res) {
+  getSettings(req: RequestWithUser, res: Response) {
     res.json({
       settings: Database.emailSettings
     })
@@ -31,7 +30,7 @@ class EmailController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async updateSettings(req, res) {
+  async updateSettings(req: RequestWithUser, res: Response) {
     const updated = Database.emailSettings.update(req.body)
     if (updated) {
       await Database.updateSetting(Database.emailSettings)
@@ -49,7 +48,7 @@ class EmailController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async sendTest(req, res) {
+  async sendTest(req: RequestWithUser, res: Response) {
     this.emailManager.sendTest(res)
   }
 
@@ -59,7 +58,7 @@ class EmailController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async updateEReaderDevices(req, res) {
+  async updateEReaderDevices(req: RequestWithUser, res: Response) {
     if (!req.body.ereaderDevices || !Array.isArray(req.body.ereaderDevices)) {
       return res.status(400).send('Invalid payload. ereaderDevices array required')
     }
@@ -93,7 +92,7 @@ class EmailController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async sendEBookToDevice(req, res) {
+  async sendEBookToDevice(req: RequestWithUser, res: Response) {
     Logger.debug(`[EmailController] Send ebook to device requested by user "${req.user.username}" for libraryItemId=${req.body.libraryItemId}, deviceName=${req.body.deviceName}`)
 
     const device = Database.emailSettings.getEReaderDevice(req.body.deviceName)
@@ -130,7 +129,7 @@ class EmailController {
    * @param {Response} res
    * @param {NextFunction} next
    */
-  adminMiddleware(req, res, next) {
+  adminMiddleware(req: RequestWithUser, res: Response, next: NextFunction) {
     if (!req.user.isAdminOrUp) {
       return res.sendStatus(404)
     }

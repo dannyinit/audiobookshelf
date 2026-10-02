@@ -17,9 +17,9 @@ import Task = require('../objects/Task')
 
 class LibraryScanner {
   /** @type {string[]} - library ids */
-  librariesScanning
+  librariesScanning: string[]
   /** @type {[import('../Watcher').PendingFileUpdate[], Task][]} */
-  pendingFileUpdatesToScan
+  pendingFileUpdatesToScan: [import('../Watcher').PendingFileUpdate[], Task][]
 
   constructor() {
     this.cancelLibraryScan = {}
@@ -33,7 +33,7 @@ class LibraryScanner {
    * @param {string} libraryId
    * @returns {boolean}
    */
-  isLibraryScanning(libraryId) {
+  isLibraryScanning(libraryId: string): boolean {
     return this.librariesScanning.some((lid) => lid === libraryId)
   }
 
@@ -41,7 +41,7 @@ class LibraryScanner {
    *
    * @param {string} libraryId
    */
-  setCancelLibraryScan(libraryId) {
+  setCancelLibraryScan(libraryId: string) {
     if (!this.isLibraryScanning(libraryId)) return
     this.cancelLibraryScan[libraryId] = true
   }
@@ -51,7 +51,7 @@ class LibraryScanner {
    * @param {import('../models/Library')} library
    * @param {boolean} [forceRescan]
    */
-  async scan(library, forceRescan = false) {
+  async scan(library: import('../models/Library'), forceRescan: boolean = false) {
     if (this.isLibraryScanning(library.id)) {
       Logger.error(`[LibraryScanner] Already scanning ${library.id}`)
       return
@@ -143,13 +143,13 @@ class LibraryScanner {
    * @param {boolean} forceRescan
    * @returns {Promise<boolean>} true if scan canceled
    */
-  async scanLibrary(libraryScan, forceRescan) {
+  async scanLibrary(libraryScan: import('./LibraryScan'), forceRescan: boolean): Promise<boolean> {
     // Make sure library filter data is set
     //   this is used to check for existing authors & series
     await libraryFilters.getFilterData(libraryScan.libraryMediaType, libraryScan.libraryId)
 
     /** @type {LibraryItemScanData[]} */
-    let libraryItemDataFound = []
+    let libraryItemDataFound: LibraryItemScanData[] = []
 
     // Scan each library folder
     for (let i = 0; i < libraryScan.libraryFolders.length; i++) {
@@ -304,7 +304,7 @@ class LibraryScanner {
    * @param {import('../models/LibraryFolder')} folder
    * @returns {LibraryItemScanData[]}
    */
-  async scanFolder(library, folder) {
+  async scanFolder(library: import('../models/Library'), folder: import('../models/LibraryFolder')): LibraryItemScanData[] {
     const folderPath = fileUtils.filePathToPOSIX(folder.path)
 
     const pathExists = await fs.pathExists(folderPath)
@@ -374,7 +374,7 @@ class LibraryScanner {
    * @param {import('../Watcher').PendingFileUpdate[]} fileUpdates
    * @param {Task} pendingTask
    */
-  async scanFilesChanged(fileUpdates, pendingTask) {
+  async scanFilesChanged(fileUpdates: import('../Watcher').PendingFileUpdate[], pendingTask: Task) {
     if (!fileUpdates?.length) return
 
     // If already scanning files from watcher then add these updates to queue
@@ -471,7 +471,7 @@ class LibraryScanner {
    * @param {import('../Watcher').PendingFileUpdate[]} fileUpdates
    * @returns {Record<string,{libraryId:string, folderId:string, fileUpdates:import('../Watcher').PendingFileUpdate[]}>}
    */
-  getFileUpdatesGrouped(fileUpdates) {
+  getFileUpdatesGrouped(fileUpdates: import('../Watcher').PendingFileUpdate[]): Record<string, { libraryId: string; folderId: string; fileUpdates: import('../Watcher').PendingFileUpdate[] }> {
     const folderGroups = {}
     fileUpdates.forEach((file) => {
       if (folderGroups[file.folderId]) {
@@ -494,7 +494,7 @@ class LibraryScanner {
    * @param {Record<string, string[]>} fileUpdateGroup
    * @returns {Promise<Record<string,number>>}
    */
-  async scanFolderUpdates(library, folder, fileUpdateGroup) {
+  async scanFolderUpdates(library: import('../models/Library'), folder: import('../models/LibraryFolder'), fileUpdateGroup: Record<string, string[]>): Promise<Record<string, number>> {
     // Make sure library filter data is set
     //   this is used to check for existing authors & series
     await libraryFilters.getFilterData(library.mediaType, library.id)

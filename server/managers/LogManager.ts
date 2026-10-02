@@ -19,11 +19,11 @@ const TAG = '[LogManager]'
 
 class LogManager {
   /** @type {DailyLog} */
-  currentDailyLog
+  currentDailyLog: DailyLog
   /** @type {LogObject[]} */
-  dailyLogBuffer
+  dailyLogBuffer: LogObject[]
   /** @type {string[]} */
-  dailyLogFiles
+  dailyLogFiles: string[]
 
   constructor() {
     this.DailyLogPath = Path.posix.join(global.MetadataPath, 'logs', 'daily')
@@ -114,7 +114,7 @@ class LogManager {
    *
    * @param {string} filename
    */
-  async removeLogFile(filename) {
+  async removeLogFile(filename: string) {
     const fullPath = Path.join(this.DailyLogPath, filename)
     const exists = await fs.pathExists(fullPath)
     if (!exists) {
@@ -135,7 +135,7 @@ class LogManager {
    *
    * @param {LogObject} logObj
    */
-  async logToFile(logObj) {
+  async logToFile(logObj: LogObject) {
     // Fatal crashes get logged to a separate file
     if (logObj.level === LogLevel.FATAL) {
       await this.logCrashToFile(logObj)
@@ -164,7 +164,7 @@ class LogManager {
    *
    * @param {LogObject} logObj
    */
-  async logCrashToFile(logObj) {
+  async logCrashToFile(logObj: LogObject) {
     const line = JSON.stringify(logObj) + '\n'
 
     const logsDir = Path.join(global.MetadataPath, 'logs')
@@ -180,7 +180,7 @@ class LogManager {
    *
    * @returns {string}
    */
-  getMostRecentCurrentDailyLogs() {
+  getMostRecentCurrentDailyLogs(): string {
     return this.currentDailyLog?.logs.slice(-5000) || ''
   }
 }

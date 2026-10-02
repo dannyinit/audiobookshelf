@@ -10,43 +10,43 @@ import libraryItemsPodcastFilters = require('../utils/queries/libraryItemsPodcas
 
 class PodcastEpisode extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {number} */
-  declare index
+  declare index: number
   /** @type {string} */
-  declare season
+  declare season: string
   /** @type {string} */
-  declare episode
+  declare episode: string
   /** @type {string} */
-  declare episodeType
+  declare episodeType: string
   /** @type {string} */
-  declare title
+  declare title: string
   /** @type {string} */
-  declare subtitle
+  declare subtitle: string
   /** @type {string} */
-  declare description
+  declare description: string
   /** @type {string} */
-  declare pubDate
+  declare pubDate: string
   /** @type {string} */
-  declare enclosureURL
+  declare enclosureURL: string
   /** @type {BigInt} */
-  declare enclosureSize
+  declare enclosureSize: BigInt
   /** @type {string} */
-  declare enclosureType
+  declare enclosureType: string
   /** @type {Date} */
-  declare publishedAt
+  declare publishedAt: Date
   /** @type {import('./Book').AudioFileObject} */
-  declare audioFile
+  declare audioFile: import('./Book').AudioFileObject
   /** @type {ChapterObject[]} */
-  declare chapters
+  declare chapters: ChapterObject[]
   /** @type {Object} */
-  declare extraData
+  declare extraData: object
   /** @type {string} */
-  declare podcastId
+  declare podcastId: string
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
   /** @type {Date} */
-  declare updatedAt
+  declare updatedAt: Date
 
   constructor(values, options) {
     super(values, options)
@@ -59,7 +59,7 @@ class PodcastEpisode extends Model {
    * @param {string} podcastId
    * @param {import('../objects/files/AudioFile')} audioFile
    */
-  static async createFromRssPodcastEpisode(rssPodcastEpisode, podcastId, audioFile) {
+  static async createFromRssPodcastEpisode(rssPodcastEpisode: import('../utils/podcastUtils').RssPodcastEpisode, podcastId: string, audioFile: import('../objects/files/AudioFile')) {
     const podcastEpisode = {
       index: null,
       season: rssPodcastEpisode.season,
@@ -95,7 +95,7 @@ class PodcastEpisode extends Model {
    * Initialize model
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {
@@ -166,7 +166,7 @@ class PodcastEpisode extends Model {
    * @param {string} enclosureURL
    * @returns {boolean}
    */
-  checkMatchesGuidOrEnclosureUrl(guid, enclosureURL) {
+  checkMatchesGuidOrEnclosureUrl(guid: string, enclosureURL: string): boolean {
     if (this.extraData?.guid && this.extraData.guid === guid) {
       return true
     }
@@ -182,7 +182,7 @@ class PodcastEpisode extends Model {
    * @param {string} libraryItemId
    * @returns {import('./Book').AudioTrack}
    */
-  getAudioTrack(libraryItemId) {
+  getAudioTrack(libraryItemId: string): import('./Book').AudioTrack {
     const track = structuredClone(this.audioFile)
     track.startOffset = 0
     track.title = this.audioFile.metadata.filename

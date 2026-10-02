@@ -24,7 +24,7 @@ class TrackProgressMonitor {
    * @param {ProgressCallback} progressCallback - The callback to call when progress is updated.
    * @param {TrackFinishedCallback} trackFinishedCallback - The callback to call when a track finishes.
    */
-  constructor(trackDurations, trackStartedCallback, progressCallback, trackFinishedCallback) {
+  constructor(trackDurations: number[], trackStartedCallback: TrackStartedCallback, progressCallback: ProgressCallback, trackFinishedCallback: TrackFinishedCallback) {
     this.trackDurations = trackDurations
     this.totalDuration = trackDurations.reduce((total, duration) => total + duration, 0)
     this.trackStartedCallback = trackStartedCallback
@@ -72,7 +72,7 @@ class TrackProgressMonitor {
    * Updates the track progress based on the total progress.
    * @param {number} totalProgress - The total progress in percent.
    */
-  update(totalProgress) {
+  update(totalProgress: number) {
     while (this.#outsideCurrentTrack(totalProgress) && !this.allTracksFinished) this.#moveToNextTrack()
     if (!this.allTracksFinished) this.#progressUpdated(totalProgress)
   }

@@ -4,17 +4,17 @@ import SocketAuthority = require('../SocketAuthority')
 import Database = require('../Database')
 import htmlSanitizer = require('../utils/htmlSanitizer')
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- *
- * @typedef RequestEntityObject
- * @property {import('../models/Playlist')} playlist
- *
- * @typedef {RequestWithUser & RequestEntityObject} PlaylistControllerRequest
- */
+interface RequestUserObject {
+  user: import('../models/User')
+}
+
+type RequestWithUser = Request & RequestUserObject
+
+interface RequestEntityObject {
+  playlist: import('../models/Playlist')
+}
+
+type PlaylistControllerRequest = RequestWithUser & RequestEntityObject
 
 class PlaylistController {
   constructor() {}
@@ -26,7 +26,7 @@ class PlaylistController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async create(req, res) {
+  async create(req: RequestWithUser, res: Response) {
     const reqBody = req.body || {}
 
     // Validation
@@ -135,7 +135,7 @@ class PlaylistController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async findAllForUser(req, res) {
+  async findAllForUser(req: RequestWithUser, res: Response) {
     const playlistsForUser = await Database.playlistModel.getOldPlaylistsForUserAndLibrary(req.user.id)
     const accessiblePlaylists = playlistsForUser.filter((p) => req.user.checkCanAccessLibrary(p.libraryId))
     res.json({
@@ -149,7 +149,7 @@ class PlaylistController {
    * @param {PlaylistControllerRequest} req
    * @param {Response} res
    */
-  async findOne(req, res) {
+  async findOne(req: PlaylistControllerRequest, res: Response) {
     req.playlist.playlistMediaItems = await req.playlist.getMediaItemsExpandedWithLibraryItem()
     res.json(req.playlist.toOldJSONExpanded())
   }
@@ -163,7 +163,7 @@ class PlaylistController {
    * @param {PlaylistControllerRequest} req
    * @param {Response} res
    */
-  async update(req, res) {
+  async update(req: PlaylistControllerRequest, res: Response) {
     // Validation
     const reqBody = req.body || {}
     if (reqBody.libraryId || reqBody.userId) {
@@ -213,7 +213,7 @@ class PlaylistController {
         return res.status(400).send('Invalid playlist items. Items not found')
       }
       /** @type {import('../models/PlaylistMediaItem')[]} */
-      const existingPlaylistMediaItems = await req.playlist.getPlaylistMediaItems({
+      const existingPlaylistMediaItems: import('../models/PlaylistMediaItem')[] = await req.playlist.getPlaylistMediaItems({
         order: [['order', 'ASC']]
       })
       if (existingPlaylistMediaItems.length !== reqBody.items.length) {
@@ -262,7 +262,7 @@ class PlaylistController {
    * @param {PlaylistControllerRequest} req
    * @param {Response} res
    */
-  async delete(req, res) {
+  async delete(req: PlaylistControllerRequest, res: Response) {
     req.playlist.playlistMediaItems = await req.playlist.getMediaItemsExpandedWithLibraryItem()
     const jsonExpanded = req.playlist.toOldJSONExpanded()
 
@@ -280,7 +280,7 @@ class PlaylistController {
    * @param {PlaylistControllerRequest} req
    * @param {Response} res
    */
-  async addItem(req, res) {
+  async addItem(req: PlaylistControllerRequest, res: Response) {
     const itemToAdd = req.body || {}
 
     if (!itemToAdd.libraryItemId) {
@@ -344,7 +344,7 @@ class PlaylistController {
    * @param {PlaylistControllerRequest} req
    * @param {Response} res
    */
-  async removeItem(req, res) {
+  async removeItem(req: PlaylistControllerRequest, res: Response) {
     req.playlist.playlistMediaItems = await req.playlist.getMediaItemsExpandedWithLibraryItem()
 
     let playlistMediaItem = null
@@ -391,7 +391,7 @@ class PlaylistController {
    * @param {PlaylistControllerRequest} req
    * @param {Response} res
    */
-  async addBatch(req, res) {
+  async addBatch(req: PlaylistControllerRequest, res: Response) {
     if (!req.body.items?.length || !Array.isArray(req.body.items) || req.body.items.some((i) => !i?.libraryItemId || typeof i.libraryItemId !== 'string' || (i.episodeId && typeof i.episodeId !== 'string'))) {
       return res.status(400).send('Invalid request body items')
     }
@@ -460,7 +460,7 @@ class PlaylistController {
    * @param {PlaylistControllerRequest} req
    * @param {Response} res
    */
-  async removeBatch(req, res) {
+  async removeBatch(req: PlaylistControllerRequest, res: Response) {
     if (!req.body.items?.length || !Array.isArray(req.body.items) || req.body.items.some((i) => !i?.libraryItemId || typeof i.libraryItemId !== 'string' || (i.episodeId && typeof i.episodeId !== 'string'))) {
       return res.status(400).send('Invalid request body items')
     }
@@ -508,7 +508,7 @@ class PlaylistController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async createFromCollection(req, res) {
+  async createFromCollection(req: RequestWithUser, res: Response) {
     const collection = await Database.collectionModel.findByPk(req.params.collectionId)
     if (!collection) {
       return res.status(404).send('Collection not found')
@@ -572,7 +572,7 @@ class PlaylistController {
    * @param {Response} res
    * @param {NextFunction} next
    */
-  async middleware(req, res, next) {
+  async middleware(req: RequestWithUser, res: Response, next: NextFunction) {
     if (req.params.id) {
       const playlist = await Database.playlistModel.findByPk(req.params.id)
       if (!playlist) {

@@ -5,12 +5,11 @@ import Logger = require('../Logger')
 import Database = require('../Database')
 import fileUtils = require('../utils/fileUtils')
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- */
+interface RequestUserObject {
+  user: import('../models/User')
+}
+
+type RequestWithUser = Request & RequestUserObject
 
 class BackupController {
   constructor() {}
@@ -23,7 +22,7 @@ class BackupController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  getAll(req, res) {
+  getAll(req: RequestWithUser, res: Response) {
     res.json({
       backups: this.backupManager.backups.map((b) => b.toJSON()),
       backupLocation: this.backupManager.backupPath,
@@ -39,7 +38,7 @@ class BackupController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  create(req, res) {
+  create(req: RequestWithUser, res: Response) {
     this.backupManager.requestCreateBackup(res)
   }
 
@@ -51,7 +50,7 @@ class BackupController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async delete(req, res) {
+  async delete(req: RequestWithUser, res: Response) {
     await this.backupManager.removeBackup(req.backup)
 
     res.json({
@@ -67,7 +66,7 @@ class BackupController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  upload(req, res) {
+  upload(req: RequestWithUser, res: Response) {
     if (!req.files.file) {
       Logger.error('[BackupController] Upload backup invalid')
       return res.sendStatus(500)
@@ -84,7 +83,7 @@ class BackupController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async updatePath(req, res) {
+  async updatePath(req: RequestWithUser, res: Response) {
     // Validate path is not empty and is a string
     if (!req.body.path || !req.body.path?.trim?.()) {
       Logger.error('[BackupController] Update backup path invalid')
@@ -131,7 +130,7 @@ class BackupController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  download(req, res) {
+  download(req: RequestWithUser, res: Response) {
     if (global.XAccel) {
       const encodedURI = fileUtils.encodeUriPath(global.XAccel + req.backup.fullPath)
       Logger.debug(`Use X-Accel to serve static file ${encodedURI}`)
@@ -151,7 +150,7 @@ class BackupController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  apply(req, res) {
+  apply(req: RequestWithUser, res: Response) {
     this.backupManager.requestApplyBackup(this.apiCacheManager, req.backup, res)
   }
 
@@ -161,7 +160,7 @@ class BackupController {
    * @param {Response} res
    * @param {NextFunction} next
    */
-  middleware(req, res, next) {
+  middleware(req: RequestWithUser, res: Response, next: NextFunction) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[BackupController] Non-admin user "${req.user.username}" attempting to access backups`)
       return res.sendStatus(403)

@@ -10,21 +10,21 @@ import { DataTypes, Model } from 'sequelize'
 
 class CustomMetadataProvider extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {string} */
-  declare mediaType
+  declare mediaType: string
   /** @type {string} */
-  declare name
+  declare name: string
   /** @type {string} */
-  declare url
+  declare url: string
   /** @type {string} */
-  declare authHeaderValue
+  declare authHeaderValue: string
   /** @type {Object} */
-  declare extraData
+  declare extraData: object
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
   /** @type {Date} */
-  declare updatedAt
+  declare updatedAt: Date
 
   constructor(values, options) {
     super(values, options)
@@ -38,7 +38,7 @@ class CustomMetadataProvider extends Model {
    * @param {string} mediaType
    * @returns {Promise<ClientCustomMetadataProvider[]>}
    */
-  static async getForClientByMediaType(mediaType) {
+  static async getForClientByMediaType(mediaType: string): Promise<ClientCustomMetadataProvider[]> {
     if (mediaType !== 'book') return []
     const customMetadataProviders = await this.findAll({
       where: {
@@ -54,7 +54,7 @@ class CustomMetadataProvider extends Model {
    * @param {string} providerSlug
    * @returns {Promise<boolean>}
    */
-  static async checkExistsBySlug(providerSlug) {
+  static async checkExistsBySlug(providerSlug: string): Promise<boolean> {
     const providerId = providerSlug?.split?.('custom-')[1]
     if (!providerId) return false
 
@@ -65,7 +65,7 @@ class CustomMetadataProvider extends Model {
    * Initialize model
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {
@@ -94,7 +94,7 @@ class CustomMetadataProvider extends Model {
    * Safe for clients
    * @returns {ClientCustomMetadataProvider}
    */
-  toClientJson() {
+  toClientJson(): ClientCustomMetadataProvider {
     return {
       id: this.id,
       name: this.name,

@@ -6,125 +6,123 @@ import htmlSanitizer = require('../utils/htmlSanitizer')
 import libraryItemsBookFilters = require('../utils/queries/libraryItemsBookFilters')
 import SocketAuthority = require('../SocketAuthority')
 
-/**
- * @typedef EBookFileObject
- * @property {string} ino
- * @property {string} ebookFormat
- * @property {number} addedAt
- * @property {number} updatedAt
- * @property {{filename:string, ext:string, path:string, relPath:strFing, size:number, mtimeMs:number, ctimeMs:number, birthtimeMs:number}} metadata
- */
+interface EBookFileObject {
+  ino: string
+  ebookFormat: string
+  addedAt: number
+  updatedAt: number
+  metadata: { filename: string; ext: string; path: string; relPath: strFing; size: number; mtimeMs: number; ctimeMs: number; birthtimeMs: number} 
+}
 
-/**
- * @typedef ChapterObject
- * @property {number} id
- * @property {number} start
- * @property {number} end
- * @property {string} title
- */
+interface ChapterObject {
+  id: number
+  start: number
+  end: number
+  title: string
+}
 
-/**
- * @typedef SeriesExpandedProperties
- * @property {{sequence:string}} bookSeries
- *
- * @typedef {import('./Series') & SeriesExpandedProperties} SeriesExpanded
- *
- * @typedef BookExpandedProperties
- * @property {import('./Author')[]} authors
- * @property {SeriesExpanded[]} series
- *
- * @typedef {Book & BookExpandedProperties} BookExpanded
- *
- * Collections use BookExpandedWithLibraryItem
- * @typedef BookExpandedWithLibraryItemProperties
- * @property {import('./LibraryItem')} libraryItem
- *
- * @typedef {BookExpanded & BookExpandedWithLibraryItemProperties} BookExpandedWithLibraryItem
- */
+interface SeriesExpandedProperties {
+  bookSeries: { sequence: string} 
+}
 
-/**
- * @typedef AudioFileObject
- * @property {number} index
- * @property {string} ino
- * @property {{filename:string, ext:string, path:string, relPath:string, size:number, mtimeMs:number, ctimeMs:number, birthtimeMs:number}} metadata
- * @property {number} addedAt
- * @property {number} updatedAt
- * @property {number} trackNumFromMeta
- * @property {number} discNumFromMeta
- * @property {number} trackNumFromFilename
- * @property {number} discNumFromFilename
- * @property {boolean} manuallyVerified
- * @property {string} format
- * @property {number} duration
- * @property {number} bitRate
- * @property {string} language
- * @property {string} codec
- * @property {string} timeBase
- * @property {number} channels
- * @property {string} channelLayout
- * @property {ChapterObject[]} chapters
- * @property {Object} metaTags
- * @property {string} mimeType
- *
- * @typedef AudioTrackProperties
- * @property {string} title
- * @property {string} contentUrl
- * @property {number} startOffset
- *
- * @typedef {AudioFileObject & AudioTrackProperties} AudioTrack
- */
+type SeriesExpanded = import('./Series') & SeriesExpandedProperties
+
+interface BookExpandedProperties {
+  authors: import('./Author')[]
+  series: SeriesExpanded[]
+}
+
+type BookExpanded = Book & BookExpandedProperties
+
+interface BookExpandedWithLibraryItemProperties {
+  libraryItem: import('./LibraryItem')
+}
+
+type BookExpandedWithLibraryItem = BookExpanded & BookExpandedWithLibraryItemProperties
+
+interface AudioFileObject {
+  index: number
+  ino: string
+  metadata: { filename: string; ext: string; path: string; relPath: string; size: number; mtimeMs: number; ctimeMs: number; birthtimeMs: number} 
+  addedAt: number
+  updatedAt: number
+  trackNumFromMeta: number
+  discNumFromMeta: number
+  trackNumFromFilename: number
+  discNumFromFilename: number
+  manuallyVerified: boolean
+  format: string
+  duration: number
+  bitRate: number
+  language: string
+  codec: string
+  timeBase: string
+  channels: number
+  channelLayout: string
+  chapters: ChapterObject[]
+  metaTags: Object
+  mimeType: string
+}
+
+interface AudioTrackProperties {
+  title: string
+  contentUrl: string
+  startOffset: number
+}
+
+type AudioTrack = AudioFileObject & AudioTrackProperties
 
 class Book extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {string} */
-  declare title
+  declare title: string
   /** @type {string} */
-  declare titleIgnorePrefix
+  declare titleIgnorePrefix: string
   /** @type {string} */
-  declare subtitle
+  declare subtitle: string
   /** @type {string} */
-  declare publishedYear
+  declare publishedYear: string
   /** @type {string} */
-  declare publishedDate
+  declare publishedDate: string
   /** @type {string} */
-  declare publisher
+  declare publisher: string
   /** @type {string} */
-  declare description
+  declare description: string
   /** @type {string} */
-  declare isbn
+  declare isbn: string
   /** @type {string} */
-  declare asin
+  declare asin: string
   /** @type {string} */
-  declare language
+  declare language: string
   /** @type {boolean} */
-  declare explicit
+  declare explicit: boolean
   /** @type {boolean} */
-  declare abridged
+  declare abridged: boolean
   /** @type {string} */
-  declare coverPath
+  declare coverPath: string
   /** @type {number} */
-  declare duration
+  declare duration: number
   /** @type {string[]} */
-  declare narrators
+  declare narrators: string[]
   /** @type {AudioFileObject[]} */
-  declare audioFiles
+  declare audioFiles: AudioFileObject[]
   /** @type {EBookFileObject} */
-  declare ebookFile
+  declare ebookFile: EBookFileObject
   /** @type {ChapterObject[]} */
-  declare chapters
+  declare chapters: ChapterObject[]
   /** @type {string[]} */
-  declare tags
+  declare tags: string[]
   /** @type {string[]} */
-  declare genres
+  declare genres: string[]
   /** @type {Date} */
-  declare updatedAt
+  declare updatedAt: Date
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
   /** @type {import('./Author')[]} - optional if expanded */
-  declare authors
+  declare authors: import('./Author')[]
   /** @type {import('./Series')[]} - optional if expanded */
-  declare series
+  declare series: import('./Series')[]
 
   constructor(values, options) {
     super(values, options)
@@ -138,7 +136,7 @@ class Book extends Model {
    * Initialize model
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {
@@ -211,7 +209,7 @@ class Book extends Model {
    *
    * @returns {string}
    */
-  get authorName() {
+  get authorName(): string {
     if (this.authors === undefined) {
       Logger.error(`[Book] authorName: Cannot get authorName because authors are not loaded`)
       return ''
@@ -225,7 +223,7 @@ class Book extends Model {
    *
    * @returns {string}
    */
-  get authorNameLF() {
+  get authorNameLF(): string {
     if (this.authors === undefined) {
       Logger.error(`[Book] authorNameLF: Cannot get authorNameLF because authors are not loaded`)
       return ''
@@ -242,7 +240,7 @@ class Book extends Model {
    *
    * @returns {string}
    */
-  get seriesName() {
+  get seriesName(): string {
     if (this.series === undefined) {
       Logger.error(`[Book] seriesName: Cannot get seriesName because series are not loaded`)
       return ''
@@ -276,7 +274,7 @@ class Book extends Model {
    * @param {string[]} supportedMimeTypes
    * @returns {boolean}
    */
-  checkCanDirectPlay(supportedMimeTypes) {
+  checkCanDirectPlay(supportedMimeTypes: string[]): boolean {
     if (!Array.isArray(supportedMimeTypes)) {
       Logger.error(`[Book] checkCanDirectPlay: supportedMimeTypes is not an array`, supportedMimeTypes)
       return false
@@ -291,7 +289,7 @@ class Book extends Model {
    * @param {string} libraryItemId
    * @returns {AudioTrack[]}
    */
-  getTracklist(libraryItemId) {
+  getTracklist(libraryItemId: string): AudioTrack[] {
     let startOffset = 0
     return this.includedAudioFiles.map((af) => {
       const track = structuredClone(af)
@@ -307,7 +305,7 @@ class Book extends Model {
    *
    * @returns {ChapterObject[]}
    */
-  getChapters() {
+  getChapters(): ChapterObject[] {
     return structuredClone(this.chapters) || []
   }
 
@@ -328,7 +326,7 @@ class Book extends Model {
    *
    * @returns {number}
    */
-  get size() {
+  get size(): number {
     let total = 0
     this.audioFiles.forEach((af) => (total += af.metadata.size))
     if (this.ebookFile) {
@@ -368,7 +366,7 @@ class Book extends Model {
    * @param {Object} payload - old book object
    * @returns {Promise<boolean>}
    */
-  async updateFromRequest(payload) {
+  async updateFromRequest(payload: object): Promise<boolean> {
     if (!payload) return false
 
     let hasUpdates = false
@@ -438,7 +436,7 @@ class Book extends Model {
    * @param {string} libraryId
    * @returns {Promise<{authorsRemoved: import('./Author')[], authorsAdded: import('./Author')[]}>}
    */
-  async updateAuthorsFromRequest(authors, libraryId) {
+  async updateAuthorsFromRequest(authors: string[], libraryId: string): Promise<{ authorsRemoved: import('./Author')[]; authorsAdded: import('./Author')[] }> {
     if (!Array.isArray(authors)) return null
 
     if (!this.authors) {
@@ -446,10 +444,10 @@ class Book extends Model {
     }
 
     /** @type {typeof import('./Author')} */
-    const authorModel = this.sequelize.models.author
+    const authorModel: typeof import('./Author') = this.sequelize.models.author
 
     /** @type {typeof import('./BookAuthor')} */
-    const bookAuthorModel = this.sequelize.models.bookAuthor
+    const bookAuthorModel: typeof import('./BookAuthor') = this.sequelize.models.bookAuthor
 
     const authorsCleaned = authors.map((a) => a.toLowerCase()).filter((a) => a)
     const authorsRemoved = this.authors.filter((au) => !authorsCleaned.includes(au.name.toLowerCase()))
@@ -493,7 +491,7 @@ class Book extends Model {
    * @param {string} libraryId
    * @returns {Promise<{seriesRemoved: import('./Series')[], seriesAdded: import('./Series')[], hasUpdates: boolean}>}
    */
-  async updateSeriesFromRequest(seriesObjects, libraryId) {
+  async updateSeriesFromRequest(seriesObjects: { name: string; sequence: string }[], libraryId: string): Promise<{ seriesRemoved: import('./Series')[]; seriesAdded: import('./Series')[]; hasUpdates: boolean }> {
     if (!Array.isArray(seriesObjects) || seriesObjects.some((se) => !se.name || typeof se.name !== 'string')) return null
 
     if (!this.series) {
@@ -501,10 +499,10 @@ class Book extends Model {
     }
 
     /** @type {typeof import('./Series')} */
-    const seriesModel = this.sequelize.models.series
+    const seriesModel: typeof import('./Series') = this.sequelize.models.series
 
     /** @type {typeof import('./BookSeries')} */
-    const bookSeriesModel = this.sequelize.models.bookSeries
+    const bookSeriesModel: typeof import('./BookSeries') = this.sequelize.models.bookSeries
 
     const seriesNamesCleaned = seriesObjects.map((se) => se.name.toLowerCase())
     const seriesRemoved = this.series.filter((se) => !seriesNamesCleaned.includes(se.name.toLowerCase()))
@@ -610,7 +608,7 @@ class Book extends Model {
    *
    * @param {string} libraryItemId
    */
-  toOldJSON(libraryItemId) {
+  toOldJSON(libraryItemId: string) {
     if (!libraryItemId) {
       throw new Error(`[Book] Cannot convert to old JSON because libraryItemId is not provided`)
     }
@@ -666,7 +664,7 @@ class Book extends Model {
    *
    * @param {string} libraryItemId
    */
-  toOldJSONExpanded(libraryItemId) {
+  toOldJSONExpanded(libraryItemId: string) {
     if (!libraryItemId) {
       throw new Error(`[Book] Cannot convert to old JSON because libraryItemId is not provided`)
     }

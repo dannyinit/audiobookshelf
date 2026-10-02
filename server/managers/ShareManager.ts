@@ -13,9 +13,9 @@ import { elapsedPretty } from '../utils/index'
 
 class ShareManager {
   /** @type {OpenMediaItemShareObject[]} */
-  openMediaItemShares
+  openMediaItemShares: OpenMediaItemShareObject[]
   /** @type {import('../objects/PlaybackSession')[]} */
-  openSharePlaybackSessions
+  openSharePlaybackSessions: import('../objects/PlaybackSession')[]
 
   constructor() {
     this.openMediaItemShares = []
@@ -30,7 +30,7 @@ class ShareManager {
   /**
    * @param {import('../objects/PlaybackSession')} playbackSession
    */
-  addOpenSharePlaybackSession(playbackSession) {
+  addOpenSharePlaybackSession(playbackSession: import('../objects/PlaybackSession')) {
     Logger.info(`[ShareManager] Adding new open share playback session "${playbackSession.displayTitle}"`)
     this.openSharePlaybackSessions.push(playbackSession)
   }
@@ -39,7 +39,7 @@ class ShareManager {
    *
    * @param {import('../objects/PlaybackSession')} playbackSession
    */
-  closeSharePlaybackSession(playbackSession) {
+  closeSharePlaybackSession(playbackSession: import('../objects/PlaybackSession')) {
     Logger.info(`[ShareManager] Closing share playback session "${playbackSession.displayTitle}"`)
     this.openSharePlaybackSessions = this.openSharePlaybackSessions.filter((s) => s.id !== playbackSession.id)
   }
@@ -49,7 +49,7 @@ class ShareManager {
    * @param {string} mediaItemId
    * @returns {import('../models/MediaItemShare').MediaItemShareForClient}
    */
-  findByMediaItemId(mediaItemId) {
+  findByMediaItemId(mediaItemId: string): import('../models/MediaItemShare').MediaItemShareForClient {
     const mediaItemShareObject = this.openMediaItemShares.find((s) => s.mediaItemShare.mediaItemId === mediaItemId)?.mediaItemShare
     if (mediaItemShareObject) {
       const mediaItemShareObjectForClient = { ...mediaItemShareObject }
@@ -66,7 +66,7 @@ class ShareManager {
    * @param {string} slug
    * @returns {import('../models/MediaItemShare').MediaItemShareForClient}
    */
-  findBySlug(slug) {
+  findBySlug(slug: string): import('../models/MediaItemShare').MediaItemShareForClient {
     const mediaItemShareObject = this.openMediaItemShares.find((s) => s.mediaItemShare.slug === slug)?.mediaItemShare
     if (mediaItemShareObject) {
       const mediaItemShareObjectForClient = { ...mediaItemShareObject }
@@ -82,7 +82,7 @@ class ShareManager {
    * @param {string} shareSessionId
    * @returns {import('../objects/PlaybackSession')}
    */
-  findPlaybackSessionBySessionId(shareSessionId) {
+  findPlaybackSessionBySessionId(shareSessionId: string): import('../objects/PlaybackSession') {
     return this.openSharePlaybackSessions.find((s) => s.shareSessionId === shareSessionId)
   }
 
@@ -92,7 +92,7 @@ class ShareManager {
    */
   async loadMediaItemShares() {
     /** @type {import('../models/MediaItemShare').MediaItemShareModel[]} */
-    const mediaItemShares = await Database.models.mediaItemShare.findAll()
+    const mediaItemShares: import('../models/MediaItemShare').MediaItemShareModel[] = await Database.models.mediaItemShare.findAll()
 
     for (const mediaItemShare of mediaItemShares) {
       if (mediaItemShare.expiresAt && mediaItemShare.expiresAt.valueOf() < Date.now()) {
@@ -114,7 +114,7 @@ class ShareManager {
    *
    * @param {import('../models/MediaItemShare').MediaItemShareModel} mediaItemShare
    */
-  scheduleMediaItemShare(mediaItemShare) {
+  scheduleMediaItemShare(mediaItemShare: import('../models/MediaItemShare').MediaItemShareModel) {
     if (!mediaItemShare?.expiresAt) return
 
     const expiresAtDuration = mediaItemShare.expiresAt.valueOf() - Date.now()
@@ -136,7 +136,7 @@ class ShareManager {
    *
    * @param {import('../models/MediaItemShare').MediaItemShareModel} mediaItemShare
    */
-  openMediaItemShare(mediaItemShare) {
+  openMediaItemShare(mediaItemShare: import('../models/MediaItemShare').MediaItemShareModel) {
     if (mediaItemShare.expiresAt) {
       this.scheduleMediaItemShare(mediaItemShare)
     } else {
@@ -149,7 +149,7 @@ class ShareManager {
    *
    * @param {string} mediaItemShareId
    */
-  async removeMediaItemShare(mediaItemShareId) {
+  async removeMediaItemShare(mediaItemShareId: string) {
     const mediaItemShare = this.openMediaItemShares.find((s) => s.id === mediaItemShareId)
     if (!mediaItemShare) return
 
@@ -172,7 +172,7 @@ class ShareManager {
    *
    * @param {string} mediaItemShareId
    */
-  destroyMediaItemShare(mediaItemShareId) {
+  destroyMediaItemShare(mediaItemShareId: string) {
     return Database.models.mediaItemShare.destroy({ where: { id: mediaItemShareId } })
   }
 

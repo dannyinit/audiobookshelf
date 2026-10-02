@@ -22,7 +22,7 @@ class AuthorFinder {
    * @param {Object} [options={}] 
    * @returns {Promise<import('../providers/Audnexus').AuthorSearchObj>}
    */
-  async findAuthorByName(name, region, options = {}) {
+  async findAuthorByName(name: string, region: string, options: object = {}): Promise<import('../providers/Audnexus').AuthorSearchObj> {
     if (!name) return null
     const maxLevenshtein = !isNaN(options.maxLevenshtein) ? Number(options.maxLevenshtein) : 3
 
@@ -40,7 +40,7 @@ class AuthorFinder {
    * @param {string} url 
    * @returns {Promise<{path:string, error:string}>}
    */
-  async saveAuthorImage(authorId, url) {
+  async saveAuthorImage(authorId: string, url: string): Promise<{ path: string; error: string }> {
     const authorDir = Path.join(global.MetadataPath, 'authors')
 
     if (!await fs.pathExists(authorDir)) {

@@ -1,11 +1,11 @@
-/**
- * @typedef MigrationContext
- * @property {import('sequelize').QueryInterface} queryInterface
- * @property {import('../Logger')} logger
- *
- * @typedef MigrationOptions
- * @property {MigrationContext} context
- */
+interface MigrationContext {
+  queryInterface: import('sequelize').QueryInterface
+  logger: import('../Logger')
+}
+
+interface MigrationOptions {
+  context: MigrationContext
+}
 
 const migrationVersion = '2.33.0'
 const migrationName = `${migrationVersion}-add-discover-query-indexes`

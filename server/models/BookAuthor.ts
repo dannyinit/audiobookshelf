@@ -2,13 +2,13 @@ import { DataTypes, Model, fn, col } from 'sequelize'
 
 class BookAuthor extends Model {
   /** @type {string} */
-  declare id
+  declare id: string
   /** @type {string} */
-  declare bookId
+  declare bookId: string
   /** @type {string} */
-  declare authorId
+  declare authorId: string
   /** @type {Date} */
-  declare createdAt
+  declare createdAt: Date
 
   constructor(values, options) {
     super(values, options)
@@ -30,7 +30,7 @@ class BookAuthor extends Model {
    * @param {string} authorId
    * @returns {Promise<number>}
    */
-  static getCountForAuthor(authorId) {
+  static getCountForAuthor(authorId: string): Promise<number> {
     return this.count({
       where: {
         authorId
@@ -44,7 +44,7 @@ class BookAuthor extends Model {
    * @param {string[]} authorIds
    * @returns {Promise<Record<string, number>>}
    */
-  static async getCountsForAuthors(authorIds) {
+  static async getCountsForAuthors(authorIds: string[]): Promise<Record<string, number>> {
     if (!authorIds.length) return {}
 
     const rows = await this.findAll({
@@ -57,7 +57,7 @@ class BookAuthor extends Model {
     })
 
     /** @type {Record<string, number>} */
-    const counts = {}
+    const counts: Record<string, number> = {}
     for (const row of rows) {
       counts[row.authorId] = Number(row.count)
     }
@@ -68,7 +68,7 @@ class BookAuthor extends Model {
    * Initialize model
    * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: import('../Database').sequelize) {
     super.init(
       {
         id: {

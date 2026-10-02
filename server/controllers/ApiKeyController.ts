@@ -3,12 +3,11 @@ const uuidv4 = require('uuid').v4
 import Logger = require('../Logger')
 import Database = require('../Database')
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- */
+interface RequestUserObject {
+  user: import('../models/User')
+}
+
+type RequestWithUser = Request & RequestUserObject
 
 class ApiKeyController {
   constructor() {}
@@ -19,7 +18,7 @@ class ApiKeyController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async getAll(req, res) {
+  async getAll(req: RequestWithUser, res: Response) {
     const apiKeys = await Database.apiKeyModel.findAll({
       include: [
         {
@@ -47,7 +46,7 @@ class ApiKeyController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async create(req, res) {
+  async create(req: RequestWithUser, res: Response) {
     if (!req.body.name || typeof req.body.name !== 'string') {
       Logger.warn(`[ApiKeyController] create: Invalid name: ${req.body.name}`)
       return res.sendStatus(400)
@@ -109,7 +108,7 @@ class ApiKeyController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async update(req, res) {
+  async update(req: RequestWithUser, res: Response) {
     const apiKey = await Database.apiKeyModel.findByPk(req.params.id, {
       include: {
         model: Database.userModel
@@ -176,7 +175,7 @@ class ApiKeyController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async delete(req, res) {
+  async delete(req: RequestWithUser, res: Response) {
     const apiKey = await Database.apiKeyModel.findByPk(req.params.id)
     if (!apiKey) {
       return res.sendStatus(404)
@@ -194,7 +193,7 @@ class ApiKeyController {
    * @param {Response} res
    * @param {NextFunction} next
    */
-  middleware(req, res, next) {
+  middleware(req: RequestWithUser, res: Response, next: NextFunction) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[ApiKeyController] Non-admin user "${req.user.username}" attempting to access api keys`)
       return res.sendStatus(403)

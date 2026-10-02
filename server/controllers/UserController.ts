@@ -6,17 +6,17 @@ import Database = require('../Database')
 
 import { toNumber } from '../utils/index'
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- *
- * @typedef RequestEntityObject
- * @property {import('../models/User')} reqUser
- *
- * @typedef {RequestWithUser & RequestEntityObject} UserControllerRequest
- */
+interface RequestUserObject {
+  user: import('../models/User')
+}
+
+type RequestWithUser = Request & RequestUserObject
+
+interface RequestEntityObject {
+  reqUser: import('../models/User')
+}
+
+type UserControllerRequest = RequestWithUser & RequestEntityObject
 
 class UserController {
   constructor() {}
@@ -26,7 +26,7 @@ class UserController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async findAll(req, res) {
+  async findAll(req: RequestWithUser, res: Response) {
     if (!req.user.isAdminOrUp) return res.sendStatus(403)
     const hideRootToken = !req.user.isRoot
 
@@ -56,7 +56,7 @@ class UserController {
    * @param {UserControllerRequest} req
    * @param {Response} res
    */
-  async findOne(req, res) {
+  async findOne(req: UserControllerRequest, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`Non-admin user "${req.user.username}" attempted to get user`)
       return res.sendStatus(403)
@@ -113,7 +113,7 @@ class UserController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async create(req, res) {
+  async create(req: RequestWithUser, res: Response) {
     if (!req.body.username || !req.body.password || typeof req.body.username !== 'string' || typeof req.body.password !== 'string') {
       return res.status(400).send('Username and password are required')
     }
@@ -202,7 +202,7 @@ class UserController {
    * @param {UserControllerRequest} req
    * @param {Response} res
    */
-  async update(req, res) {
+  async update(req: UserControllerRequest, res: Response) {
     const user = req.reqUser
 
     if (user.isRoot && !req.user.isRoot) {
@@ -360,7 +360,7 @@ class UserController {
    * @param {UserControllerRequest} req
    * @param {Response} res
    */
-  async delete(req, res) {
+  async delete(req: UserControllerRequest, res: Response) {
     const user = req.reqUser
 
     if (req.user.id === req.params.id) {
@@ -411,7 +411,7 @@ class UserController {
    * @param {UserControllerRequest} req
    * @param {Response} res
    */
-  async unlinkFromOpenID(req, res) {
+  async unlinkFromOpenID(req: UserControllerRequest, res: Response) {
     Logger.debug(`[UserController] Unlinking user "${req.reqUser.username}" from OpenID with sub "${req.reqUser.authOpenIDSub}"`)
 
     if (!req.reqUser.authOpenIDSub) {
@@ -431,7 +431,7 @@ class UserController {
    * @param {UserControllerRequest} req
    * @param {Response} res
    */
-  async getListeningSessions(req, res) {
+  async getListeningSessions(req: UserControllerRequest, res: Response) {
     var listeningSessions = await this.getUserListeningSessionsHelper(req.params.id)
 
     const itemsPerPage = toNumber(req.query.itemsPerPage, 10) || 10
@@ -468,7 +468,7 @@ class UserController {
    * @param {UserControllerRequest} req
    * @param {Response} res
    */
-  async getListeningStats(req, res) {
+  async getListeningStats(req: UserControllerRequest, res: Response) {
     var listeningStats = await this.getUserListeningStatsHelpers(req.params.id)
     res.json(listeningStats)
   }
@@ -481,7 +481,7 @@ class UserController {
    * @param {RequestWithUser} req
    * @param {Response} res
    */
-  async getOnlineUsers(req, res) {
+  async getOnlineUsers(req: RequestWithUser, res: Response) {
     if (!req.user.isAdminOrUp) {
       return res.sendStatus(403)
     }
@@ -498,7 +498,7 @@ class UserController {
    * @param {Response} res
    * @param {NextFunction} next
    */
-  async middleware(req, res, next) {
+  async middleware(req: RequestWithUser, res: Response, next: NextFunction) {
     if (!req.user.isAdminOrUp && req.user.id !== req.params.id) {
       return res.sendStatus(403)
     } else if ((req.method == 'PATCH' || req.method == 'POST' || req.method == 'DELETE') && !req.user.isAdminOrUp) {

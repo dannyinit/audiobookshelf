@@ -18,7 +18,7 @@ class CustomProviderAdapter {
    * @param {number} [timeout] response timeout in ms
    * @returns {Promise<Object[]>}
    */
-  async search(title, author, isbn, providerSlug, mediaType, timeout = this.#responseTimeout) {
+  async search(title: string, author: string, isbn: string, providerSlug: string, mediaType: string, timeout: number = this.#responseTimeout): Promise<object[]> {
     if (!timeout || isNaN(timeout)) timeout = this.#responseTimeout
 
     const providerId = providerSlug.split('custom-')[1]
@@ -95,7 +95,7 @@ class CustomProviderAdapter {
      * @param {string|string[]} tagsGenres
      * @returns {string[]}
      */
-    const validateTagsGenresArray = (tagsGenres) => {
+    const validateTagsGenresArray = (tagsGenres: string | string[]): string[] => {
       if (!tagsGenres || (typeof tagsGenres !== 'string' && !Array.isArray(tagsGenres))) return undefined
 
       // If string, split by comma and trim each item

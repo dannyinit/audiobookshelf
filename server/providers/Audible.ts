@@ -29,7 +29,7 @@ class Audible {
    * @param {string} sequence
    * @returns {string}
    */
-  cleanSeriesSequence(seriesName, sequence) {
+  cleanSeriesSequence(seriesName: string, sequence: string): string {
     if (!sequence) return ''
     // match any number with optional decimal (e.g, 1 or 1.5 or .5)
     let numberFound = sequence.match(/\.\d+|\d+(?:\.\d+)?/)
@@ -95,7 +95,7 @@ class Audible {
    * @param {number} [timeout] response timeout in ms
    * @returns {Promise<Object>}
    */
-  asinSearch(asin, region, timeout = this.#responseTimeout) {
+  asinSearch(asin: string, region: string, timeout: number = this.#responseTimeout): Promise<object> {
     if (!asin) return null
     if (!timeout || isNaN(timeout)) timeout = this.#responseTimeout
 
@@ -126,7 +126,7 @@ class Audible {
    * @param {number} [timeout] response timeout in ms
    * @returns {Promise<Object[]>}
    */
-  async search(title, author, asin, region, timeout = this.#responseTimeout) {
+  async search(title: string, author: string, asin: string, region: string, timeout: number = this.#responseTimeout): Promise<object[]> {
     if (region && !this.regionMap[region]) {
       Logger.error(`[Audible] search: Invalid region ${region}`)
       region = ''

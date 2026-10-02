@@ -5,58 +5,54 @@ import { xmlToJSON, timestampToSeconds } from './index'
 import htmlSanitizer = require('../utils/htmlSanitizer')
 import Fuse = require('../libs/fusejs')
 
-/**
- * @typedef RssPodcastChapter
- * @property {number} id
- * @property {string} title
- * @property {number} start
- * @property {number} end
- */
+interface RssPodcastChapter {
+  id: number
+  title: string
+  start: number
+  end: number
+}
 
-/**
- * @typedef RssPodcastEpisode
- * @property {string} title
- * @property {string} subtitle
- * @property {string} description
- * @property {string} descriptionPlain
- * @property {string} pubDate
- * @property {string} episodeType
- * @property {string} season
- * @property {string} episode
- * @property {string} author
- * @property {string} duration
- * @property {number|null} durationSeconds - Parsed from duration string if duration is valid
- * @property {string} explicit
- * @property {number} publishedAt - Unix timestamp
- * @property {{ url: string, type?: string, length?: string }} enclosure
- * @property {string} guid
- * @property {string} chaptersUrl
- * @property {string} chaptersType
- * @property {RssPodcastChapter[]} chapters
- */
+interface RssPodcastEpisode {
+  title: string
+  subtitle: string
+  description: string
+  descriptionPlain: string
+  pubDate: string
+  episodeType: string
+  season: string
+  episode: string
+  author: string
+  duration: string
+  durationSeconds: number | null
+  explicit: string
+  publishedAt: number
+  enclosure: { url: string; type?: string; length?: string} 
+  guid: string
+  chaptersUrl: string
+  chaptersType: string
+  chapters: RssPodcastChapter[]
+}
 
-/**
- * @typedef RssPodcastMetadata
- * @property {string} title
- * @property {string} language
- * @property {string} explicit
- * @property {string} author
- * @property {string} pubDate
- * @property {string} link
- * @property {string} image
- * @property {string[]} categories
- * @property {string} feedUrl
- * @property {string} description
- * @property {string} descriptionPlain
- * @property {string} type
- */
+interface RssPodcastMetadata {
+  title: string
+  language: string
+  explicit: string
+  author: string
+  pubDate: string
+  link: string
+  image: string
+  categories: string[]
+  feedUrl: string
+  description: string
+  descriptionPlain: string
+  type: string
+}
 
-/**
- * @typedef RssPodcast
- * @property {RssPodcastMetadata} metadata
- * @property {RssPodcastEpisode[]} episodes
- * @property {number} numEpisodes
- */
+interface RssPodcast {
+  metadata: RssPodcastMetadata
+  episodes: RssPodcastEpisode[]
+  numEpisodes: number
+}
 
 function extractFirstArrayItem(json, key) {
   if (!json[key]?.length) return null
@@ -353,7 +349,7 @@ export const parsePodcastRssFeedXml = async (xml, excludeEpisodeMetadata = false
  * @param {boolean} [excludeEpisodeMetadata=false]
  * @returns {Promise<RssPodcast|null>}
  */
-export const getPodcastFeed = (feedUrl, excludeEpisodeMetadata = false) => {
+export const getPodcastFeed = (feedUrl: string, excludeEpisodeMetadata: boolean = false): Promise<RssPodcast | null> => {
   Logger.debug(`[podcastUtils] getPodcastFeed for "${feedUrl}"`)
 
   let userAgent = 'audiobookshelf (+https://audiobookshelf.org; like iTMS)'
@@ -431,7 +427,7 @@ export const findMatchingEpisodes = async (feedUrl, searchTitle) => {
  * @param {number} [threshold=0.4] - 0.0 for perfect match, 1.0 for match anything
  * @returns {Array<{ episode: RssPodcastEpisode }>}
  */
-export const findMatchingEpisodesInFeed = (feed, searchTitle, threshold = 0.4) => {
+export const findMatchingEpisodesInFeed = (feed: RssPodcast, searchTitle: string, threshold: number = 0.4): Array<{ episode: RssPodcastEpisode }> => {
   if (!feed?.episodes) {
     return null
   }

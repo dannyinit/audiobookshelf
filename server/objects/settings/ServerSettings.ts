@@ -31,7 +31,7 @@ const PATCHABLE_SETTINGS_KEYS = new Set([
 class ServerSettings {
   static patchableSettingsKeys = PATCHABLE_SETTINGS_KEYS
   /** @type {string} JWT secret key ONLY used when JWT_SECRET_KEY is not set in ENV */
-  tokenSecret
+  tokenSecret: string
 
   constructor(settings) {
     this.id = 'server-settings'
@@ -290,7 +290,7 @@ class ServerSettings {
    * Host timezone used by cron schedulers (not persisted in settings)
    * @returns {string} IANA timezone name, e.g. "America/New_York"
    */
-  static getHostTimeZone() {
+  static getHostTimeZone(): string {
     try {
       return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
     } catch {
@@ -364,7 +364,7 @@ class ServerSettings {
    * @param {Object} payload
    * @returns {boolean} true if updates were made
    */
-  update(payload) {
+  update(payload: object): boolean {
     let hasUpdates = false
     for (const key in payload) {
       if (!PATCHABLE_SETTINGS_KEYS.has(key)) continue

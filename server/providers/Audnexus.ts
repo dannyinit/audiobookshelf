@@ -43,7 +43,7 @@ class Audnexus {
    * @param {string} region
    * @returns {Promise<{asin:string, name:string}[]>}
    */
-  authorASINsRequest(name, region) {
+  authorASINsRequest(name: string, region: string): Promise<{ asin: string; name: string }[]> {
     const searchParams = new URLSearchParams()
     searchParams.set('name', name)
 
@@ -66,7 +66,7 @@ class Audnexus {
    * @param {string} region
    * @returns {Promise<AuthorSearchObj>}
    */
-  authorRequest(asin, region) {
+  authorRequest(asin: string, region: string): Promise<AuthorSearchObj> {
     if (!isValidASIN(asin?.toUpperCase?.())) {
       Logger.error(`[Audnexus] Invalid ASIN ${asin}`)
       return null
@@ -93,7 +93,7 @@ class Audnexus {
    * @param {string} region
    * @returns {Promise<AuthorSearchObj>}
    */
-  async findAuthorByASIN(asin, region) {
+  async findAuthorByASIN(asin: string, region: string): Promise<AuthorSearchObj> {
     const author = await this.authorRequest(asin, region)
 
     return author
@@ -113,7 +113,7 @@ class Audnexus {
    * @param {number} maxLevenshtein
    * @returns {Promise<AuthorSearchObj>}
    */
-  async findAuthorByName(name, region, maxLevenshtein = 3) {
+  async findAuthorByName(name: string, region: string, maxLevenshtein: number = 3): Promise<AuthorSearchObj> {
     Logger.debug(`[Audnexus] Looking up author by name ${name}`)
     const authorAsinObjs = await this.authorASINsRequest(name, region)
 
@@ -148,7 +148,7 @@ class Audnexus {
    * @param {string} region
    * @returns {Promise<Object>}
    */
-  getChaptersByASIN(asin, region) {
+  getChaptersByASIN(asin: string, region: string): Promise<object> {
     Logger.debug(`[Audnexus] Get chapters for ASIN ${asin}/${region}`)
 
     asin = encodeURIComponent(asin.toUpperCase())

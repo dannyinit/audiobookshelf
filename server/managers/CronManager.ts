@@ -8,9 +8,9 @@ import ShareManager = require('./ShareManager')
 
 class CronManager {
   /** @type {import('./PodcastManager')} */
-  podcastManager
+  podcastManager: import('./PodcastManager')
   /** @type {import('./PlaybackSessionManager')} */
-  playbackSessionManager
+  playbackSessionManager: import('./PlaybackSessionManager')
 
   constructor(podcastManager, playbackSessionManager) {
     this.podcastManager = podcastManager
@@ -27,7 +27,7 @@ class CronManager {
    *
    * @param {import('../models/Library')[]} libraries
    */
-  async init(libraries) {
+  async init(libraries: import('../models/Library')[]) {
     this.initOpenSessionCleanupCron()
     this.initLibraryScanCrons(libraries)
     await this.initPodcastCrons()
@@ -56,7 +56,7 @@ class CronManager {
    * Initialize library scan crons
    * @param {import('../models/Library')[]} libraries
    */
-  initLibraryScanCrons(libraries) {
+  initLibraryScanCrons(libraries: import('../models/Library')[]) {
     for (const library of libraries) {
       if (library.settings.autoScanCronExpression) {
         this.startCronForLibrary(library)
@@ -69,7 +69,7 @@ class CronManager {
    *
    * @param {import('../models/Library')} _library
    */
-  startCronForLibrary(_library) {
+  startCronForLibrary(_library: import('../models/Library')) {
     Logger.debug(`[CronManager] Init library scan cron for ${_library.name} on schedule ${_library.settings.autoScanCronExpression}`)
     const libScanCron = cron.schedule(_library.settings.autoScanCronExpression, async () => {
       const library = await Database.libraryModel.findByIdWithFolders(_library.id)
@@ -91,7 +91,7 @@ class CronManager {
    *
    * @param {import('../models/Library')} library
    */
-  removeCronForLibrary(library) {
+  removeCronForLibrary(library: import('../models/Library')) {
     Logger.debug(`[CronManager] Removing library scan cron for ${library.name}`)
     this.libraryScanCrons = this.libraryScanCrons.filter((lsc) => lsc.libraryId !== library.id)
   }
@@ -100,7 +100,7 @@ class CronManager {
    *
    * @param {import('../models/Library')} library
    */
-  updateLibraryScanCron(library) {
+  updateLibraryScanCron(library: import('../models/Library')) {
     const expression = library.settings.autoScanCronExpression
     const existingCron = this.libraryScanCrons.find((lsc) => lsc.libraryId === library.id)
 
@@ -231,7 +231,7 @@ class CronManager {
    *
    * @param {import('../models/LibraryItem')} libraryItem
    */
-  checkUpdatePodcastCron(libraryItem) {
+  checkUpdatePodcastCron(libraryItem: import('../models/LibraryItem')) {
     // Remove from old cron by library item id
     const existingCron = this.podcastCrons.find((pc) => pc.libraryItemIds.includes(libraryItem.id))
     if (existingCron) {

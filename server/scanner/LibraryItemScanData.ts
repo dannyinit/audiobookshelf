@@ -3,47 +3,47 @@ import { LogLevel } from '../utils/constants'
 import LibraryItem = require('../models/LibraryItem')
 import globals = require('../utils/globals')
 
+/**
+ * @typedef LibraryFileModifiedObject
+ * @property {LibraryItem.LibraryFileObject} old
+ * @property {LibraryItem.LibraryFileObject} new
+ */
+
 class LibraryItemScanData {
   /** @type {string} */
-  libraryFolderId
+  libraryFolderId: string
   /** @type {string} */
-  libraryId
+  libraryId: string
   /** @type {string} */
-  mediaType
+  mediaType: string
   /** @type {string} */
-  ino
+  ino: string
   /** @type {number} */
-  mtimeMs
+  mtimeMs: number
   /** @type {number} */
-  ctimeMs
+  ctimeMs: number
   /** @type {number} */
-  birthtimeMs
+  birthtimeMs: number
   /** @type {string} */
-  path
+  path: string
   /** @type {string} */
-  relPath
+  relPath: string
   /** @type {boolean} */
-  isFile
+  isFile: boolean
   /** @type {import('../utils/scandir').LibraryItemFilenameMetadata} */
-  mediaMetadata
+  mediaMetadata: import('../utils/scandir').LibraryItemFilenameMetadata
   /** @type {import('../objects/files/LibraryFile')[]} */
-  libraryFiles
+  libraryFiles: import('../objects/files/LibraryFile')[]
   /** @type {boolean} */
-  declare hasChanges
+  declare hasChanges: boolean
   /** @type {boolean} */
-  declare hasPathChange
+  declare hasPathChange: boolean
   /** @type {LibraryItem.LibraryFileObject[]} */
-  libraryFilesRemoved
+  libraryFilesRemoved: LibraryItem.LibraryFileObject[]
   /** @type {LibraryItem.LibraryFileObject[]} */
-  libraryFilesAdded
+  libraryFilesAdded: LibraryItem.LibraryFileObject[]
   /** @type {LibraryFileModifiedObject[]} */
-  libraryFilesModified
-
-  /**
-   * @typedef LibraryFileModifiedObject
-   * @property {LibraryItem.LibraryFileObject} old
-   * @property {LibraryItem.LibraryFileObject} new
-   */
+  libraryFilesModified: LibraryFileModifiedObject[]
 
   constructor(data) {
     this.libraryFolderId = data.libraryFolderId
@@ -195,7 +195,7 @@ class LibraryItemScanData {
    * @param {import('./LibraryScan')} libraryScan
    * @returns {boolean} true if changes found
    */
-  async checkLibraryItemData(existingLibraryItem, libraryScan) {
+  async checkLibraryItemData(existingLibraryItem: LibraryItem, libraryScan: import('./LibraryScan')): boolean {
     const keysToCompare = ['libraryFolderId', 'ino', 'path', 'relPath', 'isFile']
     this.hasChanges = false
     this.hasPathChange = false
@@ -304,7 +304,7 @@ class LibraryItemScanData {
    * @param {import('./LibraryScan')} libraryScan
    * @returns {boolean} false if no changes
    */
-  compareUpdateLibraryFile(libraryItemPath, existingLibraryFile, scannedLibraryFile, libraryScan) {
+  compareUpdateLibraryFile(libraryItemPath: string, existingLibraryFile: LibraryItem.LibraryFileObject, scannedLibraryFile: import('../objects/files/LibraryFile'), libraryScan: import('./LibraryScan')): boolean {
     let hasChanges = false
 
     if (existingLibraryFile.ino !== scannedLibraryFile.ino) {
@@ -336,7 +336,7 @@ class LibraryItemScanData {
    * @param {import('../models/Book').AudioFileObject} existingAudioFile 
    * @returns {boolean} true if audio file was removed
    */
-  checkAudioFileRemoved(existingAudioFile) {
+  checkAudioFileRemoved(existingAudioFile: import('../models/Book').AudioFileObject): boolean {
     if (!this.audioLibraryFilesRemoved.length) return false
     // First check exact path
     if (this.audioLibraryFilesRemoved.some(af => af.metadata.path === existingAudioFile.metadata.path)) {
@@ -351,7 +351,7 @@ class LibraryItemScanData {
    * @param {import('../models/Book').EBookFileObject} ebookFile 
    * @returns {boolean} true if ebook file was removed
    */
-  checkEbookFileRemoved(ebookFile) {
+  checkEbookFileRemoved(ebookFile: import('../models/Book').EBookFileObject): boolean {
     if (!this.ebookLibraryFiles.length) return true
 
     if (this.ebookLibraryFiles.some(lf => lf.metadata.path === ebookFile.metadata.path)) {
@@ -366,7 +366,7 @@ class LibraryItemScanData {
    * 
    * @param {Object} bookMetadata 
    */
-  setBookMetadataFromFilenames(bookMetadata) {
+  setBookMetadataFromFilenames(bookMetadata: object) {
     const keysToMap = ['title', 'subtitle', 'publishedYear', 'asin']
     for (const key in this.mediaMetadata) {
       if (keysToMap.includes(key) && this.mediaMetadata[key]) {

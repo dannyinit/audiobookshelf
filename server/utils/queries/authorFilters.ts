@@ -8,7 +8,7 @@ export = {
    * @param {string} libraryId
    * @returns {Promise<number>} count
    */
-  async getAuthorsTotalCount(libraryId) {
+  async getAuthorsTotalCount(libraryId: string): Promise<number> {
     const authorsCount = await Database.authorModel.count({
       where: {
         libraryId: libraryId
@@ -24,7 +24,7 @@ export = {
    * @param {number} limit
    * @returns {Promise<{id:string, name:string, count:number}>}
    */
-  async getAuthorsWithCount(libraryId, limit) {
+  async getAuthorsWithCount(libraryId: string, limit: number): Promise<{ id: string; name: string; count: number }> {
     const authors = await Database.bookAuthorModel.findAll({
       include: [
         {
@@ -59,7 +59,7 @@ export = {
    * @param {number} offset
    * @returns {Promise<Object[]>} oldAuthor with numBooks
    */
-  async search(libraryId, query, limit, offset) {
+  async search(libraryId: string, query: Database.TextQuery, limit: number, offset: number): Promise<object[]> {
     const matchAuthor = query.matchExpression('name')
     const authors = await Database.authorModel.findAll({
       where: {

@@ -54,7 +54,7 @@ async function extractCoverArt(filepath, outputpath) {
 
   return new Promise((resolve) => {
     /** @type {import('../libs/fluentFfmpeg/index').FfmpegCommand} */
-    var ffmpeg = Ffmpeg(filepath)
+    var ffmpeg: import('../libs/fluentFfmpeg/index').FfmpegCommand = Ffmpeg(filepath)
     ffmpeg.addOption(['-map 0:v:0', '-frames:v 1'])
     ffmpeg.output(outputpath)
 
@@ -78,7 +78,7 @@ export { extractCoverArt }
 async function resizeImage(filePath, outputPath, width, height) {
   return new Promise((resolve) => {
     /** @type {import('../libs/fluentFfmpeg/index').FfmpegCommand} */
-    var ffmpeg = Ffmpeg(filePath)
+    var ffmpeg: import('../libs/fluentFfmpeg/index').FfmpegCommand = Ffmpeg(filePath)
     ffmpeg.addOption(['-vf', `scale=${width || -1}:${height || -1}`])
     ffmpeg.addOutput(outputPath)
     ffmpeg.on('start', (cmd) => {
@@ -104,7 +104,7 @@ export { resizeImage }
  * @param {import('../objects/PodcastEpisodeDownload')} podcastEpisodeDownload
  * @returns {Promise<{success: boolean, isRequestError?: boolean}>}
  */
-export const downloadPodcastEpisode = (podcastEpisodeDownload) => {
+export const downloadPodcastEpisode = (podcastEpisodeDownload: import('../objects/PodcastEpisodeDownload')): Promise<{ success: boolean; isRequestError?: boolean }> => {
   return new Promise(async (resolve) => {
     // Some podcasts fail due to user agent strings
     // See: https://github.com/advplyr/audiobookshelf/issues/3246 (requires iTMS user agent)
@@ -150,12 +150,12 @@ export const downloadPodcastEpisode = (podcastEpisodeDownload) => {
     }
 
     /** @type {import('../libs/fluentFfmpeg/index').FfmpegCommand} */
-    const ffmpeg = Ffmpeg(response.data)
+    const ffmpeg: import('../libs/fluentFfmpeg/index').FfmpegCommand = Ffmpeg(response.data)
     ffmpeg.addOption('-loglevel debug') // Debug logs printed on error
     ffmpeg.outputOptions('-c:a', 'copy', '-map', '0:a', '-metadata', 'podcast=1')
 
     /** @type {import('../models/Podcast')} */
-    const podcast = podcastEpisodeDownload.libraryItem.media
+    const podcast: import('../models/Podcast') = podcastEpisodeDownload.libraryItem.media
     const podcastEpisode = podcastEpisodeDownload.rssPodcastEpisode
     const finalSizeInBytes = Number(podcastEpisode.enclosure?.length || 0)
 
@@ -237,7 +237,7 @@ export const downloadPodcastEpisode = (podcastEpisodeDownload) => {
  * @param {Array|null} chapters - An array of chapter objects.
  * @returns {string} - The ffmetadata file content.
  */
-function generateFFMetadata(metadata, chapters) {
+function generateFFMetadata(metadata: object, chapters: Array<any> | null): string {
   let ffmetadataContent = ';FFMETADATA1\n'
 
   // Add global metadata
@@ -273,7 +273,7 @@ export { generateFFMetadata }
  * @param {string} ffmetadataPath - The path to the FFmpeg metadata file.
  * @returns {Promise<boolean>} - A promise that resolves to true if the file was written successfully, false otherwise.
  */
-async function writeFFMetadataFile(metadata, chapters, ffmetadataPath) {
+async function writeFFMetadataFile(metadata: object, chapters: Array<any>, ffmetadataPath: string): Promise<boolean> {
   try {
     await fs.writeFile(ffmetadataPath, generateFFMetadata(metadata, chapters))
     Logger.debug(`[ffmpegHelpers] Wrote ${ffmetadataPath}`)
@@ -299,7 +299,7 @@ export { writeFFMetadataFile }
  * @param {function(string, string): Promise<void>} copyFunc - The function to use for copying files (optional). Used for dependency injection in tests.
  * @returns {Promise<void>} A promise that resolves if the operation is successful, rejects otherwise.
  */
-async function addCoverAndMetadataToFile(audioFilePath, coverFilePath, metadataFilePath, track, mimeType, progressCB = null, ffmpeg = Ffmpeg(), copyFunc = copyToExisting) {
+async function addCoverAndMetadataToFile(audioFilePath: string, coverFilePath: string | null, metadataFilePath: string, track: number, mimeType: string, progressCB: (arg0: number) => void | null = null, ffmpeg: import('../libs/fluentFfmpeg/index').FfmpegCommand = Ffmpeg(), copyFunc: (arg0: string, arg1: string) => Promise<void> = copyToExisting): Promise<void> {
   const isMp4 = mimeType === 'audio/mp4'
   const isMp3 = mimeType === 'audio/mpeg'
 
@@ -404,7 +404,7 @@ function escapeFFMetadataValue(value) {
  * @param {number} audioFilesLength - The length of the audio files.
  * @returns {Object} - The FFmpeg metadata object.
  */
-function getFFMetadataObject(libraryItem, audioFilesLength) {
+function getFFMetadataObject(libraryItem: import('../models/LibraryItem'), audioFilesLength: number): object {
   const ffmetadata = {
     title: libraryItem.media.title,
     artist: libraryItem.media.authorName,
@@ -444,7 +444,7 @@ export { getFFMetadataObject }
  * @param {import('../libs/fluentFfmpeg/index').FfmpegCommand} [ffmpeg=Ffmpeg()] - The FFmpeg instance to use for merging.
  * @returns {Promise<void>} A promise that resolves when the audio files are merged successfully.
  */
-async function mergeAudioFiles(audioTracks, duration, itemCachePath, outputFilePath, encodingOptions, progressCB = null, ffmpeg = Ffmpeg()) {
+async function mergeAudioFiles(audioTracks: import('../models/Book').AudioFileObject, duration: number, itemCachePath: string, outputFilePath: string, encodingOptions: import('../managers/AbMergeManager').AbMergeEncodeOptions, progressCB: Function = null, ffmpeg: import('../libs/fluentFfmpeg/index').FfmpegCommand = Ffmpeg()): Promise<void> {
   const audioBitrate = encodingOptions.bitrate || '128k'
   const audioCodec = encodingOptions.codec || 'aac'
   const audioChannels = encodingOptions.channels || 2

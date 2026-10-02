@@ -7,6 +7,19 @@ import Logger = require('../Logger')
 import { getRequestOrigin } from '../utils/requestUtils'
 
 /**
+ * @typedef {Object} OpenIdIssuerConfig
+ * @property {string} issuer
+ * @property {string} authorization_endpoint
+ * @property {string} token_endpoint
+ * @property {string} userinfo_endpoint
+ * @property {string} end_session_endpoint
+ * @property {string} jwks_uri
+ * @property {string} id_token_signing_alg_values_supported
+ *
+ * Get OpenID Connect configuration from an issuer URL
+ */
+
+/**
  * OpenID Connect authentication strategy
  */
 class OidcAuthStrategy {
@@ -22,7 +35,7 @@ class OidcAuthStrategy {
    * Get the passport strategy instance
    * @returns {OpenIDClient.Strategy}
    */
-  getStrategy() {
+  getStrategy(): OpenIDClient.Strategy {
     if (!this.strategy) {
       this.strategy = new OpenIDClient.Strategy(
         {
@@ -42,7 +55,7 @@ class OidcAuthStrategy {
    * Get the OpenID Connect client
    * @returns {OpenIDClient.Client}
    */
-  getClient() {
+  getClient(): OpenIDClient.Client {
     if (!this.client) {
       if (!Database.serverSettings.isOpenIDAuthSettingsValid) {
         throw new Error('OpenID Connect settings are not valid')
@@ -73,7 +86,7 @@ class OidcAuthStrategy {
    * Get the scope string for the OpenID Connect request
    * @returns {string}
    */
-  getScope() {
+  getScope(): string {
     let scope = 'openid profile email'
     if (global.ServerSettings.authOpenIDGroupClaim) {
       scope += ' ' + global.ServerSettings.authOpenIDGroupClaim
@@ -110,7 +123,7 @@ class OidcAuthStrategy {
    * @param {Object} userinfo
    * @param {Function} done - Passport callback
    */
-  async verifyCallback(tokenset, userinfo, done) {
+  async verifyCallback(tokenset: object, userinfo: object, done: Function) {
     let isNewUser = false
     let user = null
     try {
@@ -167,7 +180,7 @@ class OidcAuthStrategy {
    * @param {Object} userinfo
    * @returns {boolean}
    */
-  validateGroupClaim(userinfo) {
+  validateGroupClaim(userinfo: object): boolean {
     const groupClaimName = Database.serverSettings.authOpenIDGroupClaim
     if (!groupClaimName)
       // Allow no group claim when configured like this
@@ -185,7 +198,7 @@ class OidcAuthStrategy {
    * @param {import('../models/User')} user
    * @param {Object} userinfo
    */
-  async setUserGroup(user, userinfo) {
+  async setUserGroup(user: import('../models/User'), userinfo: object) {
     const groupClaimName = Database.serverSettings.authOpenIDGroupClaim
     if (!groupClaimName)
       // No group claim configured, don't set anything
@@ -223,7 +236,7 @@ class OidcAuthStrategy {
    * @param {import('../models/User')} user
    * @param {Object} userinfo
    */
-  async updateUserPermissions(user, userinfo) {
+  async updateUserPermissions(user: import('../models/User'), userinfo: object) {
     const absPermissionsClaim = Database.serverSettings.authOpenIDAdvancedPermsClaim
     if (!absPermissionsClaim)
       // No advanced permissions claim configured, don't set anything
@@ -245,7 +258,7 @@ class OidcAuthStrategy {
    * @param {boolean} isMobileFlow
    * @returns {Object|{error: string}}
    */
-  generatePkce(req, isMobileFlow) {
+  generatePkce(req: Request, isMobileFlow: boolean): object | { error: string } {
     if (isMobileFlow) {
       if (!req.query.code_challenge) {
         return {
@@ -273,7 +286,7 @@ class OidcAuthStrategy {
    * @param {string} uri
    * @returns {boolean}
    */
-  isValidRedirectUri(uri) {
+  isValidRedirectUri(uri: string): boolean {
     // Check if the redirect_uri is in the whitelist
     return Database.serverSettings.authOpenIDMobileRedirectURIs.includes(uri) || (Database.serverSettings.authOpenIDMobileRedirectURIs.length === 1 && Database.serverSettings.authOpenIDMobileRedirectURIs[0] === '*')
   }
@@ -284,7 +297,7 @@ class OidcAuthStrategy {
    * @param {Request} req
    * @returns {{ authorizationUrl: string }|{status: number, error: string}}
    */
-  getAuthorizationUrl(req) {
+  getAuthorizationUrl(req: Request): { authorizationUrl: string } | { status: number; error: string } {
     const client = this.getClient()
     const strategy = this.getStrategy()
     const sessionKey = strategy._key
@@ -388,7 +401,7 @@ class OidcAuthStrategy {
    * @param {string} authMethod
    * @returns {string|null}
    */
-  getEndSessionUrl(req, idToken, authMethod) {
+  getEndSessionUrl(req: Request, idToken: string, authMethod: string): string | null {
     const client = this.getClient()
 
     if (client.issuer.end_session_endpoint && client.issuer.end_session_endpoint.length > 0) {
@@ -419,20 +432,10 @@ class OidcAuthStrategy {
   }
 
   /**
-   * @typedef {Object} OpenIdIssuerConfig
-   * @property {string} issuer
-   * @property {string} authorization_endpoint
-   * @property {string} token_endpoint
-   * @property {string} userinfo_endpoint
-   * @property {string} end_session_endpoint
-   * @property {string} jwks_uri
-   * @property {string} id_token_signing_alg_values_supported
-   *
-   * Get OpenID Connect configuration from an issuer URL
    * @param {string} issuerUrl
    * @returns {Promise<OpenIdIssuerConfig|{status: number, error: string}>}
    */
-  async getIssuerConfig(issuerUrl) {
+  async getIssuerConfig(issuerUrl: string): Promise<OpenIdIssuerConfig | { status: number; error: string }> {
     // Strip trailing slash
     if (issuerUrl.endsWith('/')) issuerUrl = issuerUrl.slice(0, -1)
 
@@ -476,7 +479,7 @@ class OidcAuthStrategy {
    * @param {Request} req
    * @param {Response} res
    */
-  handleMobileRedirect(req, res) {
+  handleMobileRedirect(req: Request, res: Response) {
     try {
       // Extract the state parameter from the request
       const { state, code } = req.query
@@ -511,7 +514,7 @@ class OidcAuthStrategy {
    * @param {Request} req - Express request object to get current host
    * @returns {boolean} - True if the URL is safe (same-origin), false otherwise
    */
-  isValidWebCallbackUrl(callbackUrl, req) {
+  isValidWebCallbackUrl(callbackUrl: string, req: Request): boolean {
     if (!callbackUrl) return false
 
     try {

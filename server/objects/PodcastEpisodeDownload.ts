@@ -5,9 +5,9 @@ import globals = require('../utils/globals')
 
 class PodcastEpisodeDownload {
   /** @type {import('../utils/podcastUtils').RssPodcastEpisode} */
-  rssPodcastEpisode
+  rssPodcastEpisode: import('../utils/podcastUtils').RssPodcastEpisode
   /** @type {import('../models/LibraryItem')} */
-  libraryItem
+  libraryItem: import('../models/LibraryItem')
 
   constructor() {
     this.id = null
@@ -86,7 +86,7 @@ class PodcastEpisodeDownload {
   /**
    * @param {string} title
    */
-  getSanitizedFilename(title) {
+  getSanitizedFilename(title: string) {
     const appendage = this.appendRandomId ? ` (${this.id})` : ''
     const filename = `${title.trim()}${appendage}.${this.fileExtension}`
     return sanitizeFilename(filename)
@@ -95,7 +95,7 @@ class PodcastEpisodeDownload {
   /**
    * @param {boolean} appendRandomId
    */
-  setAppendRandomId(appendRandomId) {
+  setAppendRandomId(appendRandomId: boolean) {
     this.appendRandomId = appendRandomId
     this.targetFilename = this.getSanitizedFilename(this.rssPodcastEpisode.title || '')
   }
@@ -107,7 +107,7 @@ class PodcastEpisodeDownload {
    * @param {*} isAutoDownload
    * @param {*} libraryId
    */
-  setData(rssPodcastEpisode, libraryItem, isAutoDownload, libraryId) {
+  setData(rssPodcastEpisode: import('../utils/podcastUtils').RssPodcastEpisode, libraryItem: import('../models/LibraryItem'), isAutoDownload: any, libraryId: any) {
     this.id = uuidv4()
     this.rssPodcastEpisode = rssPodcastEpisode
 

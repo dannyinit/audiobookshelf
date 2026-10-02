@@ -17,7 +17,7 @@ import { escapeRegExp } from './utils'
  */
 class Auth {
   /** @type {import('express-rate-limit').RateLimitRequestHandler} */
-  authRateLimiter
+  authRateLimiter: import('express-rate-limit').RateLimitRequestHandler
 
   constructor() {
     const escapedRouterBasePath = escapeRegExp(global.RouterBasePath)
@@ -35,7 +35,7 @@ class Auth {
    * @param {Request} req
    * @returns {boolean}
    */
-  authNotNeeded(req) {
+  authNotNeeded(req: Request): boolean {
     return req.method === 'GET' && this.ignorePatterns.some((pattern) => pattern.test(req.path))
   }
 
@@ -44,7 +44,7 @@ class Auth {
    *
    * @param {function} middleware
    */
-  ifAuthNeeded(middleware) {
+  ifAuthNeeded(middleware: function) {
     return (req, res, next) => {
       if (this.authNotNeeded(req)) {
         return next()
@@ -60,7 +60,7 @@ class Auth {
    * @param {Response} res
    * @param {NextFunction} next
    */
-  isAuthenticated(req, res, next) {
+  isAuthenticated(req: Request, res: Response, next: NextFunction) {
     return passport.authenticate('jwt', { session: false })(req, res, next)
   }
 
@@ -72,7 +72,7 @@ class Auth {
    * @param {{ id:string, username:string }} user
    * @returns {string}
    */
-  generateAccessToken(user) {
+  generateAccessToken(user: { id: string; username: string }): string {
     return this.tokenManager.generateAccessToken(user)
   }
 
@@ -85,7 +85,7 @@ class Auth {
    * @param {Response} res
    * @returns {Promise<{ accessToken:string, refreshToken:string }|null>} new tokens for the current session if kept alive
    */
-  async invalidateJwtSessionsForUser(user, req, res) {
+  async invalidateJwtSessionsForUser(user: import('./models/User'), req: Request, res: Response): Promise<{ accessToken: string; refreshToken: string } | null> {
     return this.tokenManager.invalidateJwtSessionsForUser(user, req, res)
   }
 
@@ -95,7 +95,7 @@ class Auth {
    * @param {import('./models/User')} user
    * @returns {Promise<Object>} jsonPayload
    */
-  async getUserLoginResponsePayload(user) {
+  async getUserLoginResponsePayload(user: import('./models/User')): Promise<object> {
     const libraryIds = await Database.libraryModel.getAllLibraryIds()
     return {
       user: user.toOldJSONForBrowser(),
@@ -168,7 +168,7 @@ class Auth {
    *
    * @param {string} name
    */
-  unuseAuthStrategy(name) {
+  unuseAuthStrategy(name: string) {
     if (name === 'openid') {
       this.oidcAuthStrategy.unuse()
     } else if (name === 'local') {
@@ -183,7 +183,7 @@ class Auth {
    *
    * @param {string} name
    */
-  useAuthStrategy(name) {
+  useAuthStrategy(name: string) {
     if (name === 'openid') {
       this.oidcAuthStrategy.init()
     } else if (name === 'local') {
@@ -199,7 +199,7 @@ class Auth {
    * @param {string} authMethod
    * @returns {boolean}
    */
-  isAuthMethodAPIBased(authMethod) {
+  isAuthMethodAPIBased(authMethod: string): boolean {
     return ['api', 'openid-mobile'].includes(authMethod)
   }
 
@@ -217,7 +217,7 @@ class Auth {
    * @param {string} authMethod - The authentication method, default is 'local'.
    * @returns {Object|null} - Returns error object if validation fails, null if successful
    */
-  paramsToCookies(req, res, authMethod = 'local') {
+  paramsToCookies(req: Request, res: Response, authMethod: string = 'local'): object | null {
     const TWO_MINUTES = 120000 // 2 minutes in milliseconds
     const callback = req.query.redirect_uri || req.query.callback
 
@@ -257,7 +257,7 @@ class Auth {
    * @param {Request} req
    * @param {Response} res
    */
-  async handleLoginSuccessBasedOnCookie(req, res) {
+  async handleLoginSuccessBasedOnCookie(req: Request, res: Response) {
     // Handle token generation and get userResponse object
     // For API based auth (e.g. mobile), we will return the refresh token in the response
     const isApiBased = this.isAuthMethodAPIBased(req.cookies.auth_method)
@@ -293,7 +293,7 @@ class Auth {
    * @param {Response} res
    * @param {boolean} returnTokens
    */
-  async handleLoginSuccess(req, res, returnTokens = false) {
+  async handleLoginSuccess(req: Request, res: Response, returnTokens: boolean = false) {
     // Create tokens and session
     const { accessToken, refreshToken } = await this.tokenManager.createTokensAndSession(req.user, req)
 
@@ -317,7 +317,7 @@ class Auth {
    *
    * @param {import('express').Router} router
    */
-  async initAuthRoutes(router) {
+  async initAuthRoutes(router: import('express').Router) {
     // Local strategy login route (takes username and password)
     router.post('/login', this.authRateLimiter, passport.authenticate('local'), async (req, res) => {
       // Check if mobile app wants refresh token in response

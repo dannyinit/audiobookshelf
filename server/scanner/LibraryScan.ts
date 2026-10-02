@@ -8,13 +8,13 @@ import { secondsToTimestamp, elapsedPretty } from '../utils/index'
 
 class LibraryScan {
   /** @type {import('../models/Library')} */
-  library
+  library: import('../models/Library')
   /** @type {string[]} */
-  authorsRemovedFromBooks
+  authorsRemovedFromBooks: string[]
   /** @type {Set<string>} */
-  authorsNumBooksChangedIds
+  authorsNumBooksChangedIds: Set<string>
   /** @type {string[]} */
-  seriesRemovedFromBooks
+  seriesRemovedFromBooks: string[]
 
   constructor() {
     this.id = null
@@ -102,7 +102,7 @@ class LibraryScan {
    * @param {import('../models/Library')} library
    * @param {string} type
    */
-  setData(library, type = 'scan') {
+  setData(library: import('../models/Library'), type: string = 'scan') {
     this.id = uuidv4()
     this.type = type
     this.library = library

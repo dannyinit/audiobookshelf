@@ -10,14 +10,14 @@ import { isRequestSecure } from '../utils/requestUtils'
 
 class TokenManager {
   /** @type {string} JWT secret key */
-  static TokenSecret = null
+  static TokenSecret: string = null
 
   /** @type {number} Refresh token expiry in seconds */
-  RefreshTokenExpiry
+  RefreshTokenExpiry: number
   /** @type {number} Access token expiry in seconds */
-  AccessTokenExpiry
+  AccessTokenExpiry: number
   /** @type {number} Grace period in seconds during which a rotated (old) refresh token is still accepted */
-  RefreshTokenGracePeriod
+  RefreshTokenGracePeriod: number
 
   constructor() {
     this.RefreshTokenExpiry = parseInt(process.env.REFRESH_TOKEN_EXPIRY) || 30 * 24 * 60 * 60 // 30 days
@@ -66,7 +66,7 @@ class TokenManager {
    * @param {import('express').Response} res
    * @param {string} refreshToken
    */
-  setRefreshTokenCookie(req, res, refreshToken) {
+  setRefreshTokenCookie(req: import('express').Request, res: import('express').Response, refreshToken: string) {
     res.cookie('refresh_token', refreshToken, {
       httpOnly: true,
       secure: isRequestSecure(req),
@@ -82,7 +82,7 @@ class TokenManager {
    * @param {Object} decoded
    * @returns {boolean}
    */
-  static isBearerAccessTokenPayload(decoded) {
+  static isBearerAccessTokenPayload(decoded: object): boolean {
     if (!decoded?.userId) return false
     if (decoded.type === 'refresh') return false
     return true
@@ -95,7 +95,7 @@ class TokenManager {
    * @param {string} token
    * @returns {Object} tokens data
    */
-  static validateAccessToken(token) {
+  static validateAccessToken(token: string): object {
     try {
       // Expiration is handled by the caller so expired API keys can be deactivated
       return jwt.verify(token, TokenManager.TokenSecret, { ignoreExpiration: true })
@@ -112,7 +112,7 @@ class TokenManager {
    * @param {{ id:string, username:string }} user
    * @returns {string}
    */
-  static generateAccessToken(user) {
+  static generateAccessToken(user: { id: string; username: string }): string {
     return jwt.sign({ userId: user.id, username: user.username }, TokenManager.TokenSecret)
   }
 
@@ -124,7 +124,7 @@ class TokenManager {
    * @param {{ id:string, username:string }} user
    * @returns {string}
    */
-  generateAccessToken(user) {
+  generateAccessToken(user: { id: string; username: string }): string {
     return TokenManager.generateAccessToken(user)
   }
 
@@ -134,7 +134,7 @@ class TokenManager {
    * @param {{ id:string, username:string }} user
    * @returns {string}
    */
-  generateTempAccessToken(user) {
+  generateTempAccessToken(user: { id: string; username: string }): string {
     const payload = {
       userId: user.id,
       username: user.username,
@@ -158,7 +158,7 @@ class TokenManager {
    * @param {{ id:string, username:string }} user
    * @returns {string}
    */
-  generateRefreshToken(user) {
+  generateRefreshToken(user: { id: string; username: string }): string {
     const payload = {
       userId: user.id,
       username: user.username,
@@ -183,7 +183,7 @@ class TokenManager {
    * @param {import('express').Request} req
    * @returns {Promise<{ accessToken:string, refreshToken:string, session:import('../models/Session') }>}
    */
-  async createTokensAndSession(user, req) {
+  async createTokensAndSession(user: { id: string; username: string }, req: import('express').Request): Promise<{ accessToken: string; refreshToken: string; session: import('../models/Session') }> {
     const ipAddress = requestIp.getClientIp(req)
     const userAgent = req.headers['user-agent']
     const accessToken = this.generateTempAccessToken(user)
@@ -211,7 +211,7 @@ class TokenManager {
    * @param {boolean} gracePeriod - whether to use the grace period
    * @returns {Promise<{ accessToken:string, refreshToken:string }>}
    */
-  async rotateTokensForSession(session, user, req, res, gracePeriod = true) {
+  async rotateTokensForSession(session: import('../models/Session'), user: import('../models/User'), req: import('express').Request, res: import('express').Response, gracePeriod: boolean = true): Promise<{ accessToken: string; refreshToken: string }> {
     const previousRefreshToken = session.refreshToken
     const newAccessToken = this.generateTempAccessToken(user)
     let newRefreshToken = this.generateRefreshToken(user)
@@ -278,7 +278,7 @@ class TokenManager {
    * @param {Object} jwt_payload
    * @param {Function} done - passportjs callback
    */
-  async jwtAuthCheck(jwt_payload, done) {
+  async jwtAuthCheck(jwt_payload: object, done: Function) {
     if (jwt_payload.type === 'api') {
       // Api key based authentication
       const apiKey = await Database.apiKeyModel.getById(jwt_payload.keyId)
@@ -351,7 +351,7 @@ class TokenManager {
    * @param {import('express').Response} res
    * @returns {Promise<{ accessToken?:string, refreshToken?:string, user?:import('../models/User'), error?:string }>}
    */
-  async handleRefreshToken(refreshToken, req, res) {
+  async handleRefreshToken(refreshToken: string, req: import('express').Request, res: import('express').Response): Promise<{ accessToken?: string; refreshToken?: string; user?: import('../models/User'); error?: string }> {
     try {
       // Verify the refresh token
       const decoded = jwt.verify(refreshToken, TokenManager.TokenSecret)
@@ -468,7 +468,7 @@ class TokenManager {
    * @param {import('express').Response} res
    * @returns {Promise<{ accessToken:string, refreshToken:string }|null>} new tokens for the current session if kept alive
    */
-  async invalidateJwtSessionsForUser(user, req, res) {
+  async invalidateJwtSessionsForUser(user: import('../models/User'), req: import('express').Request, res: import('express').Response): Promise<{ accessToken: string; refreshToken: string } | null> {
     const currentRefreshToken = req.cookies.refresh_token || req.headers['x-refresh-token']
     if (req.user.id === user.id && currentRefreshToken) {
       // Current user is the same as the user to invalidate sessions for
@@ -512,7 +512,7 @@ class TokenManager {
    *
    * @param {string} refreshToken
    */
-  async invalidateAllSessionsForRefreshToken(refreshToken) {
+  async invalidateAllSessionsForRefreshToken(refreshToken: string) {
     if (!refreshToken) return
 
     const session = await Database.sessionModel.findOne({
@@ -532,7 +532,7 @@ class TokenManager {
    * @param {string} refreshToken
    * @returns {Promise<boolean>}
    */
-  async invalidateRefreshToken(refreshToken) {
+  async invalidateRefreshToken(refreshToken: string): Promise<boolean> {
     if (!refreshToken) {
       Logger.error(`[TokenManager] No refresh token provided to invalidate`)
       return false
