@@ -18,26 +18,26 @@ interface ApiKeyPermissions {
 }
 
 class ApiKeyCache {
-  cache: LRUCache<{}, {}, unknown>
+  cache: LRUCache<string, ApiKey>
   constructor() {
     this.cache = new LRUCache({ max: 100 })
   }
 
-  getById(id) {
+  getById(id: string) {
     const apiKey = this.cache.get(id)
     return apiKey
   }
 
-  set(apiKey) {
+  set(apiKey: ApiKey) {
     apiKey.fromCache = true
     this.cache.set(apiKey.id, apiKey)
   }
 
-  delete(apiKeyId) {
+  delete(apiKeyId: string) {
     this.cache.delete(apiKeyId)
   }
 
-  maybeInvalidate(apiKey) {
+  maybeInvalidate(apiKey: ApiKey) {
     if (!apiKey.fromCache) this.delete(apiKey.id)
   }
 }
@@ -69,6 +69,8 @@ class ApiKey extends Model {
   declare createdByUserId: string
   /** @type {import('./User')} */
   declare user: import('./User')
+  /** Set when the instance is stored in the api key cache */
+  declare fromCache?: boolean
 
   /**
    * Same properties as User.getDefaultPermissions
@@ -103,25 +105,27 @@ class ApiKey extends Model {
       return permissions
     }
 
+    const permissionsByKey = permissions as unknown as Record<string, unknown>
     for (const key in reqPermissions) {
-      if (reqPermissions[key] === undefined) {
+      const value = (reqPermissions as unknown as Record<string, unknown>)[key]
+      if (value === undefined) {
         Logger.warn(`[ApiKey] mergePermissionsWithDefault: Invalid permission key: ${key}`)
         continue
       }
 
       if (key === 'librariesAccessible' || key === 'itemTagsSelected') {
-        if (!Array.isArray(reqPermissions[key]) || reqPermissions[key].some((value) => typeof value !== 'string')) {
-          Logger.warn(`[ApiKey] mergePermissionsWithDefault: Invalid ${key} value: ${reqPermissions[key]}`)
+        if (!Array.isArray(value) || value.some((value) => typeof value !== 'string')) {
+          Logger.warn(`[ApiKey] mergePermissionsWithDefault: Invalid ${key} value: ${value}`)
           continue
         }
 
-        permissions[key] = reqPermissions[key]
-      } else if (typeof reqPermissions[key] !== 'boolean') {
+        permissionsByKey[key] = value
+      } else if (typeof value !== 'boolean') {
         Logger.warn(`[ApiKey] mergePermissionsWithDefault: Invalid permission value for key ${key}. Should be boolean`)
         continue
       }
 
-      permissions[key] = reqPermissions[key]
+      permissionsByKey[key] = value
     }
 
     return permissions
@@ -156,13 +160,13 @@ class ApiKey extends Model {
    * @param {number} [expiresIn] - Seconds until the api key expires or undefined for no expiration
    * @returns {Promise<string>}
    */
-  static async generateApiKey(tokenSecret: string, keyId: string, name: string, expiresIn: number): Promise<string> {
-    const options = {}
+  static async generateApiKey(tokenSecret: string, keyId: string, name: string, expiresIn?: number): Promise<string | null> {
+    const options: { expiresIn?: number } = {}
     if (expiresIn && !isNaN(expiresIn) && expiresIn > 0) {
       options.expiresIn = expiresIn
     }
 
-    return new Promise((resolve) => {
+    return new Promise<string | null>((resolve) => {
       jwt.sign(
         {
           keyId,
@@ -176,7 +180,7 @@ class ApiKey extends Model {
             Logger.error(`[ApiKey] Error generating API key: ${err}`)
             resolve(null)
           } else {
-            resolve(token)
+            resolve(token!)
           }
         }
       )
@@ -246,17 +250,17 @@ class ApiKey extends Model {
     ApiKey.belongsTo(user, { as: 'createdByUser', foreignKey: 'createdByUserId' })
   }
 
-  async update(values, options) {
+  async update(values: any, options?: import('sequelize').InstanceUpdateOptions): Promise<this> {
     apiKeyCache.maybeInvalidate(this)
     return await super.update(values, options)
   }
 
-  async save(options) {
+  async save(options?: import('sequelize').SaveOptions): Promise<this> {
     apiKeyCache.maybeInvalidate(this)
     return await super.save(options)
   }
 
-  async destroy(options) {
+  async destroy(options?: import('sequelize').InstanceDestroyOptions): Promise<void> {
     apiKeyCache.delete(this.id)
     await super.destroy(options)
   }

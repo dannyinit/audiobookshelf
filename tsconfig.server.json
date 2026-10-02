@@ -16,5 +16,5 @@
   },
   "include": ["index.ts", "dev.js", "server/**/*.js", "server/**/*.ts", "test/**/*.js", "test/**/*.ts"],
   "exclude": ["node_modules", "dist-server", "client", "**/*.d.ts"],
-  "files": ["server/types/global.d.ts", "server/types/sequelize.d.ts"]
+  "files": ["server/types/global.d.ts", "server/types/sequelize.d.ts", "server/types/ssrf-req-filter.d.ts"]
 }

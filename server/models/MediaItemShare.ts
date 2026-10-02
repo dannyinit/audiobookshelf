@@ -1,4 +1,4 @@
-import { DataTypes, Model, Sequelize } from 'sequelize'
+import { DataTypes, Model, Sequelize, BelongsToGetAssociationMixin } from 'sequelize'
 
 type MediaItemShareObject = MediaItemShare.MediaItemShareObject
 
@@ -31,6 +31,11 @@ class MediaItemShare extends Model {
   declare isDownloadable: boolean
   /** @type {import('./Book')|import('./PodcastEpisode')} */
   declare mediaItem: import('./Book') | import('./PodcastEpisode')
+  // Polymorphic association includes, moved to mediaItem by the afterFind hook
+  declare book?: import('./Book')
+  declare podcastEpisode?: import('./PodcastEpisode')
+  declare getBook: BelongsToGetAssociationMixin<import('./Book')>
+  declare getPodcastEpisode: BelongsToGetAssociationMixin<import('./PodcastEpisode')>
 
   toJSONForClient() {
     return {
@@ -52,9 +57,9 @@ class MediaItemShare extends Model {
    * @param {string} mediaItemType
    * @returns {Promise<import('./LibraryItem').LibraryItemExpanded>}
    */
-  static async getMediaItemsLibraryItem(mediaItemId: string, mediaItemType: string): Promise<import('./LibraryItem').LibraryItemExpanded> {
+  static async getMediaItemsLibraryItem(mediaItemId: string, mediaItemType: string): Promise<import('./LibraryItem').LibraryItemExpanded | null> {
     /** @type {typeof import('./LibraryItem')} */
-    const libraryItemModel: typeof import('./LibraryItem') = this.sequelize!.models.libraryItem
+    const libraryItemModel = this.sequelize!.models.libraryItem as typeof import('./LibraryItem')
 
     if (mediaItemType === 'book') {
       const libraryItem = await libraryItemModel.findOneExpanded({ mediaId: mediaItemId }, null, {
@@ -72,9 +77,9 @@ class MediaItemShare extends Model {
    * @param {import('sequelize').FindOptions} options
    * @returns {Promise<import('./Book')|import('./PodcastEpisode')>}
    */
-  getMediaItem(options: import('sequelize').FindOptions): Promise<import('./Book') | import('./PodcastEpisode')> {
+  getMediaItem(options?: import('sequelize').FindOptions): Promise<import('./Book') | import('./PodcastEpisode') | null> {
     if (!this.mediaItemType) return Promise.resolve(null)
-    const mixinMethodName = `get${this.sequelize.uppercaseFirst(this.mediaItemType)}`
+    const mixinMethodName = `get${this.sequelize.uppercaseFirst(this.mediaItemType)}` as 'getBook' | 'getPodcastEpisode'
     return this[mixinMethodName](options)
   }
 
@@ -131,9 +136,9 @@ class MediaItemShare extends Model {
     MediaItemShare.addHook('afterFind', (findResult) => {
       if (!findResult) return
 
-      if (!Array.isArray(findResult)) findResult = [findResult]
+      const instances = (Array.isArray(findResult) ? findResult : [findResult]) as MediaItemShare[]
 
-      for (const instance of findResult) {
+      for (const instance of instances) {
         if (instance.mediaItemType === 'book' && instance.book !== undefined) {
           instance.mediaItem = instance.book
           instance.dataValues.mediaItem = instance.dataValues.book

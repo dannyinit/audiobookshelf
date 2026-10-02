@@ -1,4 +1,4 @@
-import { DataTypes, Model, Sequelize } from 'sequelize'
+import { DataTypes, Model, Sequelize, BelongsToGetAssociationMixin } from 'sequelize'
 import Logger = require('../Logger')
 import { isNullOrNaN } from '../utils'
 
@@ -21,8 +21,8 @@ class MediaProgress extends Model {
   declare ebookLocation: string
   /** @type {number} */
   declare ebookProgress: number
-  /** @type {Date} */
-  declare finishedAt: Date
+  /** Set as epoch ms or a date string from progress updates; read back from the db as a Date */
+  declare finishedAt: Date | number | string | null
   /** @type {Object} */
   declare extraData: Record<string, any>
   /** @type {string} */
@@ -33,8 +33,15 @@ class MediaProgress extends Model {
   declare createdAt: Date
   /** @type {string} */
   declare podcastId: string
+  /** only set when expanded */
+  declare mediaItem?: import('./Book') | import('./PodcastEpisode')
+  // Polymorphic association includes, moved to mediaItem by the afterFind hook
+  declare book?: import('./Book')
+  declare podcastEpisode?: import('./PodcastEpisode')
+  declare getBook: BelongsToGetAssociationMixin<import('./Book')>
+  declare getPodcastEpisode: BelongsToGetAssociationMixin<import('./PodcastEpisode')>
 
-  static removeById(mediaProgressId) {
+  static removeById(mediaProgressId: string) {
     return this.destroy({
       where: {
         id: mediaProgressId
@@ -108,9 +115,9 @@ class MediaProgress extends Model {
     MediaProgress.addHook('afterFind', (findResult) => {
       if (!findResult) return
 
-      if (!Array.isArray(findResult)) findResult = [findResult]
+      const instances = (Array.isArray(findResult) ? findResult : [findResult]) as MediaProgress[]
 
-      for (const instance of findResult) {
+      for (const instance of instances) {
         if (instance.mediaItemType === 'book' && instance.book !== undefined) {
           instance.mediaItem = instance.book
           instance.dataValues.mediaItem = instance.dataValues.book
@@ -132,8 +139,8 @@ class MediaProgress extends Model {
     })
 
     // update the potentially cached user after destroying the media progress
-    MediaProgress.addHook('afterDestroy', (instance) => {
-      user.mediaProgressRemoved(instance)
+    MediaProgress.addHook('afterDestroy', (instance: MediaProgress) => {
+      ;(user as typeof import('./User')).mediaProgressRemoved(instance)
     })
 
     user.hasMany(MediaProgress, {
@@ -142,9 +149,9 @@ class MediaProgress extends Model {
     MediaProgress.belongsTo(user)
   }
 
-  getMediaItem(options) {
+  getMediaItem(options?: import('sequelize').FindOptions) {
     if (!this.mediaItemType) return Promise.resolve(null)
-    const mixinMethodName = `get${this.sequelize.uppercaseFirst(this.mediaItemType)}`
+    const mixinMethodName = `get${this.sequelize.uppercaseFirst(this.mediaItemType)}` as 'getBook' | 'getPodcastEpisode'
     return this[mixinMethodName](options)
   }
 
@@ -199,9 +206,9 @@ class MediaProgress extends Model {
         delete progressPayload.finishedAt
         delete progressPayload.currentTime
       }
-    } else if (!isNaN(progressPayload.progress) && progressPayload.progress !== this.progress) {
+    } else if (!isNaN(progressPayload.progress!) && progressPayload.progress !== this.progress) {
       // Old model stored progress on object
-      this.extraData.progress = Math.min(1, Math.max(0, progressPayload.progress))
+      this.extraData.progress = Math.min(1, Math.max(0, progressPayload.progress!))
       this.changed('extraData', true)
     }
 
@@ -218,7 +225,7 @@ class MediaProgress extends Model {
     //   - If markAsFinishedPercentComplete is provided, use that otherwise use markAsFinishedTimeRemaining (default 10 seconds)
     let shouldMarkAsFinished = false
     if (this.duration) {
-      if (!isNullOrNaN(progressPayload.markAsFinishedPercentComplete) && progressPayload.markAsFinishedPercentComplete > 0) {
+      if (!isNullOrNaN(progressPayload.markAsFinishedPercentComplete) && progressPayload.markAsFinishedPercentComplete! > 0) {
         const markAsFinishedPercentComplete = Number(progressPayload.markAsFinishedPercentComplete) / 100
         shouldMarkAsFinished = markAsFinishedPercentComplete < this.progress
         if (shouldMarkAsFinished) {
@@ -247,7 +254,7 @@ class MediaProgress extends Model {
 
     // For local sync
     if (progressPayload.lastUpdate) {
-      if (isNaN(new Date(progressPayload.lastUpdate))) {
+      if (isNaN(new Date(progressPayload.lastUpdate) as unknown as number)) {
         Logger.warn(`[MediaProgress] Invalid date provided for lastUpdate: ${progressPayload.lastUpdate} (media item ${this.mediaItemId})`)
       } else {
         const escapedDate = this.sequelize.escape(new Date(progressPayload.lastUpdate))

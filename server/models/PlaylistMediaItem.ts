@@ -14,6 +14,8 @@ class PlaylistMediaItem extends Model {
   declare order: number
   /** @type {string} */
   declare playlistId: string
+  /** only set when included */
+  declare playlist?: import('./Playlist')
   /** @type {Date} */
   declare createdAt: Date
   /** only set when expanded */

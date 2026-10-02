@@ -98,7 +98,7 @@ class Author extends Model {
     if (author!.books) {
       for (const book of author!.books) {
         const libraryItem = book.libraryItem
-        libraryItem.media = book
+        libraryItem.media = book as import('./Book').BookExpanded
         delete (book as { libraryItem?: unknown }).libraryItem
         libraryItems.push(libraryItem)
       }

@@ -1,4 +1,4 @@
-import { DataTypes, Model, Sequelize } from 'sequelize'
+import { DataTypes, Model, Sequelize, BelongsToGetAssociationMixin } from 'sequelize'
 
 import oldPlaybackSession = require('../objects/PlaybackSession')
 
@@ -47,10 +47,19 @@ class PlaybackSession extends Model {
   declare updatedAt: Date
   /** @type {Date} */
   declare createdAt: Date
+  /** only set when included */
+  declare device?: import('./Device')
+  /** only set when expanded */
+  declare mediaItem?: import('./Book') | import('./PodcastEpisode')
+  // Polymorphic association includes, moved to mediaItem by the afterFind hook
+  declare book?: import('./Book')
+  declare podcastEpisode?: import('./PodcastEpisode')
+  declare getBook: BelongsToGetAssociationMixin<import('./Book')>
+  declare getPodcastEpisode: BelongsToGetAssociationMixin<import('./PodcastEpisode')>
 
-  static async getOldPlaybackSessions(where = null) {
+  static async getOldPlaybackSessions(where: import('sequelize').WhereOptions | null = null) {
     const playbackSessions = await this.findAll({
-      where,
+      where: where as import('sequelize').WhereOptions,
       include: [
         {
           model: this.sequelize!.models.device
@@ -60,7 +69,7 @@ class PlaybackSession extends Model {
     return playbackSessions.map((session) => this.getOldPlaybackSession(session))
   }
 
-  static async getById(sessionId) {
+  static async getById(sessionId: string) {
     const playbackSession = await this.findByPk(sessionId, {
       include: [
         {
@@ -72,7 +81,7 @@ class PlaybackSession extends Model {
     return this.getOldPlaybackSession(playbackSession)
   }
 
-  static getOldPlaybackSession(playbackSessionExpanded) {
+  static getOldPlaybackSession(playbackSessionExpanded: PlaybackSession) {
     const isPodcastEpisode = playbackSessionExpanded.mediaItemType === 'podcastEpisode'
 
     return new oldPlaybackSession({
@@ -103,7 +112,7 @@ class PlaybackSession extends Model {
     })
   }
 
-  static removeById(sessionId) {
+  static removeById(sessionId: string) {
     return this.destroy({
       where: {
         id: sessionId
@@ -111,14 +120,15 @@ class PlaybackSession extends Model {
     })
   }
 
-  static createFromOld(oldPlaybackSession) {
+  static createFromOld(oldPlaybackSession: import('../objects/PlaybackSession')) {
     const playbackSession = this.getFromOld(oldPlaybackSession)
+    // silent (don't touch updatedAt) is passed through by Sequelize but missing from UpsertOptions
     return this.upsert(playbackSession, {
       silent: true
-    })
+    } as import('sequelize').UpsertOptions)
   }
 
-  static updateFromOld(oldPlaybackSession) {
+  static updateFromOld(oldPlaybackSession: import('../objects/PlaybackSession')) {
     const playbackSession = this.getFromOld(oldPlaybackSession)
     return this.update(playbackSession, {
       where: {
@@ -128,7 +138,7 @@ class PlaybackSession extends Model {
     })
   }
 
-  static getFromOld(oldPlaybackSession) {
+  static getFromOld(oldPlaybackSession: import('../objects/PlaybackSession')) {
     return {
       id: oldPlaybackSession.id,
       mediaItemId: oldPlaybackSession.episodeId || oldPlaybackSession.bookId,
@@ -157,9 +167,9 @@ class PlaybackSession extends Model {
     }
   }
 
-  getMediaItem(options) {
+  getMediaItem(options?: import('sequelize').FindOptions) {
     if (!this.mediaItemType) return Promise.resolve(null)
-    const mixinMethodName = `get${this.sequelize.uppercaseFirst(this.mediaItemType)}`
+    const mixinMethodName = `get${this.sequelize.uppercaseFirst(this.mediaItemType)}` as 'getBook' | 'getPodcastEpisode'
     return this[mixinMethodName](options)
   }
 
@@ -230,9 +240,9 @@ class PlaybackSession extends Model {
     PlaybackSession.addHook('afterFind', (findResult) => {
       if (!findResult) return
 
-      if (!Array.isArray(findResult)) findResult = [findResult]
+      const instances = (Array.isArray(findResult) ? findResult : [findResult]) as PlaybackSession[]
 
-      for (const instance of findResult) {
+      for (const instance of instances) {
         if (instance.mediaItemType === 'book' && instance.book !== undefined) {
           instance.mediaItem = instance.book
           instance.dataValues.mediaItem = instance.dataValues.book

@@ -25,7 +25,7 @@ class Device extends Model {
   /** @type {Date} */
   declare updatedAt: Date
 
-  static async getOldDeviceByDeviceId(deviceId) {
+  static async getOldDeviceByDeviceId(deviceId: string) {
     const device = await this.findOne({
       where: {
         deviceId
@@ -35,12 +35,12 @@ class Device extends Model {
     return device.getOldDevice()
   }
 
-  static createFromOld(oldDevice) {
+  static createFromOld(oldDevice: import('../objects/DeviceInfo')) {
     const device = this.getFromOld(oldDevice)
     return this.create(device)
   }
 
-  static updateFromOld(oldDevice) {
+  static updateFromOld(oldDevice: import('../objects/DeviceInfo')) {
     const device = this.getFromOld(oldDevice)
     return this.update(device, {
       where: {
@@ -49,8 +49,8 @@ class Device extends Model {
     })
   }
 
-  static getFromOld(oldDeviceInfo) {
-    let extraData = {}
+  static getFromOld(oldDeviceInfo: import('../objects/DeviceInfo')) {
+    let extraData: Record<string, string> = {}
 
     if (oldDeviceInfo.manufacturer) {
       extraData.manufacturer = oldDeviceInfo.manufacturer

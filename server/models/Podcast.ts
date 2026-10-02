@@ -61,6 +61,8 @@ class Podcast extends Model {
   declare numEpisodes: number
   /** @type {import('./PodcastEpisode')[]} */
   declare podcastEpisodes: import('./PodcastEpisode')[]
+  /** only set when included */
+  declare libraryItem?: import('./LibraryItem')
 
   /**
    * Payload from the /api/podcasts POST endpoint

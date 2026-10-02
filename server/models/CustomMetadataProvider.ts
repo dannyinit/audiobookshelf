@@ -3,7 +3,7 @@ import { DataTypes, Model, Sequelize } from 'sequelize'
 interface ClientCustomMetadataProvider {
   id: string
   name: string
-  url: string
+  mediaType: string
   slug: string
 }
 

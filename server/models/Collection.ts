@@ -1,9 +1,15 @@
-import { DataTypes, Model, ModelCtor, Sequelize } from 'sequelize'
-import { Literal } from 'sequelize/types/utils'
+import { DataTypes, Model, Sequelize, BelongsToManyGetAssociationsMixin, HasManyGetAssociationsMixin } from 'sequelize'
 
 class Collection extends Model {
-  declare feeds: string | any[]
-  static books: any[]
+  /**
+   * NOTE: getOldCollectionsJsonExpanded assigns the permission-filtered books here (on the class, via `this`
+   * in a static method) rather than on each collection. Kept as-is to preserve existing behavior.
+   */
+  static books: import('./Book').BookExpandedWithLibraryItem[]
+  /** only set when included */
+  declare feeds?: import('./Feed')[]
+  declare getBooks: BelongsToManyGetAssociationsMixin<import('./Book')>
+  declare getFeeds: HasManyGetAssociationsMixin<import('./Feed')>
   /** @type {string} */
   declare id: string
   /** @type {string} */
@@ -27,8 +33,8 @@ class Collection extends Model {
    * @param {string[]} [include]
    * @async
    */
-  static async getOldCollectionsJsonExpanded(user: import('./User'), libraryId: string, include: string[]) {
-    let collectionWhere = null
+  static async getOldCollectionsJsonExpanded(user: import('./User') | null, libraryId?: string, include?: string[]) {
+    let collectionWhere: { libraryId: string } | null = null
     if (libraryId) {
       collectionWhere = {
         libraryId
@@ -36,7 +42,7 @@ class Collection extends Model {
     }
 
     // Optionally include rssfeed for collection
-    const collectionIncludes = []
+    const collectionIncludes: import('sequelize').IncludeOptions[] = []
     if (include?.includes('rssfeed')) {
       collectionIncludes.push({
         model: this.sequelize!.models.feed
@@ -44,7 +50,7 @@ class Collection extends Model {
     }
 
     const collections = await this.findAll({
-      where: collectionWhere,
+      where: collectionWhere as import('sequelize').WhereOptions,
       include: [
         {
           model: this.sequelize!.models.book,
@@ -94,7 +100,7 @@ class Collection extends Model {
 
         this.books = books
 
-        const collectionExpanded = c.toOldJSONExpanded()
+        const collectionExpanded: Record<string, any> = c.toOldJSONExpanded()
 
         // Map feed if found
         if (c.feeds?.length) {
@@ -111,7 +117,7 @@ class Collection extends Model {
    * @param {string} collectionId
    * @returns {Promise<Collection>}
    */
-  static async getExpandedById(collectionId: string): Promise<Collection> {
+  static async getExpandedById(collectionId: string): Promise<Collection | null> {
     return this.findByPk(collectionId, {
       include: [
         {
@@ -186,7 +192,7 @@ class Collection extends Model {
    * @returns {Promise<import('./Book').BookExpandedWithLibraryItem[]>}
    */
   getBooksExpandedWithLibraryItem(): Promise<import('./Book').BookExpandedWithLibraryItem[]> {
-    return this.getBooks({
+    return <Promise<import('./Book').BookExpandedWithLibraryItem[]>>this.getBooks({
       include: [
         {
           model: this.sequelize.models.libraryItem
@@ -215,7 +221,7 @@ class Collection extends Model {
    * @param {string[]} [include]
    * @async
    */
-  async getOldJsonExpanded(user: import('./User') | null, include: string[]) {
+  async getOldJsonExpanded(user: import('./User') | null, include?: string[]) {
     this.books = await this.getBooksExpandedWithLibraryItem()
 
     // Filter books using user permissions
@@ -239,7 +245,7 @@ class Collection extends Model {
       this.books = books
     }
 
-    const collectionExpanded = this.toOldJSONExpanded()
+    const collectionExpanded: Record<string, any> = this.toOldJSONExpanded()
 
     if (include?.includes('rssfeed')) {
       const feeds = await this.getFeeds()
@@ -273,10 +279,10 @@ class Collection extends Model {
       throw new Error('Books are required to expand Collection')
     }
 
-    const json = this.toOldJSON()
+    const json: Record<string, any> = this.toOldJSON()
     json.books = this.books.map((book) => {
       const libraryItem = book.libraryItem
-      delete book.libraryItem
+      delete (book as { libraryItem?: unknown }).libraryItem
       libraryItem.media = book
       return libraryItem.toOldJSONExpanded()
     })
