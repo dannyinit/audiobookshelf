@@ -19,7 +19,7 @@ class Series extends Model {
   declare updatedAt: Date
   /** @type {import('./Book').BookExpandedWithLibraryItem[]} - only set when expanded */
   declare books: import('./Book').BookExpandedWithLibraryItem[]
-  bookSeries: any
+  bookSeries: import("./BookSeries")
 
   constructor(values, options) {
     super(values, options)

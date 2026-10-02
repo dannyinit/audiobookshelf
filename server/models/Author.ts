@@ -21,7 +21,7 @@ class Author extends Model {
   /** @type {Date} */
   declare createdAt: Date
   books: any
-  bookAuthor: any
+  bookAuthor: { destroy: () => any }
 
   constructor(values, options) {
     super(values, options)

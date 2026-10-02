@@ -93,8 +93,8 @@ async function down({ context: { queryInterface, logger } }: MigrationOptions): 
 }
 
 class MigrationHelper {
-  logger: any
-  queryInterface: any
+  logger
+  queryInterface
   constructor(queryInterface, logger) {
     this.queryInterface = queryInterface
     this.logger = logger

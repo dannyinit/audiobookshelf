@@ -8,13 +8,13 @@ class PodcastEpisodeDownload {
   rssPodcastEpisode: import('../utils/podcastUtils').RssPodcastEpisode
   /** @type {import('../models/LibraryItem')} */
   libraryItem: import('../models/LibraryItem')
-  isAutoDownload: any
-  libraryId: any
-  url: any
-  finishedAt: null
-  createdAt: null
+  isAutoDownload
+  libraryId: null
+  url: string | null
+  finishedAt: number | null
+  createdAt: number | null
   startedAt: null
-  targetFilename: null
+  targetFilename: string | null
   appendRandomId: boolean
   failed: boolean
   isFinished: boolean

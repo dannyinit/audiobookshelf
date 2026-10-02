@@ -13,9 +13,9 @@ import { areEquivalent, copyValue, isNullOrNaN } from '../../utils'
 class EmailSettings {
   /** @type {EreaderDeviceObject[]} */
   ereaderDevices: EreaderDeviceObject[]
-  testAddress: any
+  testAddress: null
   fromAddress: string | Address | undefined
-  pass: null
+  pass: null | undefined
   user: null
   rejectUnauthorized: boolean
   secure: boolean

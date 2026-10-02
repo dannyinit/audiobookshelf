@@ -34,14 +34,14 @@ class ServerSettings {
   tokenSecret: string
   buildNumber: number
   version: string
-  authActiveAuthMethods: any
-  language: any
-  scannerDisableWatcher: any
-  authOpenIDMobileRedirectURIs: any
-  authOpenIDAdvancedPermsClaim: any
-  authOpenIDGroupClaim: any
+  authActiveAuthMethods
+  language
+  scannerDisableWatcher
+  authOpenIDMobileRedirectURIs
+  authOpenIDAdvancedPermsClaim
+  authOpenIDGroupClaim
   backupPath: string
-  sortingPrefixes: any
+  sortingPrefixes
   authOpenIDSubfolderForRedirectURLs: undefined
   authOpenIDMatchExistingBy: null
   authOpenIDAutoRegister: boolean
@@ -56,7 +56,7 @@ class ServerSettings {
   authOpenIDTokenURL: null
   authOpenIDAuthorizationURL: null
   authOpenIDIssuerURL: null
-  authLoginCustomMessage: null
+  authLoginCustomMessage: string | null
   logLevel: number
   allowedOrigins: never[]
   timeFormat: string

@@ -11,7 +11,7 @@ import fileUtils = require('../utils/fileUtils')
 import StreamZip = require('../libs/nodeStreamZip')
 
 class ZippedAssetDownloader {
-  assetCache: {}
+  assetCache
   constructor() {
     this.assetCache = {}
   }
@@ -225,12 +225,12 @@ class NunicodeDownloader extends ZippedAssetDownloader {
 class Binary {
   exec: { (command: string): child_process.PromiseWithChild<{ stdout: string; stderr: string }>; (command: string, options: child_process.ExecOptionsWithBufferEncoding): child_process.PromiseWithChild<{ stdout: NonSharedBuffer; stderr: NonSharedBuffer }>; (command: string, options: child_process.ExecOptionsWithStringEncoding): child_process.PromiseWithChild<{ stdout: string; stderr: string }>; (command: string, options: child_process.ExecOptions | undefined | null): child_process.PromiseWithChild<{ stdout: string | NonSharedBuffer; stderr: string | NonSharedBuffer }> }
   required: boolean
-  fileName: any
+  fileName
   source: ZippedAssetDownloader
-  validVersions: any
-  envVariable: any
-  type: any
-  name: any
+  validVersions
+  envVariable
+  type
+  name
   constructor(name, type, envVariable, validVersions, source, required = true) {
     if (!name) throw new Error('Binary name is required')
     this.name = name
@@ -338,8 +338,8 @@ class BinaryManager {
     new Binary('libnusqlite3', 'library', 'NUSQLITE3_PATH', ['1.2'], nunicode, false) // nunicode sqlite3 extension
   ]
   initialized: boolean
-  altInstallDir: any
-  mainInstallDir: any
+  altInstallDir
+  mainInstallDir
   requiredBinaries: Binary[]
 
   constructor(requiredBinaries = this.defaultRequiredBinaries) {

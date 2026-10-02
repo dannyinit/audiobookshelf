@@ -24,9 +24,9 @@ interface RequestUserObject {
 type RequestWithUser = Request & RequestUserObject
 
 class MiscController {
-  auth: any
-  backupManager: any
-  audioMetadataManager: any
+  auth: { getUserLoginResponsePayload: (arg0: Express.User & import("../models/User")) => any; unuseAuthStrategy: (arg0: string) => void; useAuthStrategy: (arg0: string) => void }
+  backupManager: { updateCronSchedule: () => void }
+  audioMetadataManager: { getQueuedTaskData: () => any }
   constructor() {}
 
   /**

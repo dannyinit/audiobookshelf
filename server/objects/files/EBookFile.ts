@@ -1,10 +1,10 @@
 import FileMetadata = require('../metadata/FileMetadata')
 
 class EBookFile {
-  updatedAt: null
-  addedAt: null
-  ebookFormat: null
-  metadata: null
+  updatedAt: number | null
+  addedAt: number | null
+  ebookFormat: string | null
+  metadata: FileMetadata | null
   ino: null
   constructor(file) {
     this.ino = null

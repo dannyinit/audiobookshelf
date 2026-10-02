@@ -24,8 +24,8 @@ import { getRequestOrigin } from '../utils/requestUtils'
  */
 class OidcAuthStrategy {
   openIdAuthSession: Map<any, any>
-  client: null
-  strategy: null
+  client: OpenIDClient.BaseClient | null
+  strategy: OpenIDClient.Strategy<unknown, OpenIDClient.BaseClient> | null
   name: string
   constructor() {
     this.name = 'openid-client'

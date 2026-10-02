@@ -57,10 +57,10 @@ function ensureUserCanAccessLibraryItemsForBatch(req: RequestWithUser, res: Resp
 }
 
 class LibraryItemController {
-  audioMetadataManager: any
-  playbackSessionManager: any
-  cronManager: any
-  podcastManager: any
+  audioMetadataManager: { getMetadataObjectForApi: (arg0: import("../models/LibraryItem")) => any }
+  playbackSessionManager: { startSessionRequest: (arg0: LibraryItemControllerRequest, arg1: Response<any, Record<string, any>>, arg2: string | null) => void }
+  cronManager: { checkUpdatePodcastCron: (arg0: import("../models/LibraryItem")) => void }
+  podcastManager: { getEpisodeDownloadsInQueue: (arg0: string) => any; currentDownload: { libraryItemId: string; toJSONForClient: () => any } }
   constructor() {}
 
   /**

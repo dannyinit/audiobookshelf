@@ -2,7 +2,7 @@ import { DataTypes, Model, ModelCtor, Sequelize } from 'sequelize'
 import { Literal } from 'sequelize/types/utils'
 
 class Collection extends Model {
-  feeds: any
+  feeds: string | any[]
   static books: any[]
   getCollectionBooks(arg0: { include: { model: any; include: any }; order: string[][] }) {
     throw new Error('Method not implemented.')

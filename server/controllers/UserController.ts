@@ -19,8 +19,8 @@ interface RequestEntityObject {
 type UserControllerRequest = RequestWithUser & RequestEntityObject
 
 class UserController {
-  playbackSessionManager: any
-  auth: any
+  playbackSessionManager: { sessions: any }
+  auth: { localAuthStrategy: { hashPassword: (arg0: any) => string | PromiseLike<string> }; generateAccessToken: (arg0: import("../models/User")) => string; invalidateJwtSessionsForUser: (arg0: import("../models/User"), arg1: UserControllerRequest, arg2: Response<any, Record<string, any>>) => any }
   constructor() {}
 
   /**
@@ -389,7 +389,7 @@ class UserController {
     // Set PlaybackSessions userId to null
     const [sessionsUpdated] = await Database.playbackSessionModel.update(
       {
-        userId: null
+        userId
       },
       {
         where: {

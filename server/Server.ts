@@ -59,7 +59,7 @@ function getPreparedNextBasePath(nextApp) {
 }
 
 class Server {
-  server: null
+  server: http.Server<typeof http.IncomingMessage, typeof http.ServerResponse> | null
   publicRouter: PublicRouter
   hlsRouter: HlsRouter
   apiRouter: ApiRouter
@@ -73,8 +73,8 @@ class Server {
   backupManager: BackupManager
   emailManager: EmailManager
   auth: Auth
-  Host: any
-  Port: any
+  Host
+  Port
   constructor(SOURCE, PORT, HOST, CONFIG_PATH, METADATA_PATH, ROUTER_BASE_PATH) {
     this.Port = PORT
     this.Host = HOST

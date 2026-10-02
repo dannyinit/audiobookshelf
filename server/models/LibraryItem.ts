@@ -77,7 +77,7 @@ class LibraryItem extends Model {
   declare authorNamesLastFirst: string
   mediaItemShare: any
   numEpisodesIncomplete: any
-  rssFeed: any
+  rssFeed: { toOldJSONMinified: () => any }
   series: any
   collapsedSeries: any
   recentEpisode: any

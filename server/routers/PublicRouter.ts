@@ -5,7 +5,7 @@ import SessionController = require('../controllers/SessionController')
 class PublicRouter {
   /** @type {import('../managers/PlaybackSessionManager')} */
   playbackSessionManager
-  router: any
+  router
 
   constructor(playbackSessionManager) {
     this.playbackSessionManager = playbackSessionManager

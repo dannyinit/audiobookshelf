@@ -24,13 +24,13 @@ class AudioMetaTags {
   tagDate: null
   tagAlbumArtist: null
   tagSubtitle: null
-  tagDisc: null
-  tagTrack: null
+  tagDisc: string | null
+  tagTrack: string | null
   tagGrouping: null
   tagSeriesPart: null
   tagSeries: null
   tagTitleSort: null
-  tagTitle: null
+  tagTitle: string | null
   tagGenre: null
   tagArtistSort: null
   tagArtist: null
@@ -94,7 +94,7 @@ class AudioMetaTags {
   get trackNumAndTotal() {
     const data = {
       number: null,
-      total: null
+      total
     }
 
     // Track ID3 tag might be "3/10" or just "3"
@@ -115,7 +115,7 @@ class AudioMetaTags {
   get discNumAndTotal() {
     const data = {
       number: null,
-      total: null
+      total
     }
 
     if (this.tagDisc) {

@@ -8,11 +8,11 @@ import Logger = require('../Logger')
 
 class MigrationManager {
   static MIGRATIONS_META_TABLE = 'migrationsMeta'
-  umzug: null
-  serverVersion: null
-  databaseVersion: null
-  maxVersion: null
-  migrationsDir: null
+  umzug: { [x: string]: (arg0: { migrations: string[]; rerun: string }) => any; migrations: any; executed: any; up?: any; down?: any } | null
+  serverVersion: unknown
+  databaseVersion: unknown
+  maxVersion: unknown
+  migrationsDir: string | null
   initialized: boolean
   migrationsSourceDir: string
   configPath: string

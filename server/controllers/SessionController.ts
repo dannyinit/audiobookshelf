@@ -20,7 +20,7 @@ interface RequestUserObject {
 type RequestWithUser = Request & RequestUserObject
 
 class SessionController {
-  playbackSessionManager: any
+  playbackSessionManager: { sessions: any[]; syncSessionRequest: (arg0: Express.User & import("../models/User"), arg1: any, arg2: any, arg3: Response<any, Record<string, any>>) => void; closeSessionRequest: (arg0: Express.User & import("../models/User"), arg1: any, arg2: any, arg3: Response<any, Record<string, any>>) => void; getSession: (arg0: string) => any; removeSession: (arg0: any) => any; syncLocalSessionRequest: (arg0: RequestWithUser, arg1: Response<any, Record<string, any>>) => void; syncLocalSessionsRequest: (arg0: RequestWithUser, arg1: Response<any, Record<string, any>>) => void }
   constructor() {}
 
   /**

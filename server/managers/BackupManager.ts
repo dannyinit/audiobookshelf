@@ -18,8 +18,8 @@ import CacheManager = require('./CacheManager')
 import NotificationManager = require('./NotificationManager')
 
 class BackupManager {
-  backups: never[]
-  scheduleTask: null
+  backups: any[]
+  scheduleTask: import("../libs/nodeCron/scheduled-task") | null
   AuthorsMetadataPath: string
   ItemsMetadataPath: string
   constructor() {

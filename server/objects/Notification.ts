@@ -2,17 +2,17 @@ const uuidv4 = require("uuid").v4
 
 class Notification {
   enabled: boolean
-  eventName: any
-  numConsecutiveFailedAttempts: any
-  id: any
-  createdAt: null
+  eventName
+  numConsecutiveFailedAttempts
+  id: null
+  createdAt: number | null
   numTimesFired: number
   lastAttemptFailed: boolean
-  lastFiredAt: null
+  lastFiredAt: number | null
   type: string
   bodyTemplate: string
   titleTemplate: string
-  urls: never[]
+  urls: any[]
   libraryId: null
   constructor(notification = null) {
     this.id = null

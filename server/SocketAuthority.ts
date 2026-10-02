@@ -4,6 +4,7 @@ import Database = require('./Database')
 import TokenManager = require('./auth/TokenManager')
 import CoverSearchManager = require('./managers/CoverSearchManager')
 import { LogLevel } from './utils/constants'
+import { DefaultEventsMap } from 'socket.io/dist/typed-events'
 
 /**
  * @typedef SocketClient
@@ -16,8 +17,8 @@ import { LogLevel } from './utils/constants'
 class SocketAuthority {
   /** @type {Object.<string, SocketClient>} */
   clients: { [s: string]: SocketClient }
-  socketIoServers: never[]
-  Server: null
+  socketIoServers: SocketIO.Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>[]
+  Server: { playbackSessionManager: { sessions: any }; cancelLibraryScan: (arg0: any) => void } | null
 
   constructor() {
     this.Server = null

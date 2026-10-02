@@ -14,6 +14,7 @@ import htmlSanitizer = require('../utils/htmlSanitizer')
 
 import Scanner = require('../scanner/Scanner')
 import CoverManager = require('../managers/CoverManager')
+import { Model } from 'sequelize'
 
 interface getPodcastFeedReqBody {
   rssFeed: string
@@ -32,8 +33,8 @@ interface RequestEntityObject {
 type RequestWithLibraryItem = RequestWithUser & RequestEntityObject
 
 class PodcastController {
-  podcastManager: any
-  cronManager: any
+  podcastManager: { getParsedOPMLFileFeeds: (arg0: any) => any; createPodcastsFromFeedUrls: (arg0: any[], arg1: Model<any, any>, arg2: boolean, arg3: any) => void; checkAndDownloadNewEpisodes: (arg0: import("../models/LibraryItem"), arg1: number) => any; clearDownloadQueue: (arg0: string) => void; getEpisodeDownloadsInQueue: (arg0: string) => any; downloadPodcastEpisodes: (arg0: import("../models/LibraryItem"), arg1: any[]) => void }
+  cronManager: { checkUpdatePodcastCron: (arg0: Model<any, any>) => void }
   /**
    * POST /api/podcasts
    * Create podcast

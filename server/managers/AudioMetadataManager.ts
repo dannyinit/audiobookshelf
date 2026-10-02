@@ -14,8 +14,8 @@ import fileUtils = require('../utils/fileUtils')
  */
 
 class AudioMetadataMangaer {
-  tasksQueued: never[]
-  tasksRunning: never[]
+  tasksQueued: Task[]
+  tasksRunning: any[]
   MAX_CONCURRENT_TASKS: number
   itemsCacheDir: string
   constructor() {

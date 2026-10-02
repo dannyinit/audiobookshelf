@@ -15,8 +15,8 @@ interface RequestEntityObject {
 type RequestWithLibraryItem = RequestWithUser & RequestEntityObject
 
 class ToolsController {
-  audioMetadataManager: any
-  abMergeManager: any
+  audioMetadataManager: { getIsLibraryItemQueuedOrProcessing: (arg0: string) => any; updateMetadataForItem: (arg0: string, arg1: import("../models/LibraryItem"), arg2: { forceEmbedChapters: boolean; backup: boolean }) => void; handleBatchEmbed: (arg0: string, arg1: any[], arg2: { forceEmbedChapters: boolean; backup: boolean }) => void }
+  abMergeManager
   constructor() {}
 
   /**

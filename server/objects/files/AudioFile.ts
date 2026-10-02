@@ -8,7 +8,7 @@ class AudioFile {
   /** @type {AudioMetaTags} */
   metaTags: AudioMetaTags
   index: number
-  chapters: any
+  chapters: { start: any }[]
   error: null
   exclude: boolean
   manuallyVerified: boolean
@@ -19,15 +19,15 @@ class AudioFile {
   codec: null
   language: null
   bitRate: null
-  duration: null
+  duration: number | null
   format: null
-  discNumFromFilename: null
-  trackNumFromFilename: null
+  discNumFromFilename: number | null
+  trackNumFromFilename: number | null
   discNumFromMeta: null
   trackNumFromMeta: null
-  updatedAt: null
-  addedAt: null
-  ino: null
+  updatedAt: number | null
+  addedAt: number | null
+  ino: string | null
 
   constructor(data) {
     this.index = null

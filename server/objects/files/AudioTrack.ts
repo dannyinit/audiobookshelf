@@ -1,12 +1,12 @@
 class AudioTrack {
-  metadata: null
+  metadata: { toJSON: () => any } | null
   codec: null
-  mimeType: null
-  contentUrl: null
+  mimeType: string | null
+  contentUrl: string | null
   title: null
   duration: null
-  startOffset: null
-  index: null
+  startOffset: number | null
+  index: number | null
   constructor() {
     this.index = null
     this.startOffset = null

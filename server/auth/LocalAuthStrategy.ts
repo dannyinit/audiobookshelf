@@ -10,7 +10,7 @@ import requestIp = require('../libs/requestIp')
  * Local authentication strategy using username/password
  */
 class LocalAuthStrategy {
-  strategy: null
+  strategy: LocalStrategy | null
   name: string
   constructor() {
     this.name = 'local'

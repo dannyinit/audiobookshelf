@@ -11,6 +11,8 @@ import zipHelpers = require('../utils/zipHelpers')
 
 import PlaybackSession = require('../objects/PlaybackSession')
 import ShareManager = require('../managers/ShareManager')
+import { ParamsDictionary } from 'express-serve-static-core'
+import { ParsedQs } from 'qs'
 
 interface RequestUserObject {
   user: import('../models/User')
@@ -19,7 +21,7 @@ interface RequestUserObject {
 type RequestWithUser = Request & RequestUserObject
 
 class ShareController {
-  playbackSessionManager: any
+  playbackSessionManager: { getDeviceInfo: (arg0: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, arg1: { clientName: string; deviceId: any }) => any }
   constructor() {}
 
   /**

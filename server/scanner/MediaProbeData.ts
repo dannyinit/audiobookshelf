@@ -5,7 +5,7 @@ class MediaProbeData {
   discNumber: null
   trackTotal: null
   trackNumber: null
-  audioMetaTags: null
+  audioMetaTags: AudioMetaTags | null
   chapters: never[]
   sampleRate: null
   channels: null
@@ -15,7 +15,7 @@ class MediaProbeData {
   codec: null
   bitRate: null
   videoStream: null
-  audioStream: null
+  audioStream: { bit_rate: any; codec: null; time_base: null; language: null; channel_layout: null; channels: null; sample_rate: null } | null
   size: null
   duration: null
   format: null

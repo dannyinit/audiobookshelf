@@ -9,10 +9,10 @@ class ScanLogger {
   /** @type {string[]} */
   seriesRemovedFromBooks: string[]
   verbose: boolean
-  logs: never[]
-  elapsed: null
-  finishedAt: null
-  startedAt: null
+  logs: { timestamp: string; message: string; levelName: string; level: any }[]
+  elapsed: number | null
+  finishedAt: number | null
+  startedAt: number | null
   name: null
   type: null
   id: null

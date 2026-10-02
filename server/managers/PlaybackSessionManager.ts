@@ -19,7 +19,7 @@ import Stream = require('../objects/Stream')
 class PlaybackSessionManager {
   /** @type {PlaybackSession[]} */
   sessions: PlaybackSession[]
-  oldPlaybackSessionMap: {}
+  oldPlaybackSessionMap
   StreamsPath: string
 
   constructor() {

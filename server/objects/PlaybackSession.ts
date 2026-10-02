@@ -5,37 +5,37 @@ import DeviceInfo = require('./DeviceInfo')
 
 class PlaybackSession {
   updatedAt: number
-  stream: null
-  userId: any
+  stream: import("./Stream") | null
+  userId: string | null
   id: string
   lastSave: number
-  startedAt: null
+  startedAt: number | null
   startTime: null
-  timeListening: null
+  timeListening: number | null
   dayOfWeek: null
   date: null
   serverVersion: null
-  deviceInfo: null
+  deviceInfo: DeviceInfo | null
   mediaPlayer: null
   displayAuthor: null
   chapters: null
   mediaMetadata: null
-  mediaType: null
-  episodeId: null
+  mediaType: string | null
+  episodeId: string | null
   bookId: null
-  libraryId: null
+  libraryId: string | null
   libraryItemId(libraryItemId: any, arg1: { attributes: string[] }) {
     throw new Error('Method not implemented.')
   }
-  coverPath: any
-  coverAspectRatio: any
-  shareSessionId: any
+  coverPath: null
+  coverAspectRatio: null
+  shareSessionId: string | null
   playMethod: number
-  audioTracks: any
-  displayTitle: any
+  audioTracks: any[]
+  displayTitle: null
   currentTime: number
   duration: number
-  mediaItemShareId: any
+  mediaItemShareId: string | null
   constructor(session) {
     this.id = null
     this.userId = null

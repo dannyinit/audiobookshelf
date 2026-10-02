@@ -42,7 +42,7 @@ class Task {
   startedAt: number
   /** @type {number} */
   finishedAt: number
-  task: any
+  task
   failedAt: number
 
   constructor() {

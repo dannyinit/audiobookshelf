@@ -7,7 +7,7 @@ class FileMetadata {
   birthtimeMs: null
   ctimeMs: null
   mtimeMs: null
-  size: null
+  size: number | null
   constructor(metadata) {
     this.filename = null
     this.ext = null

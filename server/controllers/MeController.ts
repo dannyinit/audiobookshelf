@@ -15,7 +15,7 @@ interface RequestUserObject {
 type RequestWithUser = Request & RequestUserObject
 
 class MeController {
-  auth: any
+  auth: { localAuthStrategy: { changePassword: (arg0: Express.User & import("../models/User"), arg1: any, arg2: any) => any }; invalidateJwtSessionsForUser: (arg0: Express.User & import("../models/User"), arg1: RequestWithUser, arg2: Response<any, Record<string, any>>) => any }
   constructor() {}
 
   /**

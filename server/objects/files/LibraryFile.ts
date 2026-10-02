@@ -4,11 +4,11 @@ import globals = require('../../utils/globals')
 import FileMetadata = require('../metadata/FileMetadata')
 
 class LibraryFile {
-  isSupplementary: any
-  ino: any
-  metadata: any
-  updatedAt: null
-  addedAt: null
+  isSupplementary: boolean | null
+  ino: string | null
+  metadata: FileMetadata | null
+  updatedAt: number | null
+  addedAt: number | null
   constructor(file) {
     this.ino = null
     this.metadata = null

@@ -16,23 +16,23 @@ class Stream extends EventEmitter {
   /** @type {import('../models/LibraryItem')} */
   declare libraryItem: import('../models/LibraryItem')
   furthestSegmentCreated: number
-  segmentsCreated: Set<unknown>
+  segmentsCreated
   isTranscodeComplete: boolean
   isClientInitialized: boolean
   isResetting: boolean
-  loop: null
-  ffmpeg: null
-  startTime: any
+  loop: string | number | NodeJS.Timeout | null | undefined
+  ffmpeg: Ffmpeg.FfmpegCommand | null
+  startTime
   finalPlaylistPath: string
   playlistPath: string
   concatFilesPath: string
   streamPath: string
   maxSeekBackTime: number
   segmentLength: number
-  transcodeOptions: {}
-  episodeId: any
-  user: any
-  id: any
+  transcodeOptions
+  episodeId
+  user
+  id
 
   constructor(sessionId, streamPath, user, libraryItem, episodeId, startTime, transcodeOptions = {}) {
     super()

@@ -23,7 +23,7 @@ function sanitizeArchivePath(filename) {
 }
 
 class AbstractComicBookExtractor {
-  comicPath: any
+  comicPath
   constructor(comicPath) {
     this.comicPath = comicPath
   }
@@ -63,8 +63,8 @@ class AbstractComicBookExtractor {
 }
 
 class CbrComicBookExtractor extends AbstractComicBookExtractor {
-  tmpDir: null
-  archive: null
+  tmpDir: string | null
+  archive: unrar.Extractor<never> | null
   constructor(comicPath) {
     super(comicPath)
     this.archive = null
@@ -140,7 +140,7 @@ class CbrComicBookExtractor extends AbstractComicBookExtractor {
 }
 
 class CbzComicBookExtractor extends AbstractComicBookExtractor {
-  archive: null
+  archive: Archive | null
   constructor(comicPath) {
     super(comicPath)
     this.archive = null
@@ -182,7 +182,7 @@ class CbzComicBookExtractor extends AbstractComicBookExtractor {
 }
 
 class CbzStreamZipComicBookExtractor extends AbstractComicBookExtractor {
-  archive: null
+  archive
   constructor(comicPath) {
     super(comicPath)
     this.archive = null

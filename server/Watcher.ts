@@ -32,7 +32,7 @@ class FolderWatcher extends EventEmitter {
   /** @type {NodeJS.Timeout} */
   declare removeFromIgnoreTimer: NodeJS.Timeout
   disabled: boolean
-  filesBeingAdded: Set<unknown>
+  filesBeingAdded
   pendingDelay: number
 
   constructor() {

@@ -680,7 +680,7 @@ class BookScanner {
       chapters: [],
       explicit: undefined,
       abridged: undefined,
-      coverPath: undefined
+      coverPath
     }
 
     const bookMetadataSourceHandler = new BookScanner.BookMetadataSourceHandler(bookMetadata, audioFiles, ebookFileScanData, libraryItemData, libraryScan, existingLibraryItemId)
@@ -713,7 +713,7 @@ class BookScanner {
     existingLibraryItemId: string
     libraryScan: LibraryScan
     libraryItemData: import("/home/danny/Code/compx574/audiobookshelf/server/scanner/LibraryItemScanData")
-    ebookFileScanData: any
+    ebookFileScanData
     audioFiles: any[]
     bookMetadata: object
     /**

@@ -12,7 +12,7 @@ interface RequestUserObject {
 type RequestWithUser = Request & RequestUserObject
 
 class BackupController {
-  backupManager: any
+  backupManager: { backups: any[]; backupPath: string; backupPathEnvSet: any; requestCreateBackup: (arg0: Response<any, Record<string, any>>) => void; removeBackup: (arg0: any) => any; uploadBackup: (arg0: RequestWithUser, arg1: Response<any, Record<string, any>>) => void; reload: () => any; requestApplyBackup: (arg0: (apiCacheManager: any, backup: any, res: Response<any, Record<string, any>>) => void, arg1: any, arg2: Response<any, Record<string, any>>) => void }
   constructor() {}
 
   /**

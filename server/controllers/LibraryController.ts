@@ -45,8 +45,8 @@ interface RequestEntityObject {
 type LibraryControllerRequest = RequestWithUser & RequestEntityObject
 
 class LibraryController {
-  cronManager: any
-  podcastManager: any
+  cronManager: { updateLibraryScanCron: (arg0: import("../models/Library")) => void }
+  podcastManager: { getDownloadQueueDetails: (arg0: string) => any; generateOPMLFileText: (arg0: Sequelize.Model<any, any>[]) => any }
   constructor() {}
 
   /**
@@ -587,7 +587,7 @@ class LibraryController {
     // Set PlaybackSessions libraryId to null
     const [sessionsUpdated] = await Database.playbackSessionModel.update(
       {
-        libraryId: null
+        libraryId
       },
       {
         where: {

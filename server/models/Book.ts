@@ -79,7 +79,7 @@ interface AudioTrackProperties {
 type AudioTrack = AudioFileObject & AudioTrackProperties
 
 class Book extends Model {
-  libraryItem: any
+  libraryItem: { id: any; size: number }
   getSeries(arg0: { joinTableAttributes: string[]; order: Literal[] }): import("./Series")[] | PromiseLike<import("./Series")[]> {
     throw new Error('Method not implemented.')
   }

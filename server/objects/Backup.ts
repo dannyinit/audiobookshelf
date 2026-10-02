@@ -3,18 +3,18 @@ import date = require('../libs/dateAndTime')
 const version = require('../../package.json').version
 
 class Backup {
-  key: any
-  filename: any
-  id: any
-  createdAt: any
-  path: null
-  backupDirPath: null
+  key: string | number | null
+  filename: string | null
+  id: string | null
+  createdAt: string | number | Date | null
+  path: string | null
+  backupDirPath: string | null
   datePretty: null
   fullPath(fullPath: any): any {
     throw new Error('Method not implemented.')
   }
   fileSize: number
-  serverVersion: any
+  serverVersion: null
   constructor(data = null) {
     this.id = null
     this.key = null // Special key for pre-version checks

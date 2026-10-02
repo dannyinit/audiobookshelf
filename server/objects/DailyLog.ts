@@ -16,7 +16,7 @@ class DailyLog {
   logs: import('../managers/LogManager').LogObject[]
   /** @type {string[]} */
   bufferedLogLines: string[]
-  id: any
+  id
 
   /**
    * 

@@ -4,9 +4,9 @@ import { stripAllTags } from '../utils/htmlSanitizer'
 class DeviceInfo {
   /** @type {string[]} Fields to sanitize when loading from stored data */
   static stringFields = ['deviceId', 'clientVersion', 'manufacturer', 'model', 'sdkVersion', 'clientName', 'deviceName']
-  id: any
-  deviceName: null
-  clientName: null
+  id: null
+  deviceName: string | null
+  clientName: string | null
   sdkVersion: null
   model: null
   manufacturer: null
@@ -17,7 +17,7 @@ class DeviceInfo {
   browserVersion: null
   browserName: null
   ipAddress: null
-  deviceId: null
+  deviceId: string | null
   userId: null
 
   constructor(deviceInfo = null) {

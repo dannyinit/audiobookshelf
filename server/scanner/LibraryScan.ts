@@ -15,16 +15,16 @@ class LibraryScan {
   authorsNumBooksChangedIds: Set<string>
   /** @type {string[]} */
   seriesRemovedFromBooks: string[]
-  logs: never[]
+  logs: { timestamp: string; message: string; levelName: string; level: any }[]
   resultsUpdated: number
   resultsAdded: number
   resultsMissing: number
-  elapsed: null
-  finishedAt: null
-  startedAt: null
+  elapsed: number | null
+  finishedAt: number | null
+  startedAt: number | null
   verbose: boolean
-  type: null
-  id: null
+  type: string | null
+  id: string | null
 
   constructor() {
     this.id = null
