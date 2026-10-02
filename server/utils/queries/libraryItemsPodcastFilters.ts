@@ -358,7 +358,7 @@ export = {
    * @param {number} offset
    * @returns {{podcast:object[], tags:object[]}}
    */
-  async search(user: import('../../models/User'), library: import('../../models/Library'), query: string, limit: number, offset: number): { podcast: object[]; tags: object[] } {
+  async search(user: import('../../models/User'), library: import('../../models/Library'), query: string, limit: number, offset: number): Promise<{ podcast: object[]; tags: object[] }> {
     const userPermissionPodcastWhere = this.getUserPermissionPodcastWhereQuery(user)
 
     const textSearchQuery = await Database.createTextSearchQuery(query)
@@ -586,7 +586,7 @@ export = {
    * @param {string} libraryId
    * @returns {{genre:string, count:number}[]}
    */
-  async getGenresWithCount(libraryId: string): { genre: string; count: number }[] {
+  async getGenresWithCount(libraryId: string): Promise<{ genre: string; count: number }[]> {
     const genres = []
     const [genreResults] = await Database.sequelize.query(`SELECT value, count(*) AS numItems FROM podcasts p, libraryItems li, json_each(p.genres) WHERE json_valid(p.genres) AND p.id = li.mediaId AND li.libraryId = :libraryId GROUP BY value ORDER BY numItems DESC;`, {
       replacements: {

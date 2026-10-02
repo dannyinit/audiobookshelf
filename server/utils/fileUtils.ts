@@ -94,7 +94,7 @@ export const getFileMTimeMs = async (path: string): Promise<number> => {
  * @param {string} filepath
  * @returns {boolean}
  */
-async function checkPathIsFile(filepath: string): boolean {
+async function checkPathIsFile(filepath: string): Promise<boolean> {
   try {
     const stat = await fs.stat(filepath)
     return stat.isFile()
@@ -120,7 +120,7 @@ export { getIno }
  * @param {string} path
  * @returns {string}
  */
-async function readTextFile(path: string): string {
+async function readTextFile(path: string): Promise<string> {
   try {
     var data = await fs.readFile(path)
     return String(data)
@@ -181,7 +181,7 @@ export const shouldIgnoreFile = (path: string): string => {
  * @param {string} [relPathToReplace]
  * @returns {FilePathItem[]}
  */
-export const recurseFiles = async (path: string, relPathToReplace: string = null): FilePathItem[] => {
+export const recurseFiles = async (path: string, relPathToReplace: string = null): Promise<FilePathItem[]> => {
   path = filePathToPOSIX(path)
   if (!path.endsWith('/')) path = path + '/'
 

@@ -1149,7 +1149,7 @@ export const migrate = async (DatabaseModels) => {
 /**
  * @returns {boolean} true if old database exists
  */
-export const checkShouldMigrate = async (): boolean => {
+export const checkShouldMigrate = async (): Promise<boolean> => {
   if (await oldDbFiles.checkHasOldDb()) return true
   return oldDbFiles.checkHasOldDbZip()
 }

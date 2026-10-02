@@ -300,7 +300,7 @@ class LibraryItem extends Model {
    * @param {object} options
    * @returns {{ libraryItems:Object[], count:number }}
    */
-  static async getByFilterAndSort(library: import('./Library'), user: import('./User'), options: object): { libraryItems: object[]; count: number } {
+  static async getByFilterAndSort(library: import('./Library'), user: import('./User'), options: object): Promise<{ libraryItems: object[]; count: number }> {
     let start = Date.now()
     const { libraryItems, count } = await libraryFilters.getFilteredLibraryItems(library.id, user, options)
     Logger.debug(`Loaded ${libraryItems.length} of ${count} items for libary page in ${((Date.now() - start) / 1000).toFixed(2)}s`)
@@ -344,7 +344,7 @@ class LibraryItem extends Model {
    * @param {number} limit
    * @returns {object[]} array of shelf objects
    */
-  static async getPersonalizedShelves(library: import('./Library'), user: import('./User'), include: string[], limit: number): object[] {
+  static async getPersonalizedShelves(library: import('./Library'), user: import('./User'), include: string[], limit: number): Promise<object[]> {
     const fullStart = Date.now() // Used for testing load times
 
     const shelves = []

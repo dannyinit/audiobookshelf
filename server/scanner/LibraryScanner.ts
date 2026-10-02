@@ -304,7 +304,7 @@ class LibraryScanner {
    * @param {import('../models/LibraryFolder')} folder
    * @returns {LibraryItemScanData[]}
    */
-  async scanFolder(library: import('../models/Library'), folder: import('../models/LibraryFolder')): LibraryItemScanData[] {
+  async scanFolder(library: import('../models/Library'), folder: import('../models/LibraryFolder')): Promise<LibraryItemScanData[]> {
     const folderPath = fileUtils.filePathToPOSIX(folder.path)
 
     const pathExists = await fs.pathExists(folderPath)

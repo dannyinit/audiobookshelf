@@ -90,102 +90,102 @@ class LibraryItemScanData {
   }
 
   /** @type {boolean} */
-  get hasLibraryFileChanges() {
+  get hasLibraryFileChanges(): boolean {
     return this.libraryFilesRemoved.length + this.libraryFilesModified.length + this.libraryFilesAdded.length
   }
 
   /** @type {boolean} */
-  get hasAudioFileChanges() {
+  get hasAudioFileChanges(): boolean {
     return (this.audioLibraryFilesRemoved.length + this.audioLibraryFilesAdded.length + this.audioLibraryFilesModified.length) > 0
   }
 
   /** @type {LibraryFileModifiedObject[]} */
-  get audioLibraryFilesModified() {
+  get audioLibraryFilesModified(): LibraryFileModifiedObject[] {
     return this.libraryFilesModified.filter(lf => globals.SupportedAudioTypes.includes(lf.old.metadata.ext?.slice(1).toLowerCase() || ''))
   }
 
   /** @type {LibraryItem.LibraryFileObject[]} */
-  get audioLibraryFilesRemoved() {
+  get audioLibraryFilesRemoved(): LibraryItem.LibraryFileObject[] {
     return this.libraryFilesRemoved.filter(lf => globals.SupportedAudioTypes.includes(lf.metadata.ext?.slice(1).toLowerCase() || ''))
   }
 
   /** @type {LibraryItem.LibraryFileObject[]} */
-  get audioLibraryFilesAdded() {
+  get audioLibraryFilesAdded(): LibraryItem.LibraryFileObject[] {
     return this.libraryFilesAdded.filter(lf => globals.SupportedAudioTypes.includes(lf.metadata.ext?.slice(1).toLowerCase() || ''))
   }
 
   /** @type {LibraryItem.LibraryFileObject[]} */
-  get audioLibraryFiles() {
+  get audioLibraryFiles(): LibraryItem.LibraryFileObject[] {
     return this.libraryFiles.filter(lf => globals.SupportedAudioTypes.includes(lf.metadata.ext?.slice(1).toLowerCase() || ''))
   }
 
   /** @type {LibraryFileModifiedObject[]} */
-  get imageLibraryFilesModified() {
+  get imageLibraryFilesModified(): LibraryFileModifiedObject[] {
     return this.libraryFilesModified.filter(lf => globals.SupportedImageTypes.includes(lf.old.metadata.ext?.slice(1).toLowerCase() || ''))
   }
 
   /** @type {LibraryItem.LibraryFileObject[]} */
-  get imageLibraryFilesRemoved() {
+  get imageLibraryFilesRemoved(): LibraryItem.LibraryFileObject[] {
     return this.libraryFilesRemoved.filter(lf => globals.SupportedImageTypes.includes(lf.metadata.ext?.slice(1).toLowerCase() || ''))
   }
 
   /** @type {LibraryItem.LibraryFileObject[]} */
-  get imageLibraryFilesAdded() {
+  get imageLibraryFilesAdded(): LibraryItem.LibraryFileObject[] {
     return this.libraryFilesAdded.filter(lf => globals.SupportedImageTypes.includes(lf.metadata.ext?.slice(1).toLowerCase() || ''))
   }
 
   /** @type {LibraryItem.LibraryFileObject[]} */
-  get imageLibraryFiles() {
+  get imageLibraryFiles(): LibraryItem.LibraryFileObject[] {
     return this.libraryFiles.filter(lf => globals.SupportedImageTypes.includes(lf.metadata.ext?.slice(1).toLowerCase() || ''))
   }
 
   /** @type {LibraryFileModifiedObject[]} */
-  get ebookLibraryFilesModified() {
+  get ebookLibraryFilesModified(): LibraryFileModifiedObject[] {
     return this.libraryFilesModified.filter(lf => globals.SupportedEbookTypes.includes(lf.old.metadata.ext?.slice(1).toLowerCase() || ''))
   }
 
   /** @type {LibraryItem.LibraryFileObject[]} */
-  get ebookLibraryFilesRemoved() {
+  get ebookLibraryFilesRemoved(): LibraryItem.LibraryFileObject[] {
     return this.libraryFilesRemoved.filter(lf => globals.SupportedEbookTypes.includes(lf.metadata.ext?.slice(1).toLowerCase() || ''))
   }
 
   /** @type {LibraryItem.LibraryFileObject[]} */
-  get ebookLibraryFilesAdded() {
+  get ebookLibraryFilesAdded(): LibraryItem.LibraryFileObject[] {
     return this.libraryFilesAdded.filter(lf => globals.SupportedEbookTypes.includes(lf.metadata.ext?.slice(1).toLowerCase() || ''))
   }
 
   /** @type {LibraryItem.LibraryFileObject[]} */
-  get ebookLibraryFiles() {
+  get ebookLibraryFiles(): LibraryItem.LibraryFileObject[] {
     return this.libraryFiles.filter(lf => globals.SupportedEbookTypes.includes(lf.metadata.ext?.slice(1).toLowerCase() || ''))
   }
 
   /** @type {LibraryItem.LibraryFileObject} */
-  get descTxtLibraryFile() {
+  get descTxtLibraryFile(): LibraryItem.LibraryFileObject {
     return this.libraryFiles.find(lf => lf.metadata.filename === 'desc.txt')
   }
 
   /** @type {LibraryItem.LibraryFileObject} */
-  get readerTxtLibraryFile() {
+  get readerTxtLibraryFile(): LibraryItem.LibraryFileObject {
     return this.libraryFiles.find(lf => lf.metadata.filename === 'reader.txt')
   }
 
   /** @type {LibraryItem.LibraryFileObject} */
-  get metadataAbsLibraryFile() {
+  get metadataAbsLibraryFile(): LibraryItem.LibraryFileObject {
     return this.libraryFiles.find(lf => lf.metadata.filename === 'metadata.abs')
   }
 
   /** @type {LibraryItem.LibraryFileObject} */
-  get metadataJsonLibraryFile() {
+  get metadataJsonLibraryFile(): LibraryItem.LibraryFileObject {
     return this.libraryFiles.find(lf => lf.metadata.filename === 'metadata.json')
   }
 
   /** @type {LibraryItem.LibraryFileObject} */
-  get metadataOpfLibraryFile() {
+  get metadataOpfLibraryFile(): LibraryItem.LibraryFileObject {
     return this.libraryFiles.find(lf => lf.metadata.ext.toLowerCase() === '.opf')
   }
 
   /** @type {LibraryItem.LibraryFileObject} */
-  get metadataNfoLibraryFile() {
+  get metadataNfoLibraryFile(): LibraryItem.LibraryFileObject {
     return this.libraryFiles.find(lf => lf.metadata.ext.toLowerCase() === '.nfo')
   }
 
@@ -195,7 +195,7 @@ class LibraryItemScanData {
    * @param {import('./LibraryScan')} libraryScan
    * @returns {boolean} true if changes found
    */
-  async checkLibraryItemData(existingLibraryItem: LibraryItem, libraryScan: import('./LibraryScan')): boolean {
+  async checkLibraryItemData(existingLibraryItem: LibraryItem, libraryScan: import('./LibraryScan')): Promise<boolean> {
     const keysToCompare = ['libraryFolderId', 'ino', 'path', 'relPath', 'isFile']
     this.hasChanges = false
     this.hasPathChange = false

@@ -50,122 +50,122 @@ class Database {
   }
 
   /** @type {typeof import('./models/User')} */
-  get userModel() {
+  get userModel(): typeof import('./models/User') {
     return this.models.user
   }
 
   /** @type {typeof import('./models/Session')} */
-  get sessionModel() {
+  get sessionModel(): typeof import('./models/Session') {
     return this.models.session
   }
 
   /** @type {typeof import('./models/ApiKey')} */
-  get apiKeyModel() {
+  get apiKeyModel(): typeof import('./models/ApiKey') {
     return this.models.apiKey
   }
 
   /** @type {typeof import('./models/Library')} */
-  get libraryModel() {
+  get libraryModel(): typeof import('./models/Library') {
     return this.models.library
   }
 
   /** @type {typeof import('./models/LibraryFolder')} */
-  get libraryFolderModel() {
+  get libraryFolderModel(): typeof import('./models/LibraryFolder') {
     return this.models.libraryFolder
   }
 
   /** @type {typeof import('./models/Author')} */
-  get authorModel() {
+  get authorModel(): typeof import('./models/Author') {
     return this.models.author
   }
 
   /** @type {typeof import('./models/Series')} */
-  get seriesModel() {
+  get seriesModel(): typeof import('./models/Series') {
     return this.models.series
   }
 
   /** @type {typeof import('./models/Book')} */
-  get bookModel() {
+  get bookModel(): typeof import('./models/Book') {
     return this.models.book
   }
 
   /** @type {typeof import('./models/BookSeries')} */
-  get bookSeriesModel() {
+  get bookSeriesModel(): typeof import('./models/BookSeries') {
     return this.models.bookSeries
   }
 
   /** @type {typeof import('./models/BookAuthor')} */
-  get bookAuthorModel() {
+  get bookAuthorModel(): typeof import('./models/BookAuthor') {
     return this.models.bookAuthor
   }
 
   /** @type {typeof import('./models/Podcast')} */
-  get podcastModel() {
+  get podcastModel(): typeof import('./models/Podcast') {
     return this.models.podcast
   }
 
   /** @type {typeof import('./models/PodcastEpisode')} */
-  get podcastEpisodeModel() {
+  get podcastEpisodeModel(): typeof import('./models/PodcastEpisode') {
     return this.models.podcastEpisode
   }
 
   /** @type {typeof import('./models/LibraryItem')} */
-  get libraryItemModel() {
+  get libraryItemModel(): typeof import('./models/LibraryItem') {
     return this.models.libraryItem
   }
 
   /** @type {typeof import('./models/MediaProgress')} */
-  get mediaProgressModel() {
+  get mediaProgressModel(): typeof import('./models/MediaProgress') {
     return this.models.mediaProgress
   }
 
   /** @type {typeof import('./models/Collection')} */
-  get collectionModel() {
+  get collectionModel(): typeof import('./models/Collection') {
     return this.models.collection
   }
 
   /** @type {typeof import('./models/CollectionBook')} */
-  get collectionBookModel() {
+  get collectionBookModel(): typeof import('./models/CollectionBook') {
     return this.models.collectionBook
   }
 
   /** @type {typeof import('./models/Playlist')} */
-  get playlistModel() {
+  get playlistModel(): typeof import('./models/Playlist') {
     return this.models.playlist
   }
 
   /** @type {typeof import('./models/PlaylistMediaItem')} */
-  get playlistMediaItemModel() {
+  get playlistMediaItemModel(): typeof import('./models/PlaylistMediaItem') {
     return this.models.playlistMediaItem
   }
 
   /** @type {typeof import('./models/Feed')} */
-  get feedModel() {
+  get feedModel(): typeof import('./models/Feed') {
     return this.models.feed
   }
 
   /** @type {typeof import('./models/FeedEpisode')} */
-  get feedEpisodeModel() {
+  get feedEpisodeModel(): typeof import('./models/FeedEpisode') {
     return this.models.feedEpisode
   }
 
   /** @type {typeof import('./models/PlaybackSession')} */
-  get playbackSessionModel() {
+  get playbackSessionModel(): typeof import('./models/PlaybackSession') {
     return this.models.playbackSession
   }
 
   /** @type {typeof import('./models/CustomMetadataProvider')} */
-  get customMetadataProviderModel() {
+  get customMetadataProviderModel(): typeof import('./models/CustomMetadataProvider') {
     return this.models.customMetadataProvider
   }
 
   /** @type {typeof import('./models/MediaItemShare')} */
-  get mediaItemShareModel() {
+  get mediaItemShareModel(): typeof import('./models/MediaItemShare') {
     return this.models.mediaItemShare
   }
 
   /** @type {typeof import('./models/Device')} */
-  get deviceModel() {
+  get deviceModel(): typeof import('./models/Device') {
     return this.models.device
   }
 
@@ -173,7 +173,7 @@ class Database {
    * Check if db file exists
    * @returns {boolean}
    */
-  async checkHasDb(): boolean {
+  async checkHasDb(): Promise<boolean> {
     if (!(await fs.pathExists(this.dbPath))) {
       Logger.info(`[Database] absdatabase.sqlite not found at ${this.dbPath}`)
       return false
@@ -220,7 +220,7 @@ class Database {
    * Connect to db
    * @returns {boolean}
    */
-  async connect(): boolean {
+  async connect(): Promise<boolean> {
     Logger.info(`[Database] Initializing db at "${this.dbPath}"`)
 
     let logging = false

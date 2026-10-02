@@ -309,7 +309,7 @@ export = {
    * @param {Sequelize.WhereOptions} seriesWhere
    * @returns {object} { booksToExclude, bookSeriesToInclude }
    */
-  async getCollapseSeriesBooksToExclude(bookFindOptions: Sequelize.ModelStatic, seriesWhere: Sequelize.WhereOptions, replacements = {}): object {
+  async getCollapseSeriesBooksToExclude(bookFindOptions: Sequelize.ModelStatic, seriesWhere: Sequelize.WhereOptions, replacements = {}): Promise<object> {
     const allSeries = await Database.seriesModel.findAll({
       attributes: ['id', 'name', [Sequelize.literal('(SELECT count(*) FROM bookSeries bs WHERE bs.seriesId = series.id)'), 'numBooks']],
       distinct: true,
@@ -396,7 +396,7 @@ export = {
    * @param {boolean} isHomePage for home page shelves
    * @returns {{ libraryItems: import('../../models/LibraryItem')[], count: number }}
    */
-  async getFilteredLibraryItems(libraryId: string, user: import('../../models/User'), filterGroup: string | null, filterValue: string | null, sortBy: string, sortDesc: string, collapseseries: boolean, include: string[], limit: number, offset: number, isHomePage: boolean = false): { libraryItems: import('../../models/LibraryItem')[]; count: number } {
+  async getFilteredLibraryItems(libraryId: string, user: import('../../models/User'), filterGroup: string | null, filterValue: string | null, sortBy: string, sortDesc: string, collapseseries: boolean, include: string[], limit: number, offset: number, isHomePage: boolean = false): Promise<{ libraryItems: import('../../models/LibraryItem')[]; count: number }> {
     // TODO: Handle collapse sub-series
     if (filterGroup === 'series' && collapseseries) {
       collapseseries = false
@@ -1090,7 +1090,7 @@ export = {
    * @param {number} offset
    * @returns {{book:object[], narrators:object[], authors:object[], tags:object[], series:object[]}}
    */
-  async search(user: import('../../models/User'), library: import('../../models/Library'), query: string, limit: number, offset: number): { book: object[]; narrators: object[]; authors: object[]; tags: object[]; series: object[] } {
+  async search(user: import('../../models/User'), library: import('../../models/Library'), query: string, limit: number, offset: number): Promise<{ book: object[]; narrators: object[]; authors: object[]; tags: object[]; series: object[] }> {
     const userPermissionBookWhere = this.getUserPermissionBookWhereQuery(user)
 
     const textSearchQuery = await Database.createTextSearchQuery(query)
@@ -1287,7 +1287,7 @@ export = {
    * @param {string} libraryId
    * @returns {{genre:string, count:number}[]}
    */
-  async getGenresWithCount(libraryId: string): { genre: string; count: number }[] {
+  async getGenresWithCount(libraryId: string): Promise<{ genre: string; count: number }[]> {
     const genres = []
     const [genreResults] = await Database.sequelize.query(`SELECT value, count(*) AS numItems FROM books b, libraryItems li, json_each(b.genres) WHERE json_valid(b.genres) AND b.id = li.mediaId AND li.libraryId = :libraryId GROUP BY value ORDER BY numItems DESC;`, {
       replacements: {

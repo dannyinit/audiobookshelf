@@ -90,7 +90,7 @@ export = {
    * @param {number} limit
    * @returns {object} { libraryItems:LibraryItem[], count:number }
    */
-  async getLibraryItemsMostRecentlyAdded(library: import('../../models/Library'), user: import('../../models/User'), include: string[], limit: number): object {
+  async getLibraryItemsMostRecentlyAdded(library: import('../../models/Library'), user: import('../../models/User'), include: string[], limit: number): Promise<object> {
     if (library.isBook) {
       const { libraryItems, count } = await libraryItemsBookFilters.getFilteredLibraryItems(library.id, user, 'recent', null, 'addedAt', true, false, include, limit, 0)
       return {
@@ -138,7 +138,7 @@ export = {
    * @param {number} limit
    * @returns {object} { libraryItems:LibraryItem[], count:number }
    */
-  async getLibraryItemsContinueSeries(library: import('../../models/Library'), user: import('../../models/User'), include: string[], limit: number): object {
+  async getLibraryItemsContinueSeries(library: import('../../models/Library'), user: import('../../models/User'), include: string[], limit: number): Promise<object> {
     const { libraryItems, count } = await libraryItemsBookFilters.getContinueSeriesLibraryItems(library, user, include, limit, 0)
     return {
       libraryItems: libraryItems.map((li) => {
@@ -204,7 +204,7 @@ export = {
    * @param {number} limit
    * @returns {{ series:any[], count:number}}
    */
-  async getSeriesMostRecentlyAdded(library: import('../../models/Library'), user: import('../../models/User'), include: string[], limit: number): { series: any[]; count: number } {
+  async getSeriesMostRecentlyAdded(library: import('../../models/Library'), user: import('../../models/User'), include: string[], limit: number): Promise<{ series: any[]; count: number }> {
     if (!library.isBook) return { series: [], count: 0 }
 
     const seriesIncludes = []

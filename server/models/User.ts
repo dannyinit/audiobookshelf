@@ -453,7 +453,7 @@ class User extends Model {
    * Get array of user id and username
    * @returns {object[]} { id, username }
    */
-  static async getMinifiedUserObjects(): object[] {
+  static async getMinifiedUserObjects(): Promise<object[]> {
     const users = await this.findAll({
       attributes: ['id', 'username']
     })
@@ -469,7 +469,7 @@ class User extends Model {
    * Return true if root user exists
    * @returns {boolean}
    */
-  static async getHasRootUser(): boolean {
+  static async getHasRootUser(): Promise<boolean> {
     const count = await this.count({
       where: {
         type: 'root'
@@ -483,7 +483,7 @@ class User extends Model {
    * @param {string} username
    * @returns {boolean}
    */
-  static async checkUserExistsWithUsername(username: string): boolean {
+  static async checkUserExistsWithUsername(username: string): Promise<boolean> {
     const count = await this.count({
       where: {
         username
@@ -572,7 +572,7 @@ class User extends Model {
     return !!this.permissions?.upload && this.isActive
   }
   /** @type {string|null} */
-  get authOpenIDSub() {
+  get authOpenIDSub(): string|null {
     return this.extraData?.authOpenIDSub || null
   }
 
