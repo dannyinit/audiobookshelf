@@ -45,7 +45,7 @@ const mediaTypeKeys = {
  * @param {"book" | "podcast"} mediaType
  * @returns {Object}
  */
-function parseJsonMetadataText(text: string, mediaType: "book" | "podcast"): Record<string, any> {
+function parseJsonMetadataText(text: string, mediaType: 'book' | 'podcast'): Record<string, any> | null {
   try {
     const abmetadataData = JSON.parse(text)
 
@@ -69,9 +69,9 @@ function parseJsonMetadataText(text: string, mediaType: "book" | "podcast"): Rec
       return null
     }
 
-    const validated = {}
+    const validated: Record<string, any> = {}
     for (const key in expectedKeys) {
-      const expectedType = expectedKeys[key]
+      const expectedType = expectedKeys[key as keyof typeof expectedKeys]
       if (!(key in abmetadataData)) continue
 
       const validatedValue = validateMetadataValue(key, abmetadataData[key], expectedType)
@@ -81,7 +81,7 @@ function parseJsonMetadataText(text: string, mediaType: "book" | "podcast"): Rec
     }
 
     if (validated.series?.length) {
-      validated.series = validated.series.map((series) => parseSeriesString.parse(series)).filter(Boolean)
+      validated.series = validated.series.map((series: string) => parseSeriesString.parse(series)).filter(Boolean)
     }
 
     if (mediaType === 'book' && 'chapters' in abmetadataData) {
@@ -153,8 +153,8 @@ function validateMetadataValue(key: string, value: any, expectedType: string): a
  * @param {string} mediaTitle
  * @returns {Object[]}
  */
-function cleanChaptersArray(chaptersArray: Record<string, any>[], mediaTitle: string): Record<string, any>[] {
-  const chapters = []
+function cleanChaptersArray(chaptersArray: Record<string, any>[], mediaTitle: string): Record<string, any>[] | null {
+  const chapters: Record<string, any>[] = []
   let index = 0
   for (const chap of chaptersArray) {
     if (chap.start === null || isNaN(chap.start)) {

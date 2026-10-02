@@ -14,7 +14,7 @@ import { sanitizePath } from '../libs/archiver/archiverUtils'
  * @param {string} filename
  * @returns {string}
  */
-function sanitizeArchivePath(filename) {
+function sanitizeArchivePath(filename: string): string {
   const sanitizedPath = Path.normalize(sanitizePath(filename))
   if (!sanitizedPath || sanitizedPath === '.' || sanitizedPath === '..' || sanitizedPath.startsWith(`..${Path.sep}`) || Path.isAbsolute(sanitizedPath)) {
     throw new Error(`[CbrComicBookExtractor] Unsafe archive path "${filename}"`)
@@ -22,9 +22,9 @@ function sanitizeArchivePath(filename) {
   return sanitizedPath
 }
 
-class AbstractComicBookExtractor {
-  comicPath
-  constructor(comicPath) {
+abstract class AbstractComicBookExtractor {
+  comicPath: string
+  constructor(comicPath: string) {
     this.comicPath = comicPath
   }
 
@@ -41,31 +41,21 @@ class AbstractComicBookExtractor {
     }
   }
 
-  async open() {
-    throw new Error('Not implemented')
-  }
+  abstract open(): Promise<void>
 
-  async getFilePaths() {
-    throw new Error('Not implemented')
-  }
+  abstract getFilePaths(): Promise<string[] | null>
 
-  async extractToFile(filePath, outputFilePath) {
-    throw new Error('Not implemented')
-  }
+  abstract extractToFile(filePath: string, outputFilePath: string): Promise<boolean>
 
-  async extractToBuffer(filePath) {
-    throw new Error('Not implemented')
-  }
+  abstract extractToBuffer(filePath: string): Promise<Buffer | null | undefined>
 
-  close() {
-    throw new Error('Not implemented')
-  }
+  abstract close(): void
 }
 
 class CbrComicBookExtractor extends AbstractComicBookExtractor {
   tmpDir: string | null
-  archive: unrar.Extractor<never> | null
-  constructor(comicPath) {
+  archive: unrar.Extractor<Uint8Array> | null
+  constructor(comicPath: string) {
     super(comicPath)
     this.archive = null
     this.tmpDir = null
@@ -92,10 +82,10 @@ class CbrComicBookExtractor extends AbstractComicBookExtractor {
     return filePaths
   }
 
-  async removeEmptyParentDirs(file) {
+  async removeEmptyParentDirs(file: string) {
     let dir = Path.dirname(file)
     while (dir !== '.') {
-      const fullDirPath = Path.join(this.tmpDir, dir)
+      const fullDirPath = Path.join(this.tmpDir!, dir)
       const files = await fs.readdir(fullDirPath)
       if (files.length > 0) break
       await fs.remove(fullDirPath)
@@ -103,15 +93,15 @@ class CbrComicBookExtractor extends AbstractComicBookExtractor {
     }
   }
 
-  getExtractedFilePath(file) {
+  getExtractedFilePath(file: string) {
     const sanitizedFile = sanitizeArchivePath(file)
     return {
-      filePath: Path.join(this.tmpDir, sanitizedFile),
+      filePath: Path.join(this.tmpDir!, sanitizedFile),
       relativePath: sanitizedFile
     }
   }
 
-  async extractToBuffer(file) {
+  async extractToBuffer(file: string) {
     if (!this.archive) return null
     const extracted = this.archive.extract({ files: [file] })
     const files = [...extracted.files]
@@ -123,7 +113,7 @@ class CbrComicBookExtractor extends AbstractComicBookExtractor {
     return fileData
   }
 
-  async extractToFile(file, outputFilePath) {
+  async extractToFile(file: string, outputFilePath: string) {
     if (!this.archive) return false
     const extracted = this.archive.extract({ files: [file] })
     const files = [...extracted.files]
@@ -141,33 +131,33 @@ class CbrComicBookExtractor extends AbstractComicBookExtractor {
 
 class CbzComicBookExtractor extends AbstractComicBookExtractor {
   archive: Archive | null
-  constructor(comicPath) {
+  constructor(comicPath: string) {
     super(comicPath)
     this.archive = null
   }
 
   async open() {
     const buffer = await this.getBuffer()
-    this.archive = await Archive.open(buffer)
+    this.archive = await Archive.open(buffer!)
     Logger.debug(`[CbzComicBookExtractor] Opened comic book "${this.comicPath}"`)
   }
 
   async getFilePaths() {
     if (!this.archive) return null
     const list = await this.archive.getFilesArray()
-    const fileNames = list.map((fo) => fo.file._path)
+    const fileNames: string[] = list.map((fo: { file: { _path: string } }) => fo.file._path)
     Logger.debug(`[CbzComicBookExtractor] Found ${fileNames.length} files in comic book "${this.comicPath}"`)
     return fileNames
   }
 
-  async extractToBuffer(file) {
+  async extractToBuffer(file: string) {
     if (!this.archive) return null
     const extracted = await this.archive.extractSingleFile(file)
     Logger.debug(`[CbzComicBookExtractor] Extracted file "${file}" from comic book "${this.comicPath}" to buffer, size: ${extracted?.fileData.length}`)
     return extracted?.fileData
   }
 
-  async extractToFile(file, outputFilePath) {
+  async extractToFile(file: string, outputFilePath: string) {
     const data = await this.extractToBuffer(file)
     if (!data) return false
     await fs.writeFile(outputFilePath, data)
@@ -182,8 +172,8 @@ class CbzComicBookExtractor extends AbstractComicBookExtractor {
 }
 
 class CbzStreamZipComicBookExtractor extends AbstractComicBookExtractor {
-  archive
-  constructor(comicPath) {
+  archive: StreamZip.Async | null
+  constructor(comicPath: string) {
     super(comicPath)
     this.archive = null
   }
@@ -201,14 +191,14 @@ class CbzStreamZipComicBookExtractor extends AbstractComicBookExtractor {
     return fileNames
   }
 
-  async extractToBuffer(file) {
+  async extractToBuffer(file: string) {
     if (!this.archive) return null
     const extracted = await this.archive?.entryData(file)
     Logger.debug(`[CbzStreamZipComicBookExtractor] Extracted file "${file}" from comic book "${this.comicPath}" to buffer, size: ${extracted.length}`)
     return extracted
   }
 
-  async extractToFile(file, outputFilePath) {
+  async extractToFile(file: string, outputFilePath: string) {
     if (!this.archive) return false
     try {
       await this.archive.extract(file, outputFilePath)
@@ -226,13 +216,13 @@ class CbzStreamZipComicBookExtractor extends AbstractComicBookExtractor {
       .then(() => {
         Logger.debug(`[CbzStreamZipComicBookExtractor] Closed comic book "${this.comicPath}"`)
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         Logger.error(`[CbzStreamZipComicBookExtractor] Failed to close comic book "${this.comicPath}"`, error)
       })
   }
 }
 
-function createComicBookExtractor(comicPath) {
+function createComicBookExtractor(comicPath: string): AbstractComicBookExtractor {
   const ext = Path.extname(comicPath).toLowerCase()
   if (ext === '.cbr') {
     return new CbrComicBookExtractor(comicPath)
