@@ -70,7 +70,8 @@ interface DatabaseModels {
 }
 
 class Database {
-  sequelize: Sequelize | null
+  /** Set by connect() (and directly in tests); undefined before the database is connected */
+  sequelize!: Sequelize
   dbPath: string | null
   /** New absdatabase.sqlite created */
   isNew: boolean
@@ -86,7 +87,6 @@ class Database {
   supportsUnicodeFoldings: boolean
 
   constructor() {
-    this.sequelize = null
     this.dbPath = null
     this.isNew = false // New absdatabase.sqlite created
     this.hasRootUser = false // Used to show initialization page in web ui
@@ -229,7 +229,7 @@ class Database {
    * @returns {boolean}
    */
   async checkHasDb(): Promise<boolean> {
-    if (!(await fs.pathExists(this.dbPath))) {
+    if (!(await fs.pathExists(this.dbPath!))) {
       Logger.info(`[Database] absdatabase.sqlite not found at ${this.dbPath}`)
       return false
     }
@@ -251,7 +251,7 @@ class Database {
     }
 
     try {
-      const migrationManager = new MigrationManager(this.sequelize!, this.isNew, global.ConfigPath)
+      const migrationManager = new MigrationManager(this.sequelize, this.isNew, global.ConfigPath)
       await migrationManager.init(packageJson.version)
       await migrationManager.runMigrations()
     } catch (error) {
@@ -260,14 +260,14 @@ class Database {
     }
 
     await this.buildModels(force)
-    Logger.info(`[Database] Db initialized with models:`, Object.keys(this.sequelize!.models).join(', '))
+    Logger.info(`[Database] Db initialized with models:`, Object.keys(this.sequelize.models).join(', '))
 
     await this.addTriggers()
 
     await this.loadData()
 
     Logger.info(`[Database] running ANALYZE`)
-    await this.sequelize!.query('ANALYZE')
+    await this.sequelize.query('ANALYZE')
     Logger.info(`[Database] ANALYZE completed`)
   }
 
@@ -370,7 +370,7 @@ class Database {
    */
   async disconnect() {
     Logger.info(`[Database] Disconnecting sqlite db`)
-    await this.sequelize?.close()
+    await this.sequelize.close()
   }
 
   /**
@@ -410,9 +410,9 @@ class Database {
       require('./models/CustomMetadataProvider'),
       require('./models/MediaItemShare')
     ]
-    for (const model of models) model.initModel(this.sequelize!)
+    for (const model of models) model.initModel(this.sequelize)
 
-    return this.sequelize!.sync({ force, alter: false })
+    return this.sequelize.sync({ force, alter: false })
   }
 
   /**
@@ -846,7 +846,7 @@ class Database {
     }
 
     // Remove mediaProgresses with duplicate mediaItemId (remove the oldest updatedAt or if updatedAt is the same, remove arbitrary one)
-    const duplicateMediaProgresses = await this.sequelize!.query<{ id: string; mediaItemId: string }>(
+    const duplicateMediaProgresses = await this.sequelize.query<{ id: string; mediaItemId: string }>(
       `SELECT mp1.id, mp1.mediaItemId
 FROM mediaProgresses mp1
 WHERE EXISTS (
@@ -904,7 +904,7 @@ WHERE EXISTS (
   }
 
   async createTextSearchQuery(query: string) {
-    const textQuery = new this.TextSearchQuery(this.sequelize!, this.supportsUnaccent, query)
+    const textQuery = new this.TextSearchQuery(this.sequelize, this.supportsUnaccent, query)
     await textQuery.init()
     return textQuery
   }
@@ -926,12 +926,12 @@ WHERE EXISTS (
     const fromSource = sourceTable === 'books' ? '' : `_from_${sourceTable}_${sourceColumn}`
     const triggerName = this.convertToSnakeCase(`${action}${fromSource}`)
 
-    const [{ count }] = await this.sequelize!.query<{ count: number }>(`SELECT COUNT(*) as count FROM sqlite_master WHERE type='trigger' AND name='${triggerName}'`, { type: QueryTypes.SELECT })
+    const [{ count }] = await this.sequelize.query<{ count: number }>(`SELECT COUNT(*) as count FROM sqlite_master WHERE type='trigger' AND name='${triggerName}'`, { type: QueryTypes.SELECT })
     if (count > 0) return // Trigger already exists
 
     Logger.info(`[Database] Adding trigger ${triggerName}`)
 
-    await this.sequelize!.query(`
+    await this.sequelize.query(`
       CREATE TRIGGER ${triggerName}
         AFTER UPDATE OF ${sourceColumn} ON ${sourceTable}
         FOR EACH ROW
@@ -964,12 +964,12 @@ WHERE EXISTS (
         FROM ${authorsJoin}
         WHERE ${bookAuthors}.bookId = ${modifiedRecord}.bookId
       `
-      const [{ count }] = await this.sequelize!.query<{ count: number }>(`SELECT COUNT(*) as count FROM sqlite_master WHERE type='trigger' AND name='${triggerName}'`, { type: QueryTypes.SELECT })
+      const [{ count }] = await this.sequelize.query<{ count: number }>(`SELECT COUNT(*) as count FROM sqlite_master WHERE type='trigger' AND name='${triggerName}'`, { type: QueryTypes.SELECT })
       if (count > 0) return // Trigger already exists
 
       Logger.info(`[Database] Adding trigger ${triggerName}`)
 
-      await this.sequelize!.query(`
+      await this.sequelize.query(`
         CREATE TRIGGER ${triggerName}
           AFTER ${action} ON ${bookAuthors}
           FOR EACH ROW
@@ -989,12 +989,12 @@ WHERE EXISTS (
         WHERE ${bookAuthors}.bookId = ${libraryItems}.mediaId
       `
 
-      const [{ count }] = await this.sequelize!.query<{ count: number }>(`SELECT COUNT(*) as count FROM sqlite_master WHERE type='trigger' AND name='${triggerName}'`, { type: QueryTypes.SELECT })
+      const [{ count }] = await this.sequelize.query<{ count: number }>(`SELECT COUNT(*) as count FROM sqlite_master WHERE type='trigger' AND name='${triggerName}'`, { type: QueryTypes.SELECT })
       if (count > 0) return // Trigger already exists
 
       Logger.info(`[Database] Adding trigger ${triggerName}`)
 
-      await this.sequelize!.query(`
+      await this.sequelize.query(`
         CREATE TRIGGER ${triggerName}
           AFTER UPDATE OF name ON ${authors}
           FOR EACH ROW

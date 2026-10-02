@@ -74,6 +74,8 @@ class LibraryItem extends Model {
   declare mediaItemShare?: Record<string, any>
   declare numEpisodesIncomplete?: number
   declare rssFeed?: import('./Feed')
+  /** only set when included */
+  declare feeds?: import('./Feed')[]
   declare series?: Record<string, any>
   declare collapsedSeries?: Record<string, any>
   declare recentEpisode?: import('./PodcastEpisode')

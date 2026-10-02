@@ -42,7 +42,7 @@ export = {
     })
     for (const book of booksWithTag) {
       const libraryItem = book.libraryItem
-      libraryItem.media = book
+      libraryItem.media = book as import('../../models/Book').BookExpanded
       libraryItems.push(libraryItem)
     }
     const podcastsWithTag = await Database.podcastModel.findAll({
@@ -103,7 +103,7 @@ export = {
     })
     for (const book of booksWithGenre) {
       const libraryItem = book.libraryItem
-      libraryItem.media = book
+      libraryItem.media = book as import('../../models/Book').BookExpanded
       libraryItems.push(libraryItem)
     }
     const podcastsWithGenre = await Database.podcastModel.findAll({
@@ -166,7 +166,7 @@ export = {
     })
     for (const book of booksWithGenre) {
       const libraryItem = book.libraryItem
-      libraryItem.media = book
+      libraryItem.media = book as import('../../models/Book').BookExpanded
       libraryItems.push(libraryItem)
     }
     return libraryItems

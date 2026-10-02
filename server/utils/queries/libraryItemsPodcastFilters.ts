@@ -4,6 +4,9 @@ import Logger = require('../../Logger')
 import { profile } from '../../utils/profiler'
 import stringifySequelizeQuery = require('../stringifySequelizeQuery')
 
+/** Dynamically built where clause, keyed by attribute name or Sequelize Op symbol */
+type WhereObject = Record<string | symbol, any>
+
 const countCache = new Map()
 
 export = {
@@ -13,8 +16,8 @@ export = {
    * @returns {{ podcastWhere:Sequelize.WhereOptions, replacements:object }}
    */
   getUserPermissionPodcastWhereQuery(user: import('../../models/User')): { podcastWhere: Sequelize.WhereOptions; replacements: Record<string, any> } {
-    const podcastWhere = []
-    const replacements = {}
+    const podcastWhere: Sequelize.WhereOptions[] = []
+    const replacements: Record<string, any> = {}
     if (!user.canAccessExplicitContent) {
       podcastWhere.push({
         explicit: false
@@ -46,11 +49,11 @@ export = {
    * @param {[string]} value
    * @returns {object} { Sequelize.WhereOptions, string[] }
    */
-  getMediaGroupQuery(group: string, value: [string]): Record<string, any> {
+  getMediaGroupQuery(group: string, value: string | null): Record<string, any> {
     if (!group) return { mediaWhere: {}, replacements: {} }
 
-    let mediaWhere = {}
-    const replacements = {}
+    let mediaWhere: WhereObject = {}
+    const replacements: Record<string, any> = {}
 
     if (['genres', 'tags'].includes(group)) {
       mediaWhere[group] = Sequelize.where(Sequelize.literal(`(SELECT count(*) FROM json_each(${group}) WHERE json_valid(${group}) AND json_each.value = :filterValue)`), {
@@ -143,14 +146,14 @@ export = {
    * @param {number} offset
    * @returns {Promise<{ libraryItems: import('../../models/LibraryItem')[], count: number }>}
    */
-  async getFilteredLibraryItems(libraryId: string, user: import('../../models/User'), filterGroup: [string], filterValue: [string], sortBy: string, sortDesc: string, include: string[], limit: number, offset: number): Promise<{ libraryItems: import('../../models/LibraryItem')[]; count: number }> {
+  async getFilteredLibraryItems(libraryId: string, user: import('../../models/User'), filterGroup: string | null, filterValue: string | null, sortBy: string, sortDesc: string, include: string[], limit: number, offset: number): Promise<{ libraryItems: import('../../models/LibraryItem')[]; count: number }> {
     const includeRSSFeed = include.includes('rssfeed')
     const includeNumEpisodesIncomplete = include.includes('numepisodesincomplete')
 
     const libraryItemWhere = {
       libraryId
     }
-    const libraryItemIncludes = []
+    const libraryItemIncludes: Sequelize.IncludeOptions[] = []
     if (filterGroup === 'feed-open' || includeRSSFeed) {
       const rssFeedRequired = filterGroup === 'feed-open'
       libraryItemIncludes.push({
@@ -174,12 +177,12 @@ export = {
       }
     }
 
-    const podcastIncludes = []
+    const podcastIncludes: Sequelize.IncludeOptions[] = []
 
     let { mediaWhere, replacements } = this.getMediaGroupQuery(filterGroup, filterValue)
     replacements.userId = user.id
 
-    const podcastWhere = []
+    const podcastWhere: Sequelize.WhereOptions[] = []
     if (Object.keys(mediaWhere).length) podcastWhere.push(mediaWhere)
 
     const userPermissionPodcastWhere = this.getUserPermissionPodcastWhereQuery(user)
@@ -253,14 +256,14 @@ export = {
    * @param {boolean} isHomePage for home page shelves
    * @returns {Promise<{ libraryItems: import('../../models/LibraryItem')[], count: number }>}
    */
-  async getFilteredPodcastEpisodes(libraryId: string, user: import('../../models/User'), filterGroup: [string], filterValue: [string], sortBy: string, sortDesc: string, limit: number, offset: number, isHomePage: boolean = false): Promise<{ libraryItems: import('../../models/LibraryItem')[]; count: number }> {
+  async getFilteredPodcastEpisodes(libraryId: string, user: import('../../models/User'), filterGroup: string | null, filterValue: string | null, sortBy: string, sortDesc: string, limit: number, offset: number, isHomePage: boolean = false): Promise<{ libraryItems: import('../../models/LibraryItem')[]; count: number }> {
     if (sortBy === 'progress' && filterGroup !== 'progress') {
       Logger.warn('Cannot sort podcast episodes by progress without filtering by progress')
       sortBy = 'createdAt'
     }
 
-    const podcastEpisodeIncludes = []
-    let podcastEpisodeWhere = {}
+    const podcastEpisodeIncludes: Sequelize.IncludeOptions[] = []
+    let podcastEpisodeWhere: WhereObject = {}
     let libraryItemWhere = {
       libraryId
     }

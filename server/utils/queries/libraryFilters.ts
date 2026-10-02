@@ -207,7 +207,7 @@ export = {
   async getSeriesMostRecentlyAdded(library: import('../../models/Library'), user: import('../../models/User'), include: string[], limit: number): Promise<{ series: any[]; count: number }> {
     if (!library.isBook) return { series: [], count: 0 }
 
-    const seriesIncludes = []
+    const seriesIncludes: Sequelize.IncludeOptions[] = []
     if (include.includes('rssfeed')) {
       seriesIncludes.push({
         model: Database.feedModel

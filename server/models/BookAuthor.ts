@@ -9,6 +9,10 @@ class BookAuthor extends Model {
   declare authorId: string
   /** @type {Date} */
   declare createdAt: Date
+  /** only set when included */
+  declare author?: import('./Author')
+  /** only set when included */
+  declare book?: import('./Book')
 
   static removeByIds(authorId: string | null = null, bookId: string | null = null) {
     const where: { authorId?: string; bookId?: string } = {}

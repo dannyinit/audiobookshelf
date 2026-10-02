@@ -705,7 +705,7 @@ class User extends Model {
    * TODO: Uses old model and should account for the different between ebook/audiobook progress
    *
    * @param {ProgressUpdatePayload} progressPayload
-   * @returns {Promise<{ mediaProgress: import('./MediaProgress'), error: [string], statusCode: [number] }>}
+   * @returns {Promise<{ mediaProgress: import('./MediaProgress'), error: string | null, statusCode: [number] }>}
    */
   async createUpdateMediaProgressFromPayload(progressPayload: ProgressUpdatePayload): Promise<{ mediaProgress?: import('./MediaProgress'); error?: string; statusCode?: number }> {
     const models = this.sequelize.models as unknown as import('../Database').Models

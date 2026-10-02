@@ -34,6 +34,12 @@ class Book extends Model {
   declare libraryItem: import('./LibraryItem')
   /** only set when included */
   declare mediaProgresses?: import('./MediaProgress')[]
+  /** only set when included (hasMany association; when a book is included through a series this is the single join row instead) */
+  declare bookSeries?: import('./BookSeries')[]
+  /** only set when included */
+  declare bookAuthors?: import('./BookAuthor')[]
+  /** only set when included */
+  declare mediaItemShares?: import('./MediaItemShare')[]
 
   /** @type {string} */
   declare id: string

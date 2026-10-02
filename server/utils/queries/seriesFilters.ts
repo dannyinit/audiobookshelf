@@ -36,7 +36,7 @@ export = {
       filterValue = group ? this.decode(filterBy.replace(`${group}.`, '')) : null
     }
 
-    const seriesIncludes = []
+    const seriesIncludes: Sequelize.IncludeOptions[] = []
     if (include.includes('rssfeed')) {
       seriesIncludes.push({
         model: Database.feedModel
