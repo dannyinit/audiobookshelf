@@ -3,37 +3,53 @@ import { v4 as uuidv4 } from 'uuid'
 import { version as serverVersion } from '../../package.json'
 import DeviceInfo = require('./DeviceInfo')
 
+type ChapterObject = import('../models/Book').ChapterObject
+type AudioTrack = import('../models/Book').AudioTrack
+
 class PlaybackSession {
-  updatedAt: number
-  stream: import("./Stream") | null
+  id: string | null
   userId: string | null
-  id: string
-  lastSave: number
-  startedAt: number | null
-  startTime: null
-  timeListening: number | null
-  dayOfWeek: null
-  date: null
-  serverVersion: null
-  deviceInfo: DeviceInfo | null
-  mediaPlayer: null
-  displayAuthor: null
-  chapters: null
-  mediaMetadata: null
-  mediaType: string | null
-  episodeId: string | null
-  bookId: null
   libraryId: string | null
-  coverPath: null
-  coverAspectRatio: null
-  shareSessionId: string | null
-  playMethod: number
-  audioTracks: any[]
-  displayTitle: null
+  libraryItemId: string | null
+  bookId: string | null
+  episodeId: string | null
+
+  mediaType: string | null
+  mediaMetadata: Record<string, any> | null
+  chapters: ChapterObject[] | null
+  displayTitle: string | null
+  displayAuthor: string | null
+  coverPath: string | null
+  duration: number | null
+
+  playMethod: number | null
+  mediaPlayer: string | null
+  deviceInfo: DeviceInfo | null
+  serverVersion: string | null
+
+  /** YYYY-MM-DD */
+  date: string | null
+  dayOfWeek: string | null
+
+  timeListening: number | null
+  /** media current time at start of playback */
+  startTime: number | null
+  /** Last current time set */
   currentTime: number
-  duration: number
+
+  startedAt: number | null
+  updatedAt: number | null
+
+  // Not saved in DB
+  lastSave: number
+  audioTracks: (AudioTrack | import('./files/AudioTrack'))[]
+  stream: import('./Stream') | null
+  // Used for share sessions
+  shareSessionId: string | null
   mediaItemShareId: string | null
-  constructor(session) {
+  coverAspectRatio: number | null
+
+  constructor(session?: Record<string, any>) {
     this.id = null
     this.userId = null
     this.libraryId = null
@@ -112,7 +128,7 @@ class PlaybackSession {
    * @param {import('../models/LibraryItem')} [libraryItem]
    * @returns
    */
-  toJSONForClient(libraryItem: import('../models/LibraryItem')) {
+  toJSONForClient(libraryItem?: import('../models/LibraryItem') | null) {
     return {
       id: this.id,
       userId: this.userId,
@@ -138,13 +154,13 @@ class PlaybackSession {
       currentTime: this.currentTime,
       startedAt: this.startedAt,
       updatedAt: this.updatedAt,
-      audioTracks: this.audioTracks.map((at) => at.toJSON?.() || { ...at }),
+      audioTracks: this.audioTracks.map((at) => (at as { toJSON?: () => object }).toJSON?.() || { ...at }),
       libraryItem: libraryItem?.toOldJSONExpanded() || null,
       coverAspectRatio: this.coverAspectRatio !== null ? this.coverAspectRatio : undefined // Used for share sessions
     }
   }
 
-  construct(session) {
+  construct(session: Record<string, any>) {
     this.id = session.id
     this.userId = session.userId
     this.libraryId = session.libraryId || null
@@ -235,7 +251,7 @@ class PlaybackSession {
    * @param {*} startTime
    * @param {*} episodeId
    */
-  setData(libraryItem: import('../models/LibraryItem'), userId: any, mediaPlayer: any, deviceInfo: any, startTime: any, episodeId: any = null) {
+  setData(libraryItem: import('../models/LibraryItem'), userId: string, mediaPlayer: string, deviceInfo: DeviceInfo | null, startTime: number, episodeId: string | null = null) {
     this.id = uuidv4()
     this.userId = userId
     this.libraryId = libraryItem.libraryId
@@ -264,8 +280,8 @@ class PlaybackSession {
     this.updatedAt = Date.now()
   }
 
-  addListeningTime(timeListened) {
-    if (!timeListened || isNaN(timeListened)) return
+  addListeningTime(timeListened: number | string) {
+    if (!timeListened || isNaN(timeListened as number)) return
 
     if (!this.date) {
       // Set date info on first listening update
@@ -273,7 +289,7 @@ class PlaybackSession {
       this.dayOfWeek = date.format(new Date(), 'dddd')
     }
 
-    this.timeListening += Number.parseFloat(timeListened)
+    this.timeListening! += Number.parseFloat(timeListened as string)
     this.updatedAt = Date.now()
   }
 }

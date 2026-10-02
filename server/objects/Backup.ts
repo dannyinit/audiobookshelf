@@ -3,16 +3,21 @@ import date = require('../libs/dateAndTime')
 import { version } from '../../package.json'
 
 class Backup {
-  key: string | number | null
-  filename: string | null
   id: string | null
-  createdAt: string | number | Date | null
-  path: string | null
+  /** Special key for pre-version checks */
+  key: string | null
+  datePretty: string | null
+
   backupDirPath: string | null
-  datePretty: null
-  fileSize: number
-  serverVersion: null
-  constructor(data = null) {
+  filename: string | null
+  path: string | null
+  fullPath: string | null
+  serverVersion: string | null
+
+  fileSize: number | null
+  createdAt: number | null
+
+  constructor(data: { details: string[]; fullPath: string } | null = null) {
     this.id = null
     this.key = null // Special key for pre-version checks
     this.datePretty = null
@@ -32,7 +37,7 @@ class Backup {
   }
 
   get detailsString() {
-    const details = []
+    const details: (string | number | null)[] = []
     details.push(this.id)
     details.push(this.key)
     details.push(this.createdAt)
@@ -40,10 +45,10 @@ class Backup {
     return details.join('\n')
   }
 
-  construct(data) {
+  construct(data: { details: string[]; fullPath: string }) {
     this.id = data.details[0]
     this.key = data.details[1]
-    if (this.key == 1) this.key = null // v2.2.23 and below backups stored '1' here
+    if ((this.key as unknown) == 1) this.key = null // v2.2.23 and below backups stored '1' here
 
     this.createdAt = Number(data.details[2])
     this.serverVersion = data.details[3] || null
@@ -71,7 +76,7 @@ class Backup {
     }
   }
 
-  setData(backupDirPath) {
+  setData(backupDirPath: string) {
     this.id = date.format(new Date(), 'YYYY-MM-DD[T]HHmm')
     this.key = 'sqlite'
     this.datePretty = date.format(new Date(), 'ddd, MMM D YYYY HH:mm')

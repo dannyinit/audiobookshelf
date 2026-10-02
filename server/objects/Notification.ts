@@ -1,20 +1,22 @@
 import { v4 as uuidv4 } from 'uuid'
 
 class Notification {
-  enabled: boolean
-  eventName
-  numConsecutiveFailedAttempts
-  id: null
-  createdAt: number | null
-  numTimesFired: number
-  lastAttemptFailed: boolean
-  lastFiredAt: number | null
-  type: string
-  bodyTemplate: string
+  id: string | null
+  libraryId: string | null
+  eventName: string
+  urls: string[]
   titleTemplate: string
-  urls: any[]
-  libraryId: null
-  constructor(notification = null) {
+  bodyTemplate: string
+  type: string | null
+  enabled: boolean
+
+  lastFiredAt: number | null
+  lastAttemptFailed: boolean
+  numConsecutiveFailedAttempts: number
+  numTimesFired: number
+  createdAt: number | null
+
+  constructor(notification: Record<string, any> | null = null) {
     this.id = null
     this.libraryId = null
     this.eventName = ''
@@ -35,7 +37,7 @@ class Notification {
     }
   }
 
-  construct(notification) {
+  construct(notification: Record<string, any>) {
     this.id = notification.id
     this.libraryId = notification.libraryId || null
     this.eventName = notification.eventName
@@ -69,7 +71,7 @@ class Notification {
     }
   }
 
-  setData(payload) {
+  setData(payload: Record<string, any>) {
     this.id = uuidv4()
     this.libraryId = payload.libraryId || null
     this.eventName = payload.eventName
@@ -81,7 +83,7 @@ class Notification {
     this.createdAt = Date.now()
   }
 
-  update(payload) {
+  update(payload: Record<string, any>) {
     if (!this.enabled && payload.enabled) {
       // Reset
       this.lastFiredAt = null
@@ -98,8 +100,8 @@ class Notification {
             this.urls = [...payload[key]]
             hasUpdated = true
           }
-        } else if (payload[key] !== this[key]) {
-          this[key] = payload[key]
+        } else if (payload[key] !== (this as Record<string, any>)[key]) {
+          ;(this as Record<string, any>)[key] = payload[key]
           hasUpdated = true
         }
       }
@@ -107,14 +109,14 @@ class Notification {
     return hasUpdated
   }
 
-  updateNotificationFired(success) {
+  updateNotificationFired(success: boolean) {
     this.lastFiredAt = Date.now()
     this.lastAttemptFailed = !success
     this.numConsecutiveFailedAttempts = success ? 0 : this.numConsecutiveFailedAttempts + 1
     this.numTimesFired++
   }
 
-  replaceVariablesInTemplate(templateText, data) {
+  replaceVariablesInTemplate(templateText: string, data: Record<string, any>) {
     const ptrn = /{{ ?([a-zA-Z]+) ?}}/mg
 
     var match
@@ -127,15 +129,15 @@ class Notification {
     return updatedTemplate
   }
 
-  parseTitleTemplate(data) {
+  parseTitleTemplate(data: Record<string, any>) {
     return this.replaceVariablesInTemplate(this.titleTemplate, data)
   }
 
-  parseBodyTemplate(data) {
+  parseBodyTemplate(data: Record<string, any>) {
     return this.replaceVariablesInTemplate(this.bodyTemplate, data)
   }
 
-  getApprisePayload(data) {
+  getApprisePayload(data: Record<string, any>) {
     return {
       urls: this.urls,
       title: this.parseTitleTemplate(data),

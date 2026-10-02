@@ -5,15 +5,14 @@ import fileUtils = require('../utils/fileUtils')
 import Logger = require('../Logger')
 
 class DailyLog {
-  locked: boolean
-  createdAt: number
-  fullPath: string
+  id: string
   dailyLogDirPath: string
-  /** @type {import('../managers/LogManager').LogObject[]} */
+  filename: string
+  fullPath: string
+  createdAt: number
   logs: import('../managers/LogManager').LogObject[]
-  /** @type {string[]} */
   bufferedLogLines: string[]
-  id
+  locked: boolean
 
   /**
    * 

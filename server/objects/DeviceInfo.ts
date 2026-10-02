@@ -1,26 +1,39 @@
 import { v4 as uuidv4 } from 'uuid'
 import { stripAllTags } from '../utils/htmlSanitizer'
 
+/** Subset of a ua-parser-js result used to describe the device */
+interface UserAgentInfo {
+  browser: { name?: string; version?: string }
+  os: { name?: string; version?: string }
+  device: { type?: string }
+}
+
 class DeviceInfo {
   /** @type {string[]} Fields to sanitize when loading from stored data */
   static stringFields = ['deviceId', 'clientVersion', 'manufacturer', 'model', 'sdkVersion', 'clientName', 'deviceName']
-  id: null
-  deviceName: string | null
-  clientName: string | null
-  sdkVersion: null
-  model: null
-  manufacturer: null
-  clientVersion: null
-  deviceType: null
-  osVersion: null
-  osName: null
-  browserVersion: null
-  browserName: null
-  ipAddress: null
+  id: string | null
+  userId: string | null
   deviceId: string | null
-  userId: null
+  ipAddress: string | null
 
-  constructor(deviceInfo = null) {
+  // From User Agent (see: https://www.npmjs.com/package/ua-parser-js)
+  browserName: string | null
+  browserVersion: string | null
+  osName: string | null
+  osVersion: string | null
+  deviceType: string | null
+
+  // From client
+  clientVersion: string | null
+  manufacturer: string | null
+  model: string | null
+  /** Android Only */
+  sdkVersion: string | null
+
+  clientName: string | null
+  deviceName: string | null
+
+  constructor(deviceInfo: Record<string, any> | null = null) {
     this.id = null
     this.userId = null
     this.deviceId = null
@@ -47,16 +60,17 @@ class DeviceInfo {
     }
   }
 
-  construct(deviceInfo) {
+  construct(deviceInfo: Record<string, any>) {
+    const self = this as Record<string, any>
     for (const key in deviceInfo) {
-      if (deviceInfo[key] !== undefined && this[key] !== undefined) {
-        this[key] = DeviceInfo.stringFields.includes(key) ? stripAllTags(deviceInfo[key]) : deviceInfo[key]
+      if (deviceInfo[key] !== undefined && self[key] !== undefined) {
+        self[key] = DeviceInfo.stringFields.includes(key) ? stripAllTags(deviceInfo[key]) : deviceInfo[key]
       }
     }
   }
 
   toJSON() {
-    const obj = {
+    const obj: Partial<Record<keyof DeviceInfo, string | null>> = {
       id: this.id,
       userId: this.userId,
       deviceId: this.deviceId,
@@ -74,8 +88,8 @@ class DeviceInfo {
       deviceName: this.deviceName
     }
     for (const key in obj) {
-      if (obj[key] === null || obj[key] === undefined) {
-        delete obj[key]
+      if (obj[key as keyof typeof obj] === null || obj[key as keyof typeof obj] === undefined) {
+        delete obj[key as keyof typeof obj]
       }
     }
     return obj
@@ -96,7 +110,7 @@ class DeviceInfo {
     return 'temp-' + Buffer.from(keys.join('-'), 'utf-8').toString('base64')
   }
 
-  setData(ip, ua, clientDeviceInfo, serverVersion, userId) {
+  setData(ip: string | null | undefined, ua: UserAgentInfo | null | undefined, clientDeviceInfo: Record<string, any> | null | undefined, serverVersion: string, userId: string) {
     this.id = uuidv4()
     this.userId = userId
     this.deviceId = clientDeviceInfo?.deviceId || this.id
@@ -137,16 +151,17 @@ class DeviceInfo {
     }
   }
 
-  update(deviceInfo) {
-    const deviceInfoJson = deviceInfo.toJSON ? deviceInfo.toJSON() : deviceInfo
-    const existingDeviceInfoJson = this.toJSON()
+  update(deviceInfo: DeviceInfo | Record<string, any>) {
+    const deviceInfoJson: Record<string, any> = deviceInfo.toJSON ? deviceInfo.toJSON() : deviceInfo
+    const existingDeviceInfoJson: Record<string, any> = this.toJSON()
+    const self = this as Record<string, any>
 
     let hasUpdates = false
     for (const key in deviceInfoJson) {
       if (['id', 'deviceId'].includes(key)) continue
 
       if (deviceInfoJson[key] !== existingDeviceInfoJson[key]) {
-        this[key] = deviceInfoJson[key]
+        self[key] = deviceInfoJson[key]
         hasUpdates = true
       }
     }
@@ -155,7 +170,7 @@ class DeviceInfo {
       if (['id', 'deviceId'].includes(key)) continue
 
       if (existingDeviceInfoJson[key] && !deviceInfoJson[key]) {
-        this[key] = null
+        self[key] = null
         hasUpdates = true
       }
     }

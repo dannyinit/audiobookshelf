@@ -1,12 +1,15 @@
 import FileMetadata = require('../metadata/FileMetadata')
 
+type LibraryFile = import('./LibraryFile')
+
 class EBookFile {
-  updatedAt: number | null
-  addedAt: number | null
-  ebookFormat: string | null
+  ino: string | null
   metadata: FileMetadata | null
-  ino: null
-  constructor(file) {
+  ebookFormat: string | null
+  addedAt: number | null
+  updatedAt: number | null
+
+  constructor(file?: Record<string, any>) {
     this.ino = null
     this.metadata = null
     this.ebookFormat = null
@@ -18,7 +21,7 @@ class EBookFile {
     }
   }
 
-  construct(file) {
+  construct(file: Record<string, any>) {
     this.ino = file.ino
     this.metadata = new FileMetadata(file.metadata)
     this.ebookFormat = file.ebookFormat || this.metadata.format
@@ -29,7 +32,7 @@ class EBookFile {
   toJSON() {
     return {
       ino: this.ino,
-      metadata: this.metadata.toJSON(),
+      metadata: this.metadata!.toJSON(),
       ebookFormat: this.ebookFormat,
       addedAt: this.addedAt,
       updatedAt: this.updatedAt
@@ -40,23 +43,23 @@ class EBookFile {
     return this.ebookFormat === 'epub'
   }
 
-  setData(libraryFile) {
+  setData(libraryFile: LibraryFile) {
     this.ino = libraryFile.ino
-    this.metadata = libraryFile.metadata.clone()
-    this.ebookFormat = libraryFile.metadata.format
+    this.metadata = libraryFile.metadata!.clone()
+    this.ebookFormat = libraryFile.metadata!.format
     this.addedAt = Date.now()
     this.updatedAt = Date.now()
   }
 
-  updateFromLibraryFile(libraryFile) {
+  updateFromLibraryFile(libraryFile: LibraryFile) {
     var hasUpdated = false
 
-    if (this.metadata.update(libraryFile.metadata)) {
+    if (this.metadata!.update(libraryFile.metadata!)) {
       hasUpdated = true
     }
 
-    if (this.ebookFormat !== libraryFile.metadata.format) {
-      this.ebookFormat = libraryFile.metadata.format
+    if (this.ebookFormat !== libraryFile.metadata!.format) {
+      this.ebookFormat = libraryFile.metadata!.format
       hasUpdated = true
     }
 

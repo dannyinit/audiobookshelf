@@ -4,28 +4,31 @@ import { sanitizeFilename, filePathToPOSIX } from '../utils/fileUtils'
 import globals = require('../utils/globals')
 
 class PodcastEpisodeDownload {
-  /** @type {import('../utils/podcastUtils').RssPodcastEpisode} */
-  rssPodcastEpisode: import('../utils/podcastUtils').RssPodcastEpisode
-  /** @type {import('../models/LibraryItem')} */
-  libraryItem: import('../models/LibraryItem')
-  isAutoDownload
-  libraryId: null
+  id: string | null
+  /** from rss feed, set by setData() which always follows construction */
+  rssPodcastEpisode!: import('../utils/podcastUtils').RssPodcastEpisode
+
   url: string | null
-  finishedAt: number | null
-  createdAt: number | null
-  startedAt: null
-  targetFilename: string | null
-  appendRandomId: boolean
-  failed: boolean
+  /** set by setData() which always follows construction */
+  libraryItem!: import('../models/LibraryItem')
+  libraryId: string | null
+
+  isAutoDownload: boolean
   isFinished: boolean
-  id: null
+  failed: boolean
+
+  appendRandomId: boolean
+
+  targetFilename: string | null
+
+  startedAt: number | null
+  createdAt: number | null
+  finishedAt: number | null
 
   constructor() {
     this.id = null
-    this.rssPodcastEpisode = null
 
     this.url = null
-    this.libraryItem = null
     this.libraryId = null
 
     this.isAutoDownload = false
@@ -65,7 +68,7 @@ class PodcastEpisodeDownload {
   }
 
   get urlFileExtension() {
-    const cleanUrl = this.url.split('?')[0] // Remove query string
+    const cleanUrl = this.url!.split('?')[0] // Remove query string
     return Path.extname(cleanUrl).substring(1).toLowerCase()
   }
   get fileExtension() {
@@ -81,7 +84,7 @@ class PodcastEpisodeDownload {
     return this.rssPodcastEpisode.title
   }
   get targetPath() {
-    return filePathToPOSIX(Path.join(this.libraryItem.path, this.targetFilename))
+    return filePathToPOSIX(Path.join(this.libraryItem.path, this.targetFilename!))
   }
   get targetRelPath() {
     return this.targetFilename
@@ -118,7 +121,7 @@ class PodcastEpisodeDownload {
    * @param {*} isAutoDownload
    * @param {*} libraryId
    */
-  setData(rssPodcastEpisode: import('../utils/podcastUtils').RssPodcastEpisode, libraryItem: import('../models/LibraryItem'), isAutoDownload: any, libraryId: any) {
+  setData(rssPodcastEpisode: import('../utils/podcastUtils').RssPodcastEpisode, libraryItem: import('../models/LibraryItem'), isAutoDownload: boolean, libraryId: string) {
     this.id = uuidv4()
     this.rssPodcastEpisode = rssPodcastEpisode
 
@@ -138,7 +141,7 @@ class PodcastEpisodeDownload {
     this.libraryId = libraryId
   }
 
-  setFinished(success) {
+  setFinished(success: boolean) {
     this.finishedAt = Date.now()
     this.isFinished = true
     this.failed = !success

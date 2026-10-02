@@ -1,42 +1,43 @@
 class AudioMetaTags {
-  tagMusicBrainzArtistId: null
-  tagMusicBrainzAlbumArtistId: null
-  tagMusicBrainzAlbumId: null
-  tagMusicBrainzTrackId: null
-  tagISRC: null
-  tagReleaseStatus: null
-  tagReleaseType: null
-  tagReleaseCountry: null
-  tagOriginalYear: null
-  tagOverdriveMediaMarker: null
-  tagEpisodeType: null
-  tagPodcastType: null
-  tagItunesId: null
-  tagASIN: null
-  tagLanguage: null
-  tagIsbn: null
-  tagEncodedBy: null
-  tagEncoder: null
-  tagDescription: null
-  tagComment: null
-  tagPublisher: null
-  tagComposer: null
-  tagDate: null
-  tagAlbumArtist: null
-  tagSubtitle: null
-  tagDisc: string | null
-  tagTrack: string | null
-  tagGrouping: null
-  tagSeriesPart: null
-  tagSeries: null
-  tagTitleSort: null
+  tagAlbum: string | null
+  tagAlbumSort: string | null
+  tagArtist: string | null
+  tagArtistSort: string | null
+  tagGenre: string | null
   tagTitle: string | null
-  tagGenre: null
-  tagArtistSort: null
-  tagArtist: null
-  tagAlbumSort: null
-  tagAlbum: null
-  constructor(metadata) {
+  tagTitleSort: string | null
+  tagSeries: string | null
+  tagSeriesPart: string | null
+  tagGrouping: string | null
+  tagTrack: string | null
+  tagDisc: string | null
+  tagSubtitle: string | null
+  tagAlbumArtist: string | null
+  tagDate: string | null
+  tagComposer: string | null
+  tagPublisher: string | null
+  tagComment: string | null
+  tagDescription: string | null
+  tagEncoder: string | null
+  tagEncodedBy: string | null
+  tagIsbn: string | null
+  tagLanguage: string | null
+  tagASIN: string | null
+  tagItunesId: string | null
+  tagPodcastType: string | null
+  tagEpisodeType: string | null
+  tagOverdriveMediaMarker: string | null
+  tagOriginalYear: string | null
+  tagReleaseCountry: string | null
+  tagReleaseType: string | null
+  tagReleaseStatus: string | null
+  tagISRC: string | null
+  tagMusicBrainzTrackId: string | null
+  tagMusicBrainzAlbumId: string | null
+  tagMusicBrainzAlbumArtistId: string | null
+  tagMusicBrainzArtistId: string | null
+
+  constructor(metadata?: Record<string, any>) {
     this.tagAlbum = null
     this.tagAlbumSort = null
     this.tagArtist = null
@@ -82,17 +83,17 @@ class AudioMetaTags {
 
   toJSON() {
     // Only return the tags that are actually set
-    const json = {}
+    const json: Record<string, string> = {}
     for (const key in this) {
       if (key.startsWith('tag') && this[key]) {
-        json[key] = this[key]
+        json[key] = this[key] as string
       }
     }
     return json
   }
 
   get trackNumAndTotal() {
-    const data = {
+    const data: { number: number | null; total: number | null } = {
       number: null,
       total: null
     }
@@ -113,7 +114,7 @@ class AudioMetaTags {
   }
 
   get discNumAndTotal() {
-    const data = {
+    const data: { number: number | null; total: number | null } = {
       number: null,
       total: null
     }
@@ -144,7 +145,7 @@ class AudioMetaTags {
     return this.trackNumAndTotal.total
   }
 
-  construct(metadata) {
+  construct(metadata: Record<string, any>) {
     this.tagAlbum = metadata.tagAlbum || null
     this.tagAlbumSort = metadata.tagAlbumSort || null
     this.tagArtist = metadata.tagArtist || null
@@ -185,7 +186,7 @@ class AudioMetaTags {
   }
 
   // Data parsed in prober.js
-  setData(payload) {
+  setData(payload: Record<string, string>) {
     this.tagAlbum = payload.file_tag_album || null
     this.tagAlbumSort = payload.file_tag_albumsort || null
     this.tagArtist = payload.file_tag_artist || null
@@ -225,8 +226,8 @@ class AudioMetaTags {
     this.tagMusicBrainzArtistId = payload.file_tag_musicbrainz_artistid || null
   }
 
-  updateData(payload) {
-    const dataMap = {
+  updateData(payload: Record<string, string>) {
+    const dataMap: Record<string, string | null> = {
       tagAlbum: payload.file_tag_album || null,
       tagAlbumSort: payload.file_tag_albumsort || null,
       tagArtist: payload.file_tag_artist || null,
@@ -268,8 +269,9 @@ class AudioMetaTags {
 
     let hasUpdates = false
     for (const key in dataMap) {
-      if (dataMap[key] !== this[key]) {
-        this[key] = dataMap[key]
+      const tags = this as Record<string, any>
+      if (dataMap[key] !== tags[key]) {
+        tags[key] = dataMap[key]
         hasUpdates = true
       }
     }
@@ -280,10 +282,10 @@ class AudioMetaTags {
     return new AudioMetaTags(this.toJSON())
   }
 
-  isEqual(audioFileMetadata) {
+  isEqual(audioFileMetadata: AudioMetaTags | null | undefined) {
     if (!audioFileMetadata || !audioFileMetadata.toJSON) return false
     for (const key in audioFileMetadata.toJSON()) {
-      if (audioFileMetadata[key] !== this[key]) return false
+      if ((audioFileMetadata as Record<string, any>)[key] !== (this as Record<string, any>)[key]) return false
     }
     return true
   }

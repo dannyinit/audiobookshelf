@@ -1,12 +1,15 @@
+type FileMetadata = import('../metadata/FileMetadata')
+
 class AudioTrack {
-  metadata: { toJSON: () => any } | null
-  codec: null
-  mimeType: string | null
-  contentUrl: string | null
-  title: null
-  duration: null
-  startOffset: number | null
   index: number | null
+  startOffset: number | null
+  duration: number | null
+  title: string | null
+  contentUrl: string | null
+  mimeType: string | null
+  codec: string | null
+  metadata: FileMetadata | null
+
   constructor() {
     this.index = null
     this.startOffset = null
@@ -31,19 +34,19 @@ class AudioTrack {
     }
   }
 
-  setData(itemId, audioFile, startOffset) {
+  setData(itemId: string, audioFile: import('./AudioFile'), startOffset: number) {
     this.index = audioFile.index
     this.startOffset = startOffset
     this.duration = audioFile.duration
-    this.title = audioFile.metadata.filename || ''
+    this.title = audioFile.metadata!.filename || ''
 
     this.contentUrl = `/api/items/${itemId}/file/${audioFile.ino}`
     this.mimeType = audioFile.mimeType
     this.codec = audioFile.codec || null
-    this.metadata = audioFile.metadata.clone()
+    this.metadata = audioFile.metadata!.clone()
   }
 
-  setFromStream(title, duration, contentUrl) {
+  setFromStream(title: string, duration: number, contentUrl: string) {
     this.index = 1
     this.startOffset = 0
     this.duration = duration

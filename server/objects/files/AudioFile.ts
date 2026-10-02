@@ -8,7 +8,7 @@ class AudioFile {
   index: number | null
   ino: string | null
   /** Set by construct() or setDataFromProbe() */
-  metadata!: FileMetadata
+  metadata: FileMetadata | null
   addedAt: number | null
   updatedAt: number | null
 
@@ -38,6 +38,7 @@ class AudioFile {
   constructor(data?: Record<string, any>) {
     this.index = null
     this.ino = null
+    this.metadata = null
     this.addedAt = null
     this.updatedAt = null
 
@@ -73,7 +74,7 @@ class AudioFile {
     return {
       index: this.index,
       ino: this.ino,
-      metadata: this.metadata.toJSON(),
+      metadata: this.metadata!.toJSON(),
       addedAt: this.addedAt,
       updatedAt: this.updatedAt,
       trackNumFromMeta: this.trackNumFromMeta,
@@ -130,7 +131,7 @@ class AudioFile {
   }
 
   get mimeType() {
-    const format = this.metadata.format.toUpperCase() as keyof typeof AudioMimeType
+    const format = this.metadata!.format.toUpperCase() as keyof typeof AudioMimeType
     if (AudioMimeType[format]) {
       return AudioMimeType[format]
     } else {
@@ -205,7 +206,7 @@ class AudioFile {
 
     for (const key in newjson) {
       if (key === 'metadata') {
-        if (this.metadata.update(newjson.metadata)) {
+        if (this.metadata!.update(newjson.metadata)) {
           hasUpdated = true
         }
       } else if (key === 'metaTags') {

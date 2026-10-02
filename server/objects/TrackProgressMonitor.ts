@@ -24,7 +24,7 @@ class TrackProgressMonitor {
   currentTrackIndex: number
   cummulativeProgress: number
   currentTrackPercentage: number
-  currentTrackProgress = 0
+  currentTrackProgress!: number
   numTracks: number
   allTracksFinished: boolean
 

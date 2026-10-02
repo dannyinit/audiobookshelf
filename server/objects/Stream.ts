@@ -13,28 +13,30 @@ import hlsPlaylistGenerator = require('../utils/generators/hlsPlaylistGenerator'
 import AudioTrack = require('./files/AudioTrack')
 
 class Stream extends EventEmitter {
-  /** @type {import('../models/LibraryItem')} */
-  declare libraryItem: import('../models/LibraryItem')
-  furthestSegmentCreated: number
-  segmentsCreated
-  isTranscodeComplete: boolean
-  isClientInitialized: boolean
-  isResetting: boolean
-  loop: string | number | NodeJS.Timeout | null | undefined
-  ffmpeg: Ffmpeg.FfmpegCommand | null
-  startTime
-  finalPlaylistPath: string
-  playlistPath: string
-  concatFilesPath: string
-  streamPath: string
-  maxSeekBackTime: number
-  segmentLength: number
-  transcodeOptions
-  episodeId
-  user
-  id
+  id: string
+  user: import('../models/User')
+  libraryItem: import('../models/LibraryItem')
+  episodeId: string | null
 
-  constructor(sessionId, streamPath, user, libraryItem, episodeId, startTime, transcodeOptions = {}) {
+  transcodeOptions: { forceAAC?: boolean }
+
+  segmentLength: number
+  maxSeekBackTime: number
+  streamPath: string
+  concatFilesPath: string
+  playlistPath: string
+  finalPlaylistPath: string
+  startTime: number
+
+  ffmpeg: Ffmpeg.FfmpegCommand | null
+  loop: NodeJS.Timeout | null
+  isResetting: boolean
+  isClientInitialized: boolean
+  isTranscodeComplete: boolean
+  segmentsCreated: Set<number>
+  furthestSegmentCreated: number
+
+  constructor(sessionId: string, streamPath: string, user: import('../models/User'), libraryItem: import('../models/LibraryItem'), episodeId: string | null, startTime: number, transcodeOptions: { forceAAC?: boolean } = {}) {
     super()
 
     this.id = sessionId
@@ -64,7 +66,7 @@ class Stream extends EventEmitter {
   /**
    * @returns {import('../models/PodcastEpisode') | null}
    */
-  get episode(): import('../models/PodcastEpisode') | null {
+  get episode(): import('../models/PodcastEpisode') | null | undefined {
     if (!this.libraryItem.isPodcast) return null
     return this.libraryItem.media.podcastEpisodes.find((ep) => ep.id === this.episodeId)
   }
@@ -142,7 +144,7 @@ class Stream extends EventEmitter {
     }
   }
 
-  async checkSegmentNumberRequest(segNum) {
+  async checkSegmentNumberRequest(segNum: number) {
     const segStartTime = segNum * this.segmentLength
     if (this.segmentStartNumber > segNum) {
       Logger.warn(`[STREAM] Segment #${segNum} Request is before starting segment number #${this.segmentStartNumber} - Reset Transcode`)
@@ -194,8 +196,8 @@ class Stream extends EventEmitter {
         this.clientEmit('stream_open', this.toJSON())
       }
 
-      var chunks = []
-      var current_chunk = []
+      var chunks: (number | string)[] = []
+      var current_chunk: number[] = []
       var last_seg_in_chunk = -1
 
       var segments = Array.from(this.segmentsCreated).sort((a, b) => a - b)
@@ -238,7 +240,7 @@ class Stream extends EventEmitter {
   startLoop() {
     this.clientEmit('stream_progress', { stream: this.id, chunks: [], numSegments: 0, percent: '0%' })
 
-    clearInterval(this.loop)
+    clearInterval(this.loop!)
     var intervalId = setInterval(() => {
       if (!this.isTranscodeComplete) {
         this.checkFiles()
@@ -340,7 +342,7 @@ class Stream extends EventEmitter {
         // This is an intentional SIGKILL
         Logger.info('[FFMPEG] Transcode Killed')
         this.ffmpeg = null
-        clearInterval(this.loop)
+        clearInterval(this.loop!)
       } else {
         Logger.error('Ffmpeg Err', '"' + err.message + '"')
 
@@ -369,14 +371,14 @@ class Stream extends EventEmitter {
       }
       this.isTranscodeComplete = true
       this.ffmpeg = null
-      clearInterval(this.loop)
+      clearInterval(this.loop!)
     })
 
     this.ffmpeg.run()
   }
 
-  async close(errorMessage = null) {
-    clearInterval(this.loop)
+  async close(errorMessage: string | null = null) {
+    clearInterval(this.loop!)
 
     Logger.info('Closing Stream', this.id)
     if (this.ffmpeg) {
@@ -399,7 +401,7 @@ class Stream extends EventEmitter {
   }
 
   cancelTranscode() {
-    clearInterval(this.loop)
+    clearInterval(this.loop!)
     if (this.ffmpeg) {
       this.ffmpeg.kill('SIGKILL')
     }
@@ -414,7 +416,7 @@ class Stream extends EventEmitter {
     return false
   }
 
-  async reset(time) {
+  async reset(time: number) {
     if (this.isResetting) {
       return Logger.info(`[STREAM] Stream ${this.id} already resetting`)
     }
@@ -433,7 +435,7 @@ class Stream extends EventEmitter {
     this.start()
   }
 
-  clientEmit(evtName, data) {
+  clientEmit(evtName: string, data?: unknown) {
     SocketAuthority.clientEmitter(this.user.id, evtName, data)
   }
 

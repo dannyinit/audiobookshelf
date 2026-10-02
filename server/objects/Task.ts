@@ -7,42 +7,39 @@ interface TaskString {
 }
 
 class Task {
-  /** @type {string} */
-  id: string
-  /** @type {string} */
-  action: string
-  /** @type {Object} custom data */
-  data: Record<string, any>
-  /** @type {string} */
-  title: string
-  /** @type {string} - Used for translation */
-  titleKey: string
-  /** @type {string[]} - Used for translation */
-  titleSubs: string[]
-  /** @type {string} */
-  description: string
-  /** @type {string} - Used for translation */
-  descriptionKey: string
-  /** @type {string[]} - Used for translation */
-  descriptionSubs: string[]
-  /** @type {string} */
-  error: string
-  /** @type {string} - Used for translation */
-  errorKey: string
-  /** @type {string[]} - Used for translation */
-  errorSubs: string[]
-  /** @type {boolean} client should keep the task visible after success */
+  id: string | null
+  /** e.g. embed-metadata, encode-m4b, etc */
+  action: string | null
+  /** additional info for the action like libraryItemId */
+  data: Record<string, any> | null
+
+  title: string | null
+  /** Used for translation */
+  titleKey: string | null
+  /** Used for translation */
+  titleSubs: string[] | null
+
+  description: string | null
+  /** Used for translation */
+  descriptionKey: string | null
+  /** Used for translation */
+  descriptionSubs: string[] | null
+
+  error: string | null
+  /** Used for translation */
+  errorKey: string | null
+  /** Used for translation */
+  errorSubs: string[] | null
+
+  /** client should keep the task visible after success */
   showSuccess: boolean
-  /** @type {boolean} */
+
   isFailed: boolean
-  /** @type {boolean} */
   isFinished: boolean
-  /** @type {number} */
-  startedAt: number
-  /** @type {number} */
-  finishedAt: number
-  task
-  failedAt: number
+
+  startedAt: number | null
+  finishedAt: number | null
+  failedAt?: number
 
   constructor() {
     this.id = null
@@ -135,7 +132,7 @@ class Task {
    * @param {TaskString} [newDescriptionString] update description
    * @param {boolean} [clearDescription] clear description
    */
-  setFinished(newDescriptionString: TaskString = null, clearDescription: boolean = false) {
+  setFinished(newDescriptionString: TaskString | null = null, clearDescription: boolean = false) {
     if (newDescriptionString) {
       this.description = newDescriptionString.text
       this.descriptionKey = newDescriptionString.key || null
@@ -149,4 +146,8 @@ class Task {
     this.finishedAt = Date.now()
   }
 }
+namespace Task {
+  export type TaskStringObject = TaskString
+}
+
 export = Task

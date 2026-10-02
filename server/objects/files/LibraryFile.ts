@@ -4,12 +4,13 @@ import globals = require('../../utils/globals')
 import FileMetadata = require('../metadata/FileMetadata')
 
 class LibraryFile {
-  isSupplementary: boolean | null
   ino: string | null
   metadata: FileMetadata | null
-  updatedAt: number | null
+  isSupplementary: boolean | null
   addedAt: number | null
-  constructor(file) {
+  updatedAt: number | null
+
+  constructor(file?: Record<string, any>) {
     this.ino = null
     this.metadata = null
     this.isSupplementary = null
@@ -21,7 +22,7 @@ class LibraryFile {
     }
   }
 
-  construct(file) {
+  construct(file: Record<string, any>) {
     this.ino = file.ino
     this.metadata = new FileMetadata(file.metadata)
     this.isSupplementary = file.isSupplementary === undefined ? null : file.isSupplementary
@@ -32,7 +33,7 @@ class LibraryFile {
   toJSON() {
     return {
       ino: this.ino,
-      metadata: this.metadata.toJSON(),
+      metadata: this.metadata!.toJSON(),
       isSupplementary: this.isSupplementary,
       addedAt: this.addedAt,
       updatedAt: this.updatedAt,
@@ -45,11 +46,12 @@ class LibraryFile {
   }
 
   get fileType() {
-    if (globals.SupportedImageTypes.includes(this.metadata.format)) return 'image'
-    if (globals.SupportedAudioTypes.includes(this.metadata.format)) return 'audio'
-    if (globals.SupportedEbookTypes.includes(this.metadata.format)) return 'ebook'
-    if (globals.TextFileTypes.includes(this.metadata.format)) return 'text'
-    if (globals.MetadataFileTypes.includes(this.metadata.format)) return 'metadata'
+    const format = this.metadata!.format
+    if (globals.SupportedImageTypes.includes(format)) return 'image'
+    if (globals.SupportedAudioTypes.includes(format)) return 'audio'
+    if (globals.SupportedEbookTypes.includes(format)) return 'ebook'
+    if (globals.TextFileTypes.includes(format)) return 'text'
+    if (globals.MetadataFileTypes.includes(format)) return 'metadata'
     return 'unknown'
   }
 
@@ -62,11 +64,12 @@ class LibraryFile {
   }
 
   get isOPFFile() {
-    return this.metadata.ext === '.opf'
+    return this.metadata!.ext === '.opf'
   }
 
-  async setDataFromPath(path, relPath) {
-    var fileTsData = await getFileTimestampsWithIno(path)
+  async setDataFromPath(path: string, relPath: string) {
+    // getFileTimestampsWithIno returns false if the file can't be stat'd, which the original code did not handle either
+    var fileTsData = (await getFileTimestampsWithIno(path)) as Exclude<Awaited<ReturnType<typeof getFileTimestampsWithIno>>, false>
     var fileMetadata = new FileMetadata()
     fileMetadata.setData(fileTsData)
     fileMetadata.filename = Path.basename(relPath)
