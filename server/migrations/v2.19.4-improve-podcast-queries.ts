@@ -102,7 +102,7 @@ async function populatePodcastId(queryInterface, logger) {
  * @param {string} column - the name of the column to add.
  * @param {Object} options - the options for the column.
  */
-async function addColumn(queryInterface: import('sequelize').QueryInterface, logger: import('../Logger'), table: string, column: string, options: object) {
+async function addColumn(queryInterface: import('sequelize').QueryInterface, logger: import('../Logger'), table: string, column: string, options: Record<string, any>) {
   logger.info(`${loggerPrefix} adding column "${column}" to table "${table}"`)
   const tableDescription = await queryInterface.describeTable(table)
   if (!tableDescription[column]) {

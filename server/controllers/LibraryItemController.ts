@@ -147,15 +147,6 @@ class LibraryItemController {
     await Database.resetLibraryIssuesFilterData(req.libraryItem.libraryId)
     res.sendStatus(200)
   }
-  checkRemoveEmptySeries(seriesIds: any[]) {
-    throw new Error('Method not implemented.')
-  }
-  checkRemoveAuthorsWithNoBooks(authorIds: any[]) {
-    throw new Error('Method not implemented.')
-  }
-  handleDeleteLibraryItem(id: string, mediaItemIds: any[], libraryId: string) {
-    throw new Error('Method not implemented.')
-  }
 
   static handleDownloadError(error, res) {
     if (!res.headersSent) {

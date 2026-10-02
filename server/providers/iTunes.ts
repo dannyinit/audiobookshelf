@@ -18,7 +18,7 @@ class iTunes {
    * @param {number} [timeout] response timeout in ms
    * @returns {Promise<Object[]>}
    */
-  search(options: iTunesSearchParams, timeout: number = this.#responseTimeout): Promise<object[]> {
+  search(options: iTunesSearchParams, timeout: number = this.#responseTimeout): Promise<Record<string, any>[]> {
     if (!options.term) {
       Logger.error('[iTunes] Invalid search options - no term')
       return []
@@ -104,7 +104,7 @@ class iTunes {
    * @param {number} [timeout] response timeout in ms
    * @returns {Promise<Object[]>}
    */
-  searchAudiobooks(term: string, timeout: number = this.#responseTimeout): Promise<object[]> {
+  searchAudiobooks(term: string, timeout: number = this.#responseTimeout): Promise<Record<string, any>[]> {
     return this.search({ term, entity: 'audiobook', media: 'audiobook' }, timeout).then((results) => {
       return results.map(this.cleanAudiobook.bind(this))
     })
@@ -115,7 +115,7 @@ class iTunes {
    * @param {Object} data
    * @returns {iTunesPodcastSearchResult}
    */
-  cleanPodcast(data: object): iTunesPodcastSearchResult {
+  cleanPodcast(data: Record<string, any>): iTunesPodcastSearchResult {
     return {
       id: data.collectionId,
       artistId: data.artistId || null,

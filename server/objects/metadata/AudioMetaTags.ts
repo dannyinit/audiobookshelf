@@ -94,7 +94,7 @@ class AudioMetaTags {
   get trackNumAndTotal() {
     const data = {
       number: null,
-      total
+      total: null
     }
 
     // Track ID3 tag might be "3/10" or just "3"
@@ -115,7 +115,7 @@ class AudioMetaTags {
   get discNumAndTotal() {
     const data = {
       number: null,
-      total
+      total: null
     }
 
     if (this.tagDisc) {

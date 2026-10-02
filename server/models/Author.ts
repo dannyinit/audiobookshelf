@@ -20,15 +20,17 @@ class Author extends Model {
   declare updatedAt: Date
   /** @type {Date} */
   declare createdAt: Date
-  declare books: any
-  declare bookAuthor: { destroy: () => any }
+  /** only set when expanded */
+  declare books?: import('./Book')[]
+  /** only set when included through a book */
+  declare bookAuthor: import('./BookAuthor')
 
   /**
    *
    * @param {string} name
    * @returns {string}
    */
-  static getLastFirst(name: string): string {
+  static getLastFirst(name: string): string | null {
     if (!name) return null
     return parseNameString.nameToLastFirst(name)
   }
@@ -50,7 +52,7 @@ class Author extends Model {
    * @param {string} libraryId
    * @returns {Promise<Author>}
    */
-  static async getByNameAndLibrary(authorName: string, libraryId: string): Promise<Author> {
+  static async getByNameAndLibrary(authorName: string, libraryId: string): Promise<Author | null> {
     return this.findOne({
       where: [
         where(fn('lower', col('name')), authorName.toLowerCase()),
@@ -70,19 +72,19 @@ class Author extends Model {
     const author = await this.findByPk(authorId, {
       include: [
         {
-          model: this.sequelize.models.book,
+          model: this.sequelize!.models.book,
           include: [
             {
-              model: this.sequelize.models.libraryItem
+              model: this.sequelize!.models.libraryItem
             },
             {
-              model: this.sequelize.models.author,
+              model: this.sequelize!.models.author,
               through: {
                 attributes: []
               }
             },
             {
-              model: this.sequelize.models.series,
+              model: this.sequelize!.models.series,
               through: {
                 attributes: ['sequence']
               }
@@ -92,12 +94,12 @@ class Author extends Model {
       ]
     })
 
-    const libraryItems = []
-    if (author.books) {
-      for (const book of author.books) {
+    const libraryItems: import('./LibraryItem')[] = []
+    if (author!.books) {
+      for (const book of author!.books) {
         const libraryItem = book.libraryItem
         libraryItem.media = book
-        delete book.libraryItem
+        delete (book as { libraryItem?: unknown }).libraryItem
         libraryItems.push(libraryItem)
       }
     }
@@ -191,9 +193,7 @@ class Author extends Model {
    * @returns
    */
   toOldJSONExpanded(numBooks: number = 0) {
-    const oldJson = this.toOldJSON()
-    oldJson.numBooks = numBooks
-    return oldJson
+    return { ...this.toOldJSON(), numBooks }
   }
 
   toJSONMinimal() {

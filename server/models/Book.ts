@@ -5,8 +5,7 @@ import parseNameString = require('../utils/parsers/parseNameString')
 import htmlSanitizer = require('../utils/htmlSanitizer')
 import libraryItemsBookFilters = require('../utils/queries/libraryItemsBookFilters')
 import SocketAuthority = require('../SocketAuthority')
-import { Literal } from 'sequelize/types/utils'
-import { Literal } from 'sequelize/types/utils'
+
 
 type EBookFileObject = Book.EBookFileObject
 
@@ -31,19 +30,9 @@ type AudioTrackProperties = Book.AudioTrackProperties
 type AudioTrack = Book.AudioTrack
 
 class Book extends Model {
-  declare libraryItem: { id: any; size: number }
-  getSeries(arg0: { joinTableAttributes: string[]; order: Literal[] }): import("./Series")[] | PromiseLike<import("./Series")[]> {
-    throw new Error('Method not implemented.')
-  }
-  getAuthors(arg0: { joinTableAttributes: string[]; order: Literal[] }): import("./Author")[] | PromiseLike<import("./Author")[]> {
-    throw new Error('Method not implemented.')
-  }
-  addSeries(newSeries: any, arg1: { through: { sequence: any } }) {
-    throw new Error('Method not implemented.')
-  }
-  addAuthor(newAuthor: any) {
-    throw new Error('Method not implemented.')
-  }
+  /** only set when included */
+  declare libraryItem: import('./LibraryItem')
+
   /** @type {string} */
   declare id: string
   /** @type {string} */
@@ -255,7 +244,7 @@ class Book extends Model {
   getTracklist(libraryItemId: string): AudioTrack[] {
     let startOffset = 0
     return this.includedAudioFiles.map((af) => {
-      const track = structuredClone(af)
+      const track = structuredClone(af) as AudioTrack
       track.title = af.metadata.filename
       track.startOffset = startOffset
       track.contentUrl = `/api/items/${libraryItemId}/file/${track.ino}`
@@ -329,7 +318,7 @@ class Book extends Model {
    * @param {Object} payload - old book object
    * @returns {Promise<boolean>}
    */
-  async updateFromRequest(payload: object): Promise<boolean> {
+  async updateFromRequest(payload: Record<string, any>): Promise<boolean> {
     if (!payload) return false
 
     let hasUpdates = false
@@ -341,7 +330,8 @@ class Book extends Model {
           payload.metadata[key] = String(payload.metadata[key])
         }
 
-        if ((typeof payload.metadata[key] === 'string' || payload.metadata[key] === null) && this[key] !== payload.metadata[key]) {
+        const book = this as Record<string, any>
+        if ((typeof payload.metadata[key] === 'string' || payload.metadata[key] === null) && book[key] !== payload.metadata[key]) {
           // Sanitize description HTML
           if (key === 'description' && payload.metadata[key]) {
             const sanitizedDescription = htmlSanitizer.sanitize(payload.metadata[key])
@@ -351,7 +341,7 @@ class Book extends Model {
             }
           }
 
-          this[key] = payload.metadata[key] || null
+          book[key] = payload.metadata[key] || null
 
           if (key === 'title') {
             this.titleIgnorePrefix = getTitleIgnorePrefix(this.title)
@@ -370,15 +360,16 @@ class Book extends Model {
       }
       const arrayOfStringsKeys = ['narrators', 'genres']
       arrayOfStringsKeys.forEach((key) => {
-        if (Array.isArray(payload.metadata[key]) && !payload.metadata[key].some((item) => typeof item !== 'string') && JSON.stringify(this[key]) !== JSON.stringify(payload.metadata[key])) {
-          this[key] = payload.metadata[key]
-          this.changed(key, true)
+        const book = this as Record<string, any>
+        if (Array.isArray(payload.metadata[key]) && !payload.metadata[key].some((item: unknown) => typeof item !== 'string') && JSON.stringify(book[key]) !== JSON.stringify(payload.metadata[key])) {
+          book[key] = payload.metadata[key]
+          this.changed(key as keyof this, true)
           hasUpdates = true
         }
       })
     }
 
-    if (Array.isArray(payload.tags) && !payload.tags.some((tag) => typeof tag !== 'string') && JSON.stringify(this.tags) !== JSON.stringify(payload.tags)) {
+    if (Array.isArray(payload.tags) && !payload.tags.some((tag: unknown) => typeof tag !== 'string') && JSON.stringify(this.tags) !== JSON.stringify(payload.tags)) {
       this.tags = payload.tags
       this.changed('tags', true)
       hasUpdates = true
@@ -399,7 +390,7 @@ class Book extends Model {
    * @param {string} libraryId
    * @returns {Promise<{authorsRemoved: import('./Author')[], authorsAdded: import('./Author')[]}>}
    */
-  async updateAuthorsFromRequest(authors: string[], libraryId: string): Promise<{ authorsRemoved: import('./Author')[]; authorsAdded: import('./Author')[] }> {
+  async updateAuthorsFromRequest(authors: string[], libraryId: string): Promise<{ authorsRemoved: import('./Author')[]; authorsAdded: import('./Author')[] } | null> {
     if (!Array.isArray(authors)) return null
 
     if (!this.authors) {
@@ -407,10 +398,10 @@ class Book extends Model {
     }
 
     /** @type {typeof import('./Author')} */
-    const authorModel: typeof import('./Author') = this.sequelize.models.author
+    const authorModel = this.sequelize.models.author as typeof import('./Author')
 
     /** @type {typeof import('./BookAuthor')} */
-    const bookAuthorModel: typeof import('./BookAuthor') = this.sequelize.models.bookAuthor
+    const bookAuthorModel = this.sequelize.models.bookAuthor as typeof import('./BookAuthor')
 
     const authorsCleaned = authors.map((a) => a.toLowerCase()).filter((a) => a)
     const authorsRemoved = this.authors.filter((au) => !authorsCleaned.includes(au.name.toLowerCase()))
@@ -425,7 +416,7 @@ class Book extends Model {
       Logger.debug(`[Book] "${this.title}" Removed author "${author.name}"`)
       this.authors = this.authors.filter((au) => au.id !== author.id)
     }
-    const authorsAdded = []
+    const authorsAdded: import('./Author')[] = []
     for (const authorName of newAuthorNames) {
       const { author, created } = await authorModel.findOrCreateByNameAndLibrary(authorName, libraryId)
       await bookAuthorModel.create({ bookId: this.id, authorId: author.id })
@@ -454,7 +445,7 @@ class Book extends Model {
    * @param {string} libraryId
    * @returns {Promise<{seriesRemoved: import('./Series')[], seriesAdded: import('./Series')[], hasUpdates: boolean}>}
    */
-  async updateSeriesFromRequest(seriesObjects: { name: string; sequence: string }[], libraryId: string): Promise<{ seriesRemoved: import('./Series')[]; seriesAdded: import('./Series')[]; hasUpdates: boolean }> {
+  async updateSeriesFromRequest(seriesObjects: { name: string; sequence: string }[], libraryId: string): Promise<{ seriesRemoved: import('./Series')[]; seriesAdded: import('./Series')[]; hasUpdates: boolean } | null> {
     if (!Array.isArray(seriesObjects) || seriesObjects.some((se) => !se.name || typeof se.name !== 'string')) return null
 
     if (!this.series) {
@@ -462,14 +453,14 @@ class Book extends Model {
     }
 
     /** @type {typeof import('./Series')} */
-    const seriesModel: typeof import('./Series') = this.sequelize.models.series
+    const seriesModel = this.sequelize.models.series as typeof import('./Series')
 
     /** @type {typeof import('./BookSeries')} */
-    const bookSeriesModel: typeof import('./BookSeries') = this.sequelize.models.bookSeries
+    const bookSeriesModel = this.sequelize.models.bookSeries as typeof import('./BookSeries')
 
     const seriesNamesCleaned = seriesObjects.map((se) => se.name.toLowerCase())
     const seriesRemoved = this.series.filter((se) => !seriesNamesCleaned.includes(se.name.toLowerCase()))
-    const seriesAdded = []
+    const seriesAdded: import('./Series')[] = []
     let hasUpdates = false
     for (const seriesObj of seriesObjects) {
       const seriesObjSequence = typeof seriesObj.sequence === 'string' ? seriesObj.sequence : null
@@ -554,14 +545,15 @@ class Book extends Model {
   }
 
   oldMetadataToJSONExpanded() {
-    const oldMetadataJSON = this.oldMetadataToJSON()
-    oldMetadataJSON.titleIgnorePrefix = getTitlePrefixAtEnd(this.title)
-    oldMetadataJSON.authorName = this.authorName
-    oldMetadataJSON.authorNameLF = this.authorNameLF
-    oldMetadataJSON.narratorName = (this.narrators || []).join(', ')
-    oldMetadataJSON.seriesName = this.seriesName
-    oldMetadataJSON.descriptionPlain = this.description ? htmlSanitizer.stripAllTags(this.description) : null
-    return oldMetadataJSON
+    return {
+      ...this.oldMetadataToJSON(),
+      titleIgnorePrefix: getTitlePrefixAtEnd(this.title),
+      authorName: this.authorName,
+      authorNameLF: this.authorNameLF,
+      narratorName: (this.narrators || []).join(', '),
+      seriesName: this.seriesName,
+      descriptionPlain: this.description ? htmlSanitizer.stripAllTags(this.description) : null
+    }
   }
 
   /**
@@ -656,7 +648,7 @@ namespace Book {
     ebookFormat: string
     addedAt: number
     updatedAt: number
-    metadata: { filename: string; ext: string; path: string; relPath: strFing; size: number; mtimeMs: number; ctimeMs: number; birthtimeMs: number} 
+    metadata: { filename: string; ext: string; path: string; relPath: string; size: number; mtimeMs: number; ctimeMs: number; birthtimeMs: number }
   }
 
   export interface ChapterObject {
@@ -667,7 +659,7 @@ namespace Book {
   }
 
   export interface SeriesExpandedProperties {
-    bookSeries: { sequence: string} 
+    bookSeries: { sequence: string }
   }
 
   export type SeriesExpanded = import('./Series') & SeriesExpandedProperties
@@ -686,10 +678,6 @@ namespace Book {
   export type BookExpandedWithLibraryItem = BookExpanded & BookExpandedWithLibraryItemProperties
 
   export interface AudioFileObject {
-    contentUrl: string
-    startOffset: number
-    title: string
-    exclude: any
     index: number
     ino: string
     metadata: { filename: string; ext: string; path: string; relPath: string; size: number; mtimeMs: number; ctimeMs: number; birthtimeMs: number} 
@@ -700,6 +688,7 @@ namespace Book {
     trackNumFromFilename: number
     discNumFromFilename: number
     manuallyVerified: boolean
+    exclude: boolean
     format: string
     duration: number
     bitRate: number
@@ -709,7 +698,7 @@ namespace Book {
     channels: number
     channelLayout: string
     chapters: ChapterObject[]
-    metaTags: Object
+    metaTags: Record<string, any>
     mimeType: string
   }
 

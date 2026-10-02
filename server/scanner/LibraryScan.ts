@@ -1,5 +1,5 @@
 import Path = require('path')
-const uuidv4 = require('uuid').v4
+import { v4 as uuidv4 } from 'uuid'
 import fs = require('../libs/fsExtra')
 import date = require('../libs/dateAndTime')
 

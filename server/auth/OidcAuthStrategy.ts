@@ -128,7 +128,7 @@ class OidcAuthStrategy {
    * @param {Object} userinfo
    * @param {Function} done - Passport callback
    */
-  async verifyCallback(tokenset: object, userinfo: object, done: Function) {
+  async verifyCallback(tokenset: Record<string, any>, userinfo: Record<string, any>, done: Function) {
     let isNewUser = false
     let user = null
     try {
@@ -185,7 +185,7 @@ class OidcAuthStrategy {
    * @param {Object} userinfo
    * @returns {boolean}
    */
-  validateGroupClaim(userinfo: object): boolean {
+  validateGroupClaim(userinfo: Record<string, any>): boolean {
     const groupClaimName = Database.serverSettings.authOpenIDGroupClaim
     if (!groupClaimName)
       // Allow no group claim when configured like this
@@ -203,7 +203,7 @@ class OidcAuthStrategy {
    * @param {import('../models/User')} user
    * @param {Object} userinfo
    */
-  async setUserGroup(user: import('../models/User'), userinfo: object) {
+  async setUserGroup(user: import('../models/User'), userinfo: Record<string, any>) {
     const groupClaimName = Database.serverSettings.authOpenIDGroupClaim
     if (!groupClaimName)
       // No group claim configured, don't set anything
@@ -241,7 +241,7 @@ class OidcAuthStrategy {
    * @param {import('../models/User')} user
    * @param {Object} userinfo
    */
-  async updateUserPermissions(user: import('../models/User'), userinfo: object) {
+  async updateUserPermissions(user: import('../models/User'), userinfo: Record<string, any>) {
     const absPermissionsClaim = Database.serverSettings.authOpenIDAdvancedPermsClaim
     if (!absPermissionsClaim)
       // No advanced permissions claim configured, don't set anything
@@ -263,7 +263,7 @@ class OidcAuthStrategy {
    * @param {boolean} isMobileFlow
    * @returns {Object|{error: string}}
    */
-  generatePkce(req: Request, isMobileFlow: boolean): object | { error: string } {
+  generatePkce(req: Request, isMobileFlow: boolean): Record<string, any> | { error: string } {
     if (isMobileFlow) {
       if (!req.query.code_challenge) {
         return {

@@ -1,4 +1,4 @@
-const axios = require('axios').default
+import axios from 'axios'
 import Database = require('../Database')
 import Logger = require('../Logger')
 import htmlSanitizer = require('../utils/htmlSanitizer')
@@ -18,7 +18,7 @@ class CustomProviderAdapter {
    * @param {number} [timeout] response timeout in ms
    * @returns {Promise<Object[]>}
    */
-  async search(title: string, author: string, isbn: string, providerSlug: string, mediaType: string, timeout: number = this.#responseTimeout): Promise<object[]> {
+  async search(title: string, author: string, isbn: string, providerSlug: string, mediaType: string, timeout: number = this.#responseTimeout): Promise<Record<string, any>[]> {
     if (!timeout || isNaN(timeout)) timeout = this.#responseTimeout
 
     const providerId = providerSlug.split('custom-')[1]

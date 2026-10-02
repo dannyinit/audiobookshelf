@@ -237,7 +237,7 @@ export const downloadPodcastEpisode = (podcastEpisodeDownload: import('../object
  * @param {Array|null} chapters - An array of chapter objects.
  * @returns {string} - The ffmetadata file content.
  */
-function generateFFMetadata(metadata: object, chapters: Array<any> | null): string {
+function generateFFMetadata(metadata: Record<string, any>, chapters: Array<any> | null): string {
   let ffmetadataContent = ';FFMETADATA1\n'
 
   // Add global metadata
@@ -273,7 +273,7 @@ export { generateFFMetadata }
  * @param {string} ffmetadataPath - The path to the FFmpeg metadata file.
  * @returns {Promise<boolean>} - A promise that resolves to true if the file was written successfully, false otherwise.
  */
-async function writeFFMetadataFile(metadata: object, chapters: Array<any>, ffmetadataPath: string): Promise<boolean> {
+async function writeFFMetadataFile(metadata: Record<string, any>, chapters: Array<any>, ffmetadataPath: string): Promise<boolean> {
   try {
     await fs.writeFile(ffmetadataPath, generateFFMetadata(metadata, chapters))
     Logger.debug(`[ffmpegHelpers] Wrote ${ffmetadataPath}`)
@@ -404,7 +404,7 @@ function escapeFFMetadataValue(value) {
  * @param {number} audioFilesLength - The length of the audio files.
  * @returns {Object} - The FFmpeg metadata object.
  */
-function getFFMetadataObject(libraryItem: import('../models/LibraryItem'), audioFilesLength: number): object {
+function getFFMetadataObject(libraryItem: import('../models/LibraryItem'), audioFilesLength: number): Record<string, any> {
   const ffmetadata = {
     title: libraryItem.media.title,
     artist: libraryItem.media.authorName,

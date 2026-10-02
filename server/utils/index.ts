@@ -290,9 +290,6 @@ export const timestampToSeconds = (timestamp: string): number => {
 
 class ValidationError extends Error {
   paramName: string
-  status(status: any) {
-    throw new Error('Method not implemented.')
-  }
   constructor(paramName, message, status = 400) {
     super(`Query parameter "${paramName}" ${message}`)
     this.name = 'ValidationError'
@@ -327,7 +324,7 @@ export { NotFoundError }
  * @throws {ValidationError} If value is too long
  * @throws {ValidationError} If value is required but not provided
  */
-export const getQueryParamAsString = (query: object, paramName: string, defaultValue: string = '', required: boolean = false, maxLength: number = 1000): string => {
+export const getQueryParamAsString = (query: Record<string, any>, paramName: string, defaultValue: string = '', required: boolean = false, maxLength: number = 1000): string => {
   const value = query[paramName]
   if (value === undefined || value === null) {
     if (required) {

@@ -1,4 +1,4 @@
-const axios = require('axios').default
+import axios from 'axios'
 import Logger = require('../Logger')
 import { isValidASIN } from '../utils/index'
 
@@ -96,7 +96,7 @@ class Audible {
    * @param {number} [timeout] response timeout in ms
    * @returns {Promise<Object>}
    */
-  asinSearch(asin: string, region: string, timeout: number = this.#responseTimeout): Promise<object> {
+  asinSearch(asin: string, region: string, timeout: number = this.#responseTimeout): Promise<Record<string, any>> {
     if (!asin) return null
     if (!timeout || isNaN(timeout)) timeout = this.#responseTimeout
 
@@ -127,7 +127,7 @@ class Audible {
    * @param {number} [timeout] response timeout in ms
    * @returns {Promise<Object[]>}
    */
-  async search(title: string, author: string, asin: string, region: string, timeout: number = this.#responseTimeout): Promise<object[]> {
+  async search(title: string, author: string, asin: string, region: string, timeout: number = this.#responseTimeout): Promise<Record<string, any>[]> {
     if (region && !this.regionMap[region]) {
       Logger.error(`[Audible] search: Invalid region ${region}`)
       region = ''

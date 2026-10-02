@@ -30,13 +30,13 @@ class PlaybackSession extends Model {
   /** @type {number} */
   declare timeListening: number
   /** @type {Object} */
-  declare mediaMetadata: object
+  declare mediaMetadata: Record<string, any>
   /** @type {string} */
   declare date: string
   /** @type {string} */
   declare dayOfWeek: string
   /** @type {Object} */
-  declare extraData: object
+  declare extraData: Record<string, any>
   /** @type {string} */
   declare userId: string
   /** @type {string} */
@@ -53,7 +53,7 @@ class PlaybackSession extends Model {
       where,
       include: [
         {
-          model: this.sequelize.models.device
+          model: this.sequelize!.models.device
         }
       ]
     })
@@ -64,7 +64,7 @@ class PlaybackSession extends Model {
     const playbackSession = await this.findByPk(sessionId, {
       include: [
         {
-          model: this.sequelize.models.device
+          model: this.sequelize!.models.device
         }
       ]
     })

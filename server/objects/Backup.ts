@@ -1,6 +1,6 @@
 import Path = require('path')
 import date = require('../libs/dateAndTime')
-const version = require('../../package.json').version
+import { version } from '../../package.json'
 
 class Backup {
   key: string | number | null
@@ -10,9 +10,6 @@ class Backup {
   path: string | null
   backupDirPath: string | null
   datePretty: null
-  fullPath(fullPath: any): any {
-    throw new Error('Method not implemented.')
-  }
   fileSize: number
   serverVersion: null
   constructor(data = null) {

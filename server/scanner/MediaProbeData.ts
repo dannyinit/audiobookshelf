@@ -1,26 +1,35 @@
 import AudioMetaTags = require('../objects/metadata/AudioMetaTags')
 
+type ParsedProbeData = import('../utils/prober').ParsedProbeData
+type MediaStreamInfo = import('../utils/prober').MediaStreamInfo
+
 class MediaProbeData {
-  discTotal: null
-  discNumber: null
-  trackTotal: null
-  trackNumber: null
+  embeddedCoverArt: string | null
+  format: string | null
+  duration: number | null
+  size: number | null
+
+  audioStream: MediaStreamInfo | null
+  videoStream: MediaStreamInfo | null
+
+  bitRate: number | null
+  codec: string | null
+  timeBase: string | null
+  language: string | null
+  channelLayout: string | null
+  channels: number | null
+  sampleRate: number | null
+  chapters: import('../utils/prober').ProbeChapter[]
+
   audioMetaTags: AudioMetaTags | null
-  chapters: never[]
-  sampleRate: null
-  channels: null
-  channelLayout: null
-  language: null
-  timeBase: null
-  codec: null
-  bitRate: null
-  videoStream: null
-  audioStream: { bit_rate: any; codec: null; time_base: null; language: null; channel_layout: null; channels: null; sample_rate: null } | null
-  size: null
-  duration: null
-  format: null
-  embeddedCoverArt: null
-  constructor(probeData) {
+
+  trackNumber: number | null
+  trackTotal: number | null
+
+  discNumber: number | null
+  discTotal: number | null
+
+  constructor(probeData?: Record<string, any>) {
     this.embeddedCoverArt = null
     this.format = null
     this.duration = null
@@ -51,32 +60,35 @@ class MediaProbeData {
     }
   }
 
-  construct(probeData) {
+  construct(probeData: Record<string, any>) {
+    const self = this as Record<string, any>
     for (const key in probeData) {
       if (key === 'audioMetaTags' && probeData[key]) {
-        this[key] = new AudioMetaTags(probeData[key])
-      } else if (this[key] !== undefined) {
-        this[key] = probeData[key]
+        this.audioMetaTags = new AudioMetaTags(probeData[key])
+      } else if (self[key] !== undefined) {
+        self[key] = probeData[key]
       }
     }
   }
 
-  setData(data) {
+  setData(data: ParsedProbeData) {
     this.embeddedCoverArt = data.video_stream?.codec || null
     this.format = data.format
     this.duration = data.duration
     this.size = data.size
 
-    this.audioStream = data.audio_stream
+    this.audioStream = data.audio_stream ?? null
     this.videoStream = this.embeddedCoverArt ? null : data.video_stream || null
 
-    this.bitRate = this.audioStream.bit_rate || data.bit_rate
-    this.codec = this.audioStream.codec
-    this.timeBase = this.audioStream.time_base
-    this.language = this.audioStream.language
-    this.channelLayout = this.audioStream.channel_layout
-    this.channels = this.audioStream.channels
-    this.sampleRate = this.audioStream.sample_rate
+    // audio_stream is only missing for video-only files, where the original code also threw here
+    const audioStream = this.audioStream!
+    this.bitRate = audioStream.bit_rate || data.bit_rate
+    this.codec = audioStream.codec
+    this.timeBase = audioStream.time_base
+    this.language = audioStream.language
+    this.channelLayout = audioStream.channel_layout ?? null
+    this.channels = audioStream.channels ?? null
+    this.sampleRate = audioStream.sample_rate ?? null
     this.chapters = data.chapters || []
 
     this.audioMetaTags = new AudioMetaTags()

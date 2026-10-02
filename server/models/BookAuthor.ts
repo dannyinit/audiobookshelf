@@ -10,8 +10,8 @@ class BookAuthor extends Model {
   /** @type {Date} */
   declare createdAt: Date
 
-  static removeByIds(authorId = null, bookId = null) {
-    const where = {}
+  static removeByIds(authorId: string | null = null, bookId: string | null = null) {
+    const where: { authorId?: string; bookId?: string } = {}
     if (authorId) where.authorId = authorId
     if (bookId) where.bookId = bookId
     return this.destroy({
@@ -42,14 +42,14 @@ class BookAuthor extends Model {
   static async getCountsForAuthors(authorIds: string[]): Promise<Record<string, number>> {
     if (!authorIds.length) return {}
 
-    const rows = await this.findAll({
+    const rows = (await this.findAll({
       attributes: ['authorId', [fn('COUNT', col('id')), 'count']],
       where: {
         authorId: authorIds
       },
       group: ['authorId'],
       raw: true
-    })
+    })) as unknown as { authorId: string; count: number }[]
 
     /** @type {Record<string, number>} */
     const counts: Record<string, number> = {}

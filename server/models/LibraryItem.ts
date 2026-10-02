@@ -48,7 +48,7 @@ class LibraryItem extends Model {
   /** @type {LibraryFileObject[]} */
   declare libraryFiles: LibraryFileObject[]
   /** @type {Object} */
-  declare extraData: object
+  declare extraData: Record<string, any>
   /** @type {string} */
   declare libraryId: string
   /** @type {string} */
@@ -87,16 +87,16 @@ class LibraryItem extends Model {
       where,
       include: [
         {
-          model: this.sequelize.models.book,
+          model: this.sequelize!.models.book,
           include: [
             {
-              model: this.sequelize.models.author,
+              model: this.sequelize!.models.author,
               through: {
                 attributes: ['createdAt']
               }
             },
             {
-              model: this.sequelize.models.series,
+              model: this.sequelize!.models.series,
               through: {
                 attributes: ['id', 'sequence', 'createdAt']
               }
@@ -104,14 +104,14 @@ class LibraryItem extends Model {
           ]
         },
         {
-          model: this.sequelize.models.podcast
+          model: this.sequelize!.models.podcast
         }
       ],
       order: [
         ['createdAt', 'ASC'],
         // Ensure author & series stay in the same order
-        [this.sequelize.models.book, this.sequelize.models.author, this.sequelize.models.bookAuthor, 'createdAt', 'ASC'],
-        [this.sequelize.models.book, this.sequelize.models.series, 'bookSeries', 'createdAt', 'ASC']
+        [this.sequelize!.models.book, this.sequelize!.models.author, this.sequelize!.models.bookAuthor, 'createdAt', 'ASC'],
+        [this.sequelize!.models.book, this.sequelize!.models.series, 'bookSeries', 'createdAt', 'ASC']
       ],
       offset,
       limit
@@ -143,16 +143,16 @@ class LibraryItem extends Model {
       where,
       include: [
         {
-          model: this.sequelize.models.book,
+          model: this.sequelize!.models.book,
           include: [
             {
-              model: this.sequelize.models.author,
+              model: this.sequelize!.models.author,
               through: {
                 attributes: []
               }
             },
             {
-              model: this.sequelize.models.series,
+              model: this.sequelize!.models.series,
               through: {
                 attributes: ['id', 'sequence']
               }
@@ -160,16 +160,16 @@ class LibraryItem extends Model {
           ]
         },
         {
-          model: this.sequelize.models.podcast,
+          model: this.sequelize!.models.podcast,
           include: {
-            model: this.sequelize.models.podcastEpisode
+            model: this.sequelize!.models.podcastEpisode
           }
         }
       ],
       order: [
         // Ensure author & series stay in the same order
-        [this.sequelize.models.book, this.sequelize.models.author, this.sequelize.models.bookAuthor, 'createdAt', 'ASC'],
-        [this.sequelize.models.book, this.sequelize.models.series, 'bookSeries', 'createdAt', 'ASC']
+        [this.sequelize!.models.book, this.sequelize!.models.author, this.sequelize!.models.bookAuthor, 'createdAt', 'ASC'],
+        [this.sequelize!.models.book, this.sequelize!.models.series, 'bookSeries', 'createdAt', 'ASC']
       ]
     })
   }
@@ -192,7 +192,7 @@ class LibraryItem extends Model {
       libraryItem.media = await libraryItem.getMedia({
         include: [
           {
-            model: this.sequelize.models.podcastEpisode
+            model: this.sequelize!.models.podcastEpisode
           }
         ]
       })
@@ -200,21 +200,21 @@ class LibraryItem extends Model {
       libraryItem.media = await libraryItem.getMedia({
         include: [
           {
-            model: this.sequelize.models.author,
+            model: this.sequelize!.models.author,
             through: {
               attributes: []
             }
           },
           {
-            model: this.sequelize.models.series,
+            model: this.sequelize!.models.series,
             through: {
               attributes: ['id', 'sequence']
             }
           }
         ],
         order: [
-          [this.sequelize.models.author, this.sequelize.models.bookAuthor, 'createdAt', 'ASC'],
-          [this.sequelize.models.series, 'bookSeries', 'createdAt', 'ASC']
+          [this.sequelize!.models.author, this.sequelize!.models.bookAuthor, 'createdAt', 'ASC'],
+          [this.sequelize!.models.series, 'bookSeries', 'createdAt', 'ASC']
         ]
       })
     }
@@ -244,7 +244,7 @@ class LibraryItem extends Model {
       libraryItem.media = await libraryItem.getMedia({
         include: [
           {
-            model: this.sequelize.models.podcastEpisode
+            model: this.sequelize!.models.podcastEpisode
           }
         ]
       })
@@ -252,21 +252,21 @@ class LibraryItem extends Model {
       libraryItem.media = await libraryItem.getMedia({
         include: [
           {
-            model: this.sequelize.models.author,
+            model: this.sequelize!.models.author,
             through: {
               attributes: []
             }
           },
           {
-            model: this.sequelize.models.series,
+            model: this.sequelize!.models.series,
             through: {
               attributes: ['id', 'sequence']
             }
           }
         ],
         order: [
-          [this.sequelize.models.author, this.sequelize.models.bookAuthor, 'createdAt', 'ASC'],
-          [this.sequelize.models.series, 'bookSeries', 'createdAt', 'ASC']
+          [this.sequelize!.models.author, this.sequelize!.models.bookAuthor, 'createdAt', 'ASC'],
+          [this.sequelize!.models.series, 'bookSeries', 'createdAt', 'ASC']
         ]
       })
     }
@@ -282,7 +282,7 @@ class LibraryItem extends Model {
    * @param {object} options
    * @returns {{ libraryItems:Object[], count:number }}
    */
-  static async getByFilterAndSort(library: import('./Library'), user: import('./User'), options: object): Promise<{ libraryItems: object[]; count: number }> {
+  static async getByFilterAndSort(library: import('./Library'), user: import('./User'), options: Record<string, any>): Promise<{ libraryItems: Record<string, any>[]; count: number }> {
     let start = Date.now()
     const { libraryItems, count } = await libraryFilters.getFilteredLibraryItems(library.id, user, options)
     Logger.debug(`Loaded ${libraryItems.length} of ${count} items for libary page in ${((Date.now() - start) / 1000).toFixed(2)}s`)
@@ -326,7 +326,7 @@ class LibraryItem extends Model {
    * @param {number} limit
    * @returns {object[]} array of shelf objects
    */
-  static async getPersonalizedShelves(library: import('./Library'), user: import('./User'), include: string[], limit: number): Promise<object[]> {
+  static async getPersonalizedShelves(library: import('./Library'), user: import('./User'), include: string[], limit: number): Promise<Record<string, any>[]> {
     const fullStart = Date.now() // Used for testing load times
 
     const shelves = []
@@ -579,11 +579,11 @@ class LibraryItem extends Model {
       attributes: ['id', 'mediaType', 'mediaId', 'libraryId'],
       include: [
         {
-          model: this.sequelize.models.book,
+          model: this.sequelize!.models.book,
           attributes: ['id', 'coverPath']
         },
         {
-          model: this.sequelize.models.podcast,
+          model: this.sequelize!.models.podcast,
           attributes: ['id', 'coverPath']
         }
       ]

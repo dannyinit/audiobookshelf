@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-const uuidv4 = require('uuid').v4
+import { v4 as uuidv4 } from 'uuid'
 import Logger = require('../Logger')
 import SocketAuthority = require('../SocketAuthority')
 import Database = require('../Database')
@@ -389,7 +389,7 @@ class UserController {
     // Set PlaybackSessions userId to null
     const [sessionsUpdated] = await Database.playbackSessionModel.update(
       {
-        userId
+        userId: null
       },
       {
         where: {
@@ -461,9 +461,6 @@ class UserController {
 
     res.json(payload)
   }
-  getUserListeningSessionsHelper(id: string) {
-    throw new Error('Method not implemented.')
-  }
 
   /**
    * GET: /api/users/:id/listening-stats
@@ -476,9 +473,6 @@ class UserController {
   async getListeningStats(req: UserControllerRequest, res: Response) {
     var listeningStats = await this.getUserListeningStatsHelpers(req.params.id)
     res.json(listeningStats)
-  }
-  getUserListeningStatsHelpers(id: string) {
-    throw new Error('Method not implemented.')
   }
 
   /**

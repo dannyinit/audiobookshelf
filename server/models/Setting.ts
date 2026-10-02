@@ -8,7 +8,7 @@ class Setting extends Model {
   /** @type {string} */
   declare key: string
   /** @type {Object} */
-  declare value: object
+  declare value: Record<string, any>
   /** @type {Date} */
   declare createdAt: Date
   /** @type {Date} */
@@ -29,7 +29,7 @@ class Setting extends Model {
     }
   }
 
-  static updateSettingObj(setting) {
+  static updateSettingObj(setting: Record<string, any>) {
     return this.upsert({
       key: setting.id,
       value: setting

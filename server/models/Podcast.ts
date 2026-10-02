@@ -70,11 +70,11 @@ class Podcast extends Model {
    * @param {Object} payload
    * @param {import('sequelize').Transaction} transaction
    */
-  static async createFromRequest(payload: object, transaction: import('sequelize').Transaction) {
+  static async createFromRequest(payload: Record<string, any>, transaction: import('sequelize').Transaction) {
     const title = typeof payload.metadata.title === 'string' ? payload.metadata.title : null
     // cron expression validated in controller
     const autoDownloadSchedule = typeof payload.autoDownloadSchedule === 'string' ? payload.autoDownloadSchedule : null
-    const genres = Array.isArray(payload.metadata.genres) && payload.metadata.genres.every((g) => typeof g === 'string' && g.length) ? payload.metadata.genres : []
+    const genres = Array.isArray(payload.metadata.genres) && payload.metadata.genres.every((g: unknown) => typeof g === 'string' && g.length) ? payload.metadata.genres : []
     const tags = Array.isArray(payload.tags) && payload.tags.every((t) => typeof t === 'string' && t.length) ? payload.tags : []
 
     const stringKeys = ['title', 'author', 'releaseDate', 'feedUrl', 'imageUrl', 'description', 'itunesPageUrl', 'itunesId', 'itunesArtistId', 'language', 'type']
@@ -202,7 +202,7 @@ class Podcast extends Model {
    * @param {Object} payload - Old podcast object
    * @returns {Promise<boolean>}
    */
-  async updateFromRequest(payload: object): Promise<boolean> {
+  async updateFromRequest(payload: Record<string, any>): Promise<boolean> {
     if (!payload) return false
 
     let hasUpdates = false
@@ -225,7 +225,8 @@ class Podcast extends Model {
         } else if (key === 'itunesPageUrl') {
           newKey = 'itunesPageURL'
         }
-        if ((typeof payload.metadata[key] === 'string' || payload.metadata[key] === null) && payload.metadata[key] !== this[newKey]) {
+        const podcast = this as Record<string, any>
+        if ((typeof payload.metadata[key] === 'string' || payload.metadata[key] === null) && payload.metadata[key] !== podcast[newKey]) {
           // Sanitize description HTML
           if (key === 'description' && payload.metadata[key]) {
             const sanitizedDescription = htmlSanitizer.sanitize(payload.metadata[key])
@@ -235,7 +236,7 @@ class Podcast extends Model {
             }
           }
 
-          this[newKey] = payload.metadata[key] || null
+          podcast[newKey] = payload.metadata[key] || null
 
           if (key === 'title') {
             this.titleIgnorePrefix = getTitleIgnorePrefix(this.title)
@@ -250,14 +251,14 @@ class Podcast extends Model {
         hasUpdates = true
       }
 
-      if (Array.isArray(payload.metadata.genres) && !payload.metadata.genres.some((item) => typeof item !== 'string') && JSON.stringify(this.genres) !== JSON.stringify(payload.metadata.genres)) {
+      if (Array.isArray(payload.metadata.genres) && !payload.metadata.genres.some((item: unknown) => typeof item !== 'string') && JSON.stringify(this.genres) !== JSON.stringify(payload.metadata.genres)) {
         this.genres = payload.metadata.genres
         this.changed('genres', true)
         hasUpdates = true
       }
     }
 
-    if (Array.isArray(payload.tags) && !payload.tags.some((item) => typeof item !== 'string') && JSON.stringify(this.tags) !== JSON.stringify(payload.tags)) {
+    if (Array.isArray(payload.tags) && !payload.tags.some((item: unknown) => typeof item !== 'string') && JSON.stringify(this.tags) !== JSON.stringify(payload.tags)) {
       this.tags = payload.tags
       this.changed('tags', true)
       hasUpdates = true
@@ -273,14 +274,16 @@ class Podcast extends Model {
       hasUpdates = true
     }
     if (typeof payload.lastEpisodeCheck === 'number' && payload.lastEpisodeCheck !== this.lastEpisodeCheck?.valueOf()) {
-      this.lastEpisodeCheck = payload.lastEpisodeCheck
+      // Attribute setter converts the epoch ms to a Date
+      this.set('lastEpisodeCheck', payload.lastEpisodeCheck)
       hasUpdates = true
     }
 
     const numberKeys = ['maxEpisodesToKeep', 'maxNewEpisodesToDownload']
     numberKeys.forEach((key) => {
-      if (typeof payload[key] === 'number' && payload[key] !== this[key]) {
-        this[key] = payload[key]
+      const podcast = this as Record<string, any>
+      if (typeof payload[key] === 'number' && payload[key] !== podcast[key]) {
+        podcast[key] = payload[key]
         hasUpdates = true
       }
     })
@@ -293,7 +296,7 @@ class Podcast extends Model {
     return hasUpdates
   }
 
-  checkCanDirectPlay(supportedMimeTypes, episodeId) {
+  checkCanDirectPlay(supportedMimeTypes: string[], episodeId: string) {
     if (!Array.isArray(supportedMimeTypes)) {
       Logger.error(`[Podcast] checkCanDirectPlay: supportedMimeTypes is not an array`, supportedMimeTypes)
       return false
@@ -341,7 +344,7 @@ class Podcast extends Model {
     return structuredClone(episode.chapters) || []
   }
 
-  getPlaybackTitle(episodeId) {
+  getPlaybackTitle(episodeId: string) {
     const episode = this.podcastEpisodes.find((ep) => ep.id === episodeId)
     if (!episode) {
       Logger.error(`[Podcast] getPlaybackTitle: episode not found`, episodeId)
@@ -355,7 +358,7 @@ class Podcast extends Model {
     return this.author
   }
 
-  getPlaybackDuration(episodeId) {
+  getPlaybackDuration(episodeId: string) {
     const episode = this.podcastEpisodes.find((ep) => ep.id === episodeId)
     if (!episode) {
       Logger.error(`[Podcast] getPlaybackDuration: episode not found`, episodeId)
@@ -412,9 +415,10 @@ class Podcast extends Model {
   }
 
   oldMetadataToJSONExpanded() {
-    const oldMetadataJSON = this.oldMetadataToJSON()
-    oldMetadataJSON.titleIgnorePrefix = getTitlePrefixAtEnd(this.title)
-    return oldMetadataJSON
+    return {
+      ...this.oldMetadataToJSON(),
+      titleIgnorePrefix: getTitlePrefixAtEnd(this.title)
+    }
   }
 
   /**

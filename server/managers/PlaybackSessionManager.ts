@@ -1,6 +1,6 @@
-const uuidv4 = require('uuid').v4
+import { v4 as uuidv4 } from 'uuid'
 import Path = require('path')
-const serverVersion = require('../../package.json').version
+import { version as serverVersion } from '../../package.json'
 import Logger = require('../Logger')
 import SocketAuthority = require('../SocketAuthority')
 import Database = require('../Database')
@@ -53,7 +53,7 @@ class PlaybackSessionManager {
    * @param {Object} [clientDeviceInfo]
    * @returns {Promise<DeviceInfo>}
    */
-  async getDeviceInfo(req: import('../controllers/LibraryItemController').LibraryItemControllerRequest, clientDeviceInfo: object = null): Promise<DeviceInfo> {
+  async getDeviceInfo(req: import('../controllers/LibraryItemController').LibraryItemControllerRequest, clientDeviceInfo: Record<string, any> = null): Promise<DeviceInfo> {
     const ua = uaParserJs(req.headers['user-agent'])
     const ip = requestIp.getClientIp(req)
 

@@ -1,4 +1,4 @@
-const axios = require('axios').default
+import axios from 'axios'
 import Throttle = require('p-throttle')
 import Logger = require('../Logger')
 import { levenshteinDistance } from '../utils/index'
@@ -146,7 +146,7 @@ class Audnexus {
    * @param {string} region
    * @returns {Promise<Object>}
    */
-  getChaptersByASIN(asin: string, region: string): Promise<object> {
+  getChaptersByASIN(asin: string, region: string): Promise<Record<string, any>> {
     Logger.debug(`[Audnexus] Get chapters for ASIN ${asin}/${region}`)
 
     asin = encodeURIComponent(asin.toUpperCase())

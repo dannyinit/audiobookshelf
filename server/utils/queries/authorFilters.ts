@@ -59,7 +59,7 @@ export = {
    * @param {number} offset
    * @returns {Promise<Object[]>} oldAuthor with numBooks
    */
-  async search(libraryId: string, query: Database.TextQuery, limit: number, offset: number): Promise<object[]> {
+  async search(libraryId: string, query: Database.TextQuery, limit: number, offset: number): Promise<Record<string, any>[]> {
     const matchAuthor = query.matchExpression('name')
     const authors = await Database.authorModel.findAll({
       where: {

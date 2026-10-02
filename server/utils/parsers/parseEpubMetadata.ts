@@ -31,7 +31,7 @@ async function extractFileFromEpub(epubPath: string, filepath: string): Promise<
  * @param {string} xmlFilepath
  * @returns {Promise<Object>}
  */
-async function extractXmlToJson(epubPath: string, xmlFilepath: string): Promise<object> {
+async function extractXmlToJson(epubPath: string, xmlFilepath: string): Promise<Record<string, any>> {
   const filedata = await extractFileFromEpub(epubPath, xmlFilepath)
   if (!filedata) return null
   return xmlToJSON(filedata)

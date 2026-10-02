@@ -1,4 +1,4 @@
-const axios = require('axios').default
+import axios from 'axios'
 
 class OpenLibrary {
   #responseTimeout = 10000
@@ -14,7 +14,7 @@ class OpenLibrary {
    * @param {number} timeout
    * @returns {Promise<Object>}
    */
-  get(uri: string, timeout: number = this.#responseTimeout): Promise<object> {
+  get(uri: string, timeout: number = this.#responseTimeout): Promise<Record<string, any>> {
     if (!timeout || isNaN(timeout)) timeout = this.#responseTimeout
     return axios
       .get(`${this.baseUrl}/${uri}`, {
@@ -107,7 +107,7 @@ class OpenLibrary {
    * @param {number} timeout
    * @returns {Promise<Object[]>}
    */
-  async searchTitle(title: string, timeout: number = this.#responseTimeout): Promise<object[]> {
+  async searchTitle(title: string, timeout: number = this.#responseTimeout): Promise<Record<string, any>[]> {
     title = encodeURIComponent(title)
     var lookupData = await this.get(`/search.json?title=${title}`, timeout)
     if (!lookupData) {

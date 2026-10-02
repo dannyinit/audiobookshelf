@@ -1,5 +1,6 @@
 import { Op } from 'sequelize'
 import uuid = require('uuid')
+import crypto = require('crypto')
 
 import Database = require('../Database')
 import Logger = require('../Logger')
@@ -51,7 +52,7 @@ class TokenManager {
     } else if (!Database.serverSettings.tokenSecret) {
       // Generate new token secret and store it on server settings
       Logger.info('[TokenManager] JWT secret key not found, generating one')
-      TokenManager.TokenSecret = require('crypto').randomBytes(256).toString('base64')
+      TokenManager.TokenSecret = crypto.randomBytes(256).toString('base64')
       Database.serverSettings.tokenSecret = TokenManager.TokenSecret
       await Database.updateServerSettings()
     } else {
@@ -82,7 +83,7 @@ class TokenManager {
    * @param {Object} decoded
    * @returns {boolean}
    */
-  static isBearerAccessTokenPayload(decoded: object): boolean {
+  static isBearerAccessTokenPayload(decoded: Record<string, any>): boolean {
     if (!decoded?.userId) return false
     if (decoded.type === 'refresh') return false
     return true
@@ -95,7 +96,7 @@ class TokenManager {
    * @param {string} token
    * @returns {Object} tokens data
    */
-  static validateAccessToken(token: string): object {
+  static validateAccessToken(token: string): Record<string, any> {
     try {
       // Expiration is handled by the caller so expired API keys can be deactivated
       return jwt.verify(token, TokenManager.TokenSecret, { ignoreExpiration: true })
@@ -278,7 +279,7 @@ class TokenManager {
    * @param {Object} jwt_payload
    * @param {Function} done - passportjs callback
    */
-  async jwtAuthCheck(jwt_payload: object, done: Function) {
+  async jwtAuthCheck(jwt_payload: Record<string, any>, done: Function) {
     if (jwt_payload.type === 'api') {
       // Api key based authentication
       const apiKey = await Database.apiKeyModel.getById(jwt_payload.keyId)

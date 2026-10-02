@@ -34,7 +34,7 @@ class PodcastEpisode extends Model {
   /** @type {ChapterObject[]} */
   declare chapters: ChapterObject[]
   /** @type {Object} */
-  declare extraData: object
+  declare extraData: Record<string, any>
   /** @type {string} */
   declare podcastId: string
   /** @type {Date} */
@@ -64,8 +64,8 @@ class PodcastEpisode extends Model {
       publishedAt: rssPodcastEpisode.publishedAt,
       podcastId,
       audioFile: audioFile.toJSON(),
-      chapters: [],
-      extraData: {}
+      chapters: [] as ChapterObject[],
+      extraData: {} as Record<string, any>
     }
     if (rssPodcastEpisode.guid) {
       podcastEpisode.extraData.guid = rssPodcastEpisode.guid
@@ -172,7 +172,7 @@ class PodcastEpisode extends Model {
    * @returns {import('./Book').AudioTrack}
    */
   getAudioTrack(libraryItemId: string): import('./Book').AudioTrack {
-    const track = structuredClone(this.audioFile)
+    const track = structuredClone(this.audioFile) as import('./Book').AudioTrack
     track.startOffset = 0
     track.title = this.audioFile.metadata.filename
     track.index = 1 // Podcast episodes only have one track
@@ -180,7 +180,7 @@ class PodcastEpisode extends Model {
     return track
   }
 
-  toOldJSON(libraryItemId) {
+  toOldJSON(libraryItemId: string) {
     if (!libraryItemId) {
       throw new Error(`[PodcastEpisode] Cannot convert to old JSON because libraryItemId is not provided`)
     }
@@ -217,14 +217,13 @@ class PodcastEpisode extends Model {
     }
   }
 
-  toOldJSONExpanded(libraryItemId) {
-    const json = this.toOldJSON(libraryItemId)
-
-    json.audioTrack = this.getAudioTrack(libraryItemId)
-    json.size = this.size
-    json.duration = this.duration
-
-    return json
+  toOldJSONExpanded(libraryItemId: string) {
+    return {
+      ...this.toOldJSON(libraryItemId),
+      audioTrack: this.getAudioTrack(libraryItemId),
+      size: this.size,
+      duration: this.duration
+    }
   }
 }
 

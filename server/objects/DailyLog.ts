@@ -9,9 +9,6 @@ class DailyLog {
   createdAt: number
   fullPath: string
   dailyLogDirPath: string
-  filename(filename: any) {
-    throw new Error('Method not implemented.')
-  }
   /** @type {import('../managers/LogManager').LogObject[]} */
   logs: import('../managers/LogManager').LogObject[]
   /** @type {string[]} */

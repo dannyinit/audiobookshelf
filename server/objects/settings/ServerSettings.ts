@@ -30,60 +30,85 @@ const PATCHABLE_SETTINGS_KEYS = new Set([
 
 class ServerSettings {
   static patchableSettingsKeys = PATCHABLE_SETTINGS_KEYS
-  /** @type {string} JWT secret key ONLY used when JWT_SECRET_KEY is not set in ENV */
-  tokenSecret: string
-  buildNumber: number
-  version: string
-  authActiveAuthMethods
-  language
-  scannerDisableWatcher
-  authOpenIDMobileRedirectURIs
-  authOpenIDAdvancedPermsClaim
-  authOpenIDGroupClaim
-  backupPath: string
-  sortingPrefixes
-  authOpenIDSubfolderForRedirectURLs: undefined
-  authOpenIDMatchExistingBy: null
-  authOpenIDAutoRegister: boolean
-  authOpenIDAutoLaunch: boolean
-  authOpenIDButtonText: string
-  authOpenIDTokenSigningAlgorithm: string
-  authOpenIDClientSecret: null
-  authOpenIDClientID: null
-  authOpenIDLogoutURL: null
-  authOpenIDJwksURL: null
-  authOpenIDUserInfoURL: null
-  authOpenIDTokenURL: null
-  authOpenIDAuthorizationURL: null
-  authOpenIDIssuerURL: null
-  authLoginCustomMessage: string | null
-  logLevel: number
-  allowedOrigins: never[]
-  timeFormat: string
-  dateFormat: string
-  chromecastEnabled: boolean
-  sortingIgnorePrefix: boolean
-  podcastEpisodeSchedule: string
-  bookshelfView: number
-  homeBookshelfView: number
-  loggerScannerLogsToKeep: number
-  loggerDailyLogsToKeep: number
-  maxBackupSize: number
-  backupsToKeep: number
-  backupSchedule: boolean
-  allowIframe: boolean
-  rateLimitLoginWindow: number
-  rateLimitLoginRequests: number
-  metadataFileFormat: string
-  storeMetadataWithItem: boolean
-  storeCoverWithItem: boolean
-  scannerPreferMatchedMetadata: boolean
-  scannerCoverProvider: string
-  scannerFindCovers: boolean
-  scannerParseSubtitle: boolean
   id: string
+  /** JWT secret key ONLY used when JWT_SECRET_KEY is not set in ENV */
+  tokenSecret: string | null
 
-  constructor(settings) {
+  // Scanner
+  scannerParseSubtitle: boolean
+  scannerFindCovers: boolean
+  scannerCoverProvider: string
+  scannerPreferMatchedMetadata: boolean
+  scannerDisableWatcher: boolean
+
+  // Metadata
+  storeCoverWithItem: boolean
+  storeMetadataWithItem: boolean
+  metadataFileFormat: string
+
+  // Security/Rate limits
+  rateLimitLoginRequests: number
+  rateLimitLoginWindow: number
+  allowIframe: boolean
+
+  // Backups
+  backupPath: string
+  /** cron expression, or false when auto-backups are disabled */
+  backupSchedule: string | false
+  backupsToKeep: number
+  maxBackupSize: number
+
+  // Logger
+  loggerDailyLogsToKeep: number
+  loggerScannerLogsToKeep: number
+
+  // Bookshelf Display
+  homeBookshelfView: number
+  bookshelfView: number
+
+  // Podcasts
+  podcastEpisodeSchedule: string
+
+  // Sorting
+  sortingIgnorePrefix: boolean
+  sortingPrefixes: string[]
+
+  // Misc Flags
+  chromecastEnabled: boolean
+  dateFormat: string
+  timeFormat: string
+  language: string
+  allowedOrigins: string[]
+
+  logLevel: number
+
+  version: string | null
+  buildNumber: number
+
+  // Auth settings
+  authLoginCustomMessage: string | null
+  authActiveAuthMethods: string[]
+
+  // openid settings
+  authOpenIDIssuerURL: string | null
+  authOpenIDAuthorizationURL: string | null
+  authOpenIDTokenURL: string | null
+  authOpenIDUserInfoURL: string | null
+  authOpenIDJwksURL: string | null
+  authOpenIDLogoutURL: string | null
+  authOpenIDClientID: string | null
+  authOpenIDClientSecret: string | null
+  authOpenIDTokenSigningAlgorithm: string
+  authOpenIDButtonText: string
+  authOpenIDAutoLaunch: boolean
+  authOpenIDAutoRegister: boolean
+  authOpenIDMatchExistingBy: string | null
+  authOpenIDMobileRedirectURIs: string[]
+  authOpenIDGroupClaim: string
+  authOpenIDAdvancedPermsClaim: string
+  authOpenIDSubfolderForRedirectURLs: string | undefined
+
+  constructor(settings?: Record<string, any> | null) {
     this.id = 'server-settings'
     this.tokenSecret = null
 
@@ -165,7 +190,7 @@ class ServerSettings {
     }
   }
 
-  construct(settings) {
+  construct(settings: Record<string, any>) {
     this.tokenSecret = settings.tokenSecret
     this.scannerFindCovers = !!settings.scannerFindCovers
     this.scannerCoverProvider = settings.scannerCoverProvider || 'google'
@@ -349,7 +374,7 @@ class ServerSettings {
   }
 
   toJSONForBrowser() {
-    const json = this.toJSON()
+    const json: Partial<ReturnType<ServerSettings['toJSON']>> & { timeZone?: string } = this.toJSON()
     delete json.tokenSecret
     delete json.authOpenIDClientID
     delete json.authOpenIDClientSecret
@@ -398,7 +423,7 @@ class ServerSettings {
   }
 
   get authFormData() {
-    const clientFormData = {
+    const clientFormData: { authLoginCustomMessage: string | null; authOpenIDButtonText?: string; authOpenIDAutoLaunch?: boolean } = {
       authLoginCustomMessage: sanitize(this.authLoginCustomMessage)
     }
     if (this.authActiveAuthMethods.includes('openid')) {
@@ -414,16 +439,17 @@ class ServerSettings {
    * @param {Object} payload
    * @returns {boolean} true if updates were made
    */
-  update(payload: object): boolean {
+  update(payload: Record<string, any>): boolean {
     let hasUpdates = false
     for (const key in payload) {
       if (!PATCHABLE_SETTINGS_KEYS.has(key)) continue
 
-      if (this[key] !== payload[key]) {
+      const settings = this as Record<string, any>
+      if (settings[key] !== payload[key]) {
         if (key === 'logLevel') {
           Logger.setLogLevel(payload[key])
         }
-        this[key] = payload[key]
+        settings[key] = payload[key]
         hasUpdates = true
       }
     }

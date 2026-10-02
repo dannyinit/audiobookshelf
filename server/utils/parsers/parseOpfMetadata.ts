@@ -16,7 +16,7 @@ interface MetadataCreatorObject {
  * @param {Object} metadata
  * @returns {MetadataCreatorObject[]}
  */
-function parseCreators(metadata: object): MetadataCreatorObject[] {
+function parseCreators(metadata: Record<string, any>): MetadataCreatorObject[] {
   if (!metadata['dc:creator']?.length) return null
   return metadata['dc:creator'].map((c) => {
     if (typeof c !== 'object' || !c['$'] || !c['_']) return false
@@ -96,7 +96,7 @@ function fetchPublisher(metadata) {
  * @param {string} scheme
  * @returns {string}
  */
-function fetchIdentifier(metadata: object, scheme: string): string {
+function fetchIdentifier(metadata: Record<string, any>, scheme: string): string {
   if (!metadata['dc:identifier']?.length) return null
   const identifierObj = metadata['dc:identifier'].find((i) => {
     if (!i['$']) return false

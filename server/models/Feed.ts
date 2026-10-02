@@ -139,9 +139,9 @@ class Feed extends Model {
     const feedObj = this.getFeedObjForLibraryItem(userId, libraryItem, slug, serverAddress, feedOptions)
 
     /** @type {typeof import('./FeedEpisode')} */
-    const feedEpisodeModel: typeof import('./FeedEpisode') = this.sequelize.models.feedEpisode
+    const feedEpisodeModel: typeof import('./FeedEpisode') = this.sequelize!.models.feedEpisode
 
-    const transaction = await this.sequelize.transaction()
+    const transaction = await this.sequelize!.transaction()
     try {
       const feed = await this.create(feedObj, { transaction })
 
@@ -234,9 +234,9 @@ class Feed extends Model {
     const { feedObj, booksWithTracks } = this.getFeedObjForCollection(userId, collectionExpanded, slug, serverAddress, feedOptions)
 
     /** @type {typeof import('./FeedEpisode')} */
-    const feedEpisodeModel: typeof import('./FeedEpisode') = this.sequelize.models.feedEpisode
+    const feedEpisodeModel: typeof import('./FeedEpisode') = this.sequelize!.models.feedEpisode
 
-    const transaction = await this.sequelize.transaction()
+    const transaction = await this.sequelize!.transaction()
     try {
       const feed = await this.create(feedObj, { transaction })
       feed.feedEpisodes = await feedEpisodeModel.createFromBooks(booksWithTracks, feed, slug, transaction)
@@ -323,9 +323,9 @@ class Feed extends Model {
     const { feedObj, booksWithTracks } = this.getFeedObjForSeries(userId, seriesExpanded, slug, serverAddress, feedOptions)
 
     /** @type {typeof import('./FeedEpisode')} */
-    const feedEpisodeModel: typeof import('./FeedEpisode') = this.sequelize.models.feedEpisode
+    const feedEpisodeModel: typeof import('./FeedEpisode') = this.sequelize!.models.feedEpisode
 
-    const transaction = await this.sequelize.transaction()
+    const transaction = await this.sequelize!.transaction()
     try {
       const feed = await this.create(feedObj, { transaction })
       feed.feedEpisodes = await feedEpisodeModel.createFromBooks(booksWithTracks, feed, slug, transaction)

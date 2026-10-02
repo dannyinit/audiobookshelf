@@ -1,4 +1,4 @@
-import { DataTypes, Model, where, fn, col, literal, Sequelize } from 'sequelize'
+import { DataTypes, Model, where, fn, col, literal, Sequelize, BelongsToManyGetAssociationsMixin, OrderItem } from 'sequelize'
 
 import { getTitlePrefixAtEnd, getTitleIgnorePrefix } from '../utils/index'
 
@@ -19,7 +19,10 @@ class Series extends Model {
   declare updatedAt: Date
   /** @type {import('./Book').BookExpandedWithLibraryItem[]} - only set when expanded */
   declare books: import('./Book').BookExpandedWithLibraryItem[]
-  declare bookSeries: import("./BookSeries")
+  /** only set when included through a book */
+  declare bookSeries: import('./BookSeries')
+
+  declare getBooks: BelongsToManyGetAssociationsMixin<import('./Book')>
 
   /**
    * Check if series exists
@@ -37,7 +40,7 @@ class Series extends Model {
    * @param {string} libraryId
    * @returns {Promise<Series>}
    */
-  static async getByNameAndLibrary(seriesName: string, libraryId: string): Promise<Series> {
+  static async getByNameAndLibrary(seriesName: string, libraryId: string): Promise<Series | null> {
     return this.findOne({
       where: [
         where(fn('lower', col('name')), seriesName.toLowerCase()),
@@ -53,7 +56,7 @@ class Series extends Model {
    * @param {string} seriesId
    * @returns {Promise<Series>}
    */
-  static async getExpandedById(seriesId: string): Promise<Series> {
+  static async getExpandedById(seriesId: string): Promise<Series | null> {
     const series = await this.findByPk(seriesId)
     if (!series) return null
     series.books = await series.getBooksExpandedWithLibraryItem()
@@ -136,7 +139,7 @@ class Series extends Model {
    * @returns {Promise<import('./Book').BookExpandedWithLibraryItem[]>}
    */
   getBooksExpandedWithLibraryItem(): Promise<import('./Book').BookExpandedWithLibraryItem[]> {
-    return this.getBooks({
+    return <Promise<import('./Book').BookExpandedWithLibraryItem[]>>this.getBooks({
       joinTableAttributes: ['sequence'],
       include: [
         {
@@ -155,7 +158,7 @@ class Series extends Model {
           }
         }
       ],
-      order: [[literal('CAST(`bookSeries.sequence` AS FLOAT) ASC NULLS LAST')]]
+      order: [[literal('CAST(`bookSeries.sequence` AS FLOAT) ASC NULLS LAST')] as unknown as OrderItem]
     })
   }
 
@@ -171,7 +174,7 @@ class Series extends Model {
     }
   }
 
-  toJSONMinimal(sequence) {
+  toJSONMinimal(sequence: string | null) {
     return {
       id: this.id,
       name: this.name,

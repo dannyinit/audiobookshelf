@@ -4,9 +4,6 @@ import Logger = require('../Logger')
 type LibrarySettingsObject = Library.LibrarySettingsObject
 
 class Library extends Model {
-  getLibraryFolders(): import("./LibraryFolder")[] | PromiseLike<import("./LibraryFolder")[] | undefined> | undefined {
-    throw new Error('Method not implemented.')
-  }
   /** @type {string} */
   declare id: string
   /** @type {string} */
@@ -26,7 +23,7 @@ class Library extends Model {
   /** @type {LibrarySettingsObject} */
   declare settings: LibrarySettingsObject
   /** @type {Object} */
-  declare extraData: object
+  declare extraData: Record<string, any>
   /** @type {Date} */
   declare createdAt: Date
   /** @type {Date} */
@@ -77,7 +74,7 @@ class Library extends Model {
    */
   static getAllWithFolders(): Promise<Library[]> {
     return this.findAll({
-      include: this.sequelize.models.libraryFolder,
+      include: this.sequelize!.models.libraryFolder,
       order: [['displayOrder', 'ASC']]
     })
   }
@@ -87,9 +84,9 @@ class Library extends Model {
    * @param {string} libraryId
    * @returns {Promise<Library>}
    */
-  static findByIdWithFolders(libraryId: string): Promise<Library> {
+  static findByIdWithFolders(libraryId: string): Promise<Library | null> {
     return this.findByPk(libraryId, {
-      include: this.sequelize.models.libraryFolder
+      include: this.sequelize!.models.libraryFolder
     })
   }
 

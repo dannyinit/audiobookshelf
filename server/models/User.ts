@@ -1,4 +1,4 @@
-const uuidv4 = require('uuid').v4
+import { v4 as uuidv4 } from 'uuid'
 import sequelize = require('sequelize')
 import { LRUCache } from 'lru-cache'
 
@@ -80,11 +80,11 @@ class User extends Model {
   /** @type {Date} */
   declare lastSeen: Date
   /** @type {Object} */
-  declare permissions: object
+  declare permissions: Record<string, any>
   /** @type {AudioBookmarkObject[]} */
   declare bookmarks: AudioBookmarkObject[]
   /** @type {Object} */
-  declare extraData: object
+  declare extraData: Record<string, any>
   /** @type {Date} */
   declare createdAt: Date
   /** @type {Date} */
@@ -194,7 +194,7 @@ class User extends Model {
    * @param {Object} userinfo
    * @returns {Promise<User|{error: string}>}
    */
-  static async findUserFromOpenIdUserInfo(userinfo: object): Promise<User | { error: string }> {
+  static async findUserFromOpenIdUserInfo(userinfo: Record<string, any>): Promise<User | { error: string }> {
     let user = await this.getUserByOpenIDSub(userinfo.sub)
 
     // Matched by sub
@@ -285,7 +285,7 @@ class User extends Model {
    * @param {Object} userinfo
    * @returns {Promise<User>}
    */
-  static async createUserFromOpenIdUserInfo(userinfo: object): Promise<User> {
+  static async createUserFromOpenIdUserInfo(userinfo: Record<string, any>): Promise<User> {
     const userId = uuidv4()
     // TODO: Ensure username is unique?
     const username = userinfo.preferred_username || userinfo.name || userinfo.sub
@@ -330,7 +330,7 @@ class User extends Model {
 
     const user = await this.findOne({
       where: sequelize.where(sequelize.fn('lower', sequelize.col('username')), username.toLowerCase()),
-      include: this.sequelize.models.mediaProgress
+      include: this.sequelize!.models.mediaProgress
     })
 
     if (user) userCache.set(user)
@@ -351,7 +351,7 @@ class User extends Model {
 
     const user = await this.findOne({
       where: sequelize.where(sequelize.fn('lower', sequelize.col('email')), email.toLowerCase()),
-      include: this.sequelize.models.mediaProgress
+      include: this.sequelize!.models.mediaProgress
     })
 
     if (user) userCache.set(user)
@@ -371,7 +371,7 @@ class User extends Model {
     if (cachedUser) return cachedUser
 
     const user = await this.findByPk(userId, {
-      include: this.sequelize.models.mediaProgress
+      include: this.sequelize!.models.mediaProgress
     })
 
     if (user) userCache.set(user)
@@ -395,7 +395,7 @@ class User extends Model {
       where: {
         [sequelize.Op.or]: [{ id: userId }, { 'extraData.oldUserId': userId }]
       },
-      include: this.sequelize.models.mediaProgress
+      include: this.sequelize!.models.mediaProgress
     })
 
     if (user) userCache.set(user)
@@ -416,7 +416,7 @@ class User extends Model {
 
     const user = await this.findOne({
       where: sequelize.where(sequelize.literal(`extraData->>"authOpenIDSub"`), sub),
-      include: this.sequelize.models.mediaProgress
+      include: this.sequelize!.models.mediaProgress
     })
 
     if (user) userCache.set(user)
@@ -428,7 +428,7 @@ class User extends Model {
    * Get array of user id and username
    * @returns {object[]} { id, username }
    */
-  static async getMinifiedUserObjects(): Promise<object[]> {
+  static async getMinifiedUserObjects(): Promise<Record<string, any>[]> {
     const users = await this.findAll({
       attributes: ['id', 'username']
     })
@@ -927,7 +927,7 @@ class User extends Model {
    * @param {Object} absPermissions JSON containing user permissions
    * @returns {Promise<boolean>} true if updates were made
    */
-  async updatePermissionsFromExternalJSON(absPermissions: object): Promise<boolean> {
+  async updatePermissionsFromExternalJSON(absPermissions: Record<string, any>): Promise<boolean> {
     if (!this.permissions) this.permissions = {}
     let hasUpdates = false
 

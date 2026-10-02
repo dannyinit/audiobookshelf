@@ -1,3 +1,4 @@
+import type SMTPTransport = require('nodemailer/lib/smtp-transport')
 import Logger = require('../../Logger')
 import { areEquivalent, copyValue, isNullOrNaN } from '../../utils'
 
@@ -10,19 +11,18 @@ interface EreaderDeviceObject {
 
 // REF: https://nodemailer.com/smtp/
 class EmailSettings {
-  /** @type {EreaderDeviceObject[]} */
-  ereaderDevices: EreaderDeviceObject[]
-  testAddress: null
-  fromAddress: string | Address | undefined
-  pass: null | undefined
-  user: null
-  rejectUnauthorized: boolean
-  secure: boolean
-  port: number
-  host: null
   id: string
+  host: string | null
+  port: number
+  secure: boolean
+  rejectUnauthorized: boolean
+  user: string | null
+  pass: string | null
+  testAddress: string | null
+  fromAddress: string | null
+  ereaderDevices: EreaderDeviceObject[]
 
-  constructor(settings = null) {
+  constructor(settings: Record<string, any> | null = null) {
     this.id = 'email-settings'
     this.host = null
     this.port = 465
@@ -40,7 +40,7 @@ class EmailSettings {
     }
   }
 
-  construct(settings) {
+  construct(settings: Record<string, any>) {
     this.host = settings.host
     this.port = settings.port
     this.secure = !!settings.secure
@@ -49,7 +49,7 @@ class EmailSettings {
     this.pass = settings.pass
     this.testAddress = settings.testAddress
     this.fromAddress = settings.fromAddress
-    this.ereaderDevices = settings.ereaderDevices?.map((d) => ({ ...d })) || []
+    this.ereaderDevices = settings.ereaderDevices?.map((d: EreaderDeviceObject) => ({ ...d })) || []
 
     // rejectUnauthorized added after v2.10.1 - defaults to true
     if (settings.rejectUnauthorized === undefined) {
@@ -72,7 +72,7 @@ class EmailSettings {
     }
   }
 
-  update(payload) {
+  update(payload: Record<string, any>) {
     if (!payload) return false
 
     if (payload.port !== undefined) {
@@ -87,7 +87,7 @@ class EmailSettings {
     if (payload.ereaderDevices?.length) {
       // Validate ereader devices
       payload.ereaderDevices = payload.ereaderDevices
-        .map((device) => {
+        .map((device: EreaderDeviceObject) => {
           if (!device.name || !device.email) {
             Logger.error(`[EmailSettings] Update ereader device is invalid`, device)
             return null
@@ -103,17 +103,17 @@ class EmailSettings {
           }
           return device
         })
-        .filter((d) => d)
+        .filter((d: EreaderDeviceObject | null) => d)
     }
 
     let hasUpdates = false
 
-    const json = this.toJSON()
+    const json: Record<string, any> = this.toJSON()
     for (const key in json) {
       if (key === 'id') continue
 
       if (payload[key] !== undefined && !areEquivalent(payload[key], json[key])) {
-        this[key] = copyValue(payload[key])
+        ;(this as Record<string, any>)[key] = copyValue(payload[key])
         hasUpdates = true
       }
     }
@@ -121,8 +121,8 @@ class EmailSettings {
     return hasUpdates
   }
 
-  getTransportObject() {
-    const payload = {
+  getTransportObject(): SMTPTransport.Options {
+    const payload: SMTPTransport.Options = {
       host: this.host,
       secure: this.secure
     }
@@ -181,7 +181,7 @@ class EmailSettings {
    * @param {string} deviceName
    * @returns {EreaderDeviceObject}
    */
-  getEReaderDevice(deviceName: string): EreaderDeviceObject {
+  getEReaderDevice(deviceName: string): EreaderDeviceObject | undefined {
     return this.ereaderDevices.find((d) => d.name === deviceName)
   }
 }

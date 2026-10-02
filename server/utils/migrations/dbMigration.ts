@@ -1,6 +1,6 @@
 import { DataTypes, QueryInterface } from 'sequelize'
 import Path = require('path')
-const uuidv4 = require('uuid').v4
+import { v4 as uuidv4 } from 'uuid'
 import Logger = require('../../Logger')
 import fs = require('../../libs/fsExtra')
 import oldDbFiles = require('./oldDbFiles')
@@ -47,7 +47,7 @@ function getDeviceInfoString(deviceInfo, UserId) {
  * @param {object} LibraryItem models.LibraryItem object
  * @returns {object} { book: object, bookSeries: [], bookAuthor: [] }
  */
-function migrateBook(oldLibraryItem: objects.LibraryItem, LibraryItem: object): object {
+function migrateBook(oldLibraryItem: objects.LibraryItem, LibraryItem: Record<string, any>): Record<string, any> {
   const oldBook = oldLibraryItem.media
 
   const _newRecords = {
@@ -149,7 +149,7 @@ function migrateBook(oldLibraryItem: objects.LibraryItem, LibraryItem: object): 
  * @param {object} LibraryItem models.LibraryItem object
  * @returns {object} { podcast: object, podcastEpisode: [] }
  */
-function migratePodcast(oldLibraryItem: objects.LibraryItem, LibraryItem: object): object {
+function migratePodcast(oldLibraryItem: objects.LibraryItem, LibraryItem: Record<string, any>): Record<string, any> {
   const _newRecords = {
     podcast: null,
     podcastEpisode: []
@@ -231,7 +231,7 @@ function migratePodcast(oldLibraryItem: objects.LibraryItem, LibraryItem: object
  * @param {Array<objects.LibraryItem>} oldLibraryItems
  * @returns {object} { libraryItem: [], book: [], podcast: [], podcastEpisode: [], bookSeries: [], bookAuthor: [] }
  */
-function migrateLibraryItems(oldLibraryItems: Array<objects.LibraryItem>): object {
+function migrateLibraryItems(oldLibraryItems: Array<objects.LibraryItem>): Record<string, any> {
   const _newRecords = {
     book: [],
     podcast: [],
@@ -321,7 +321,7 @@ function migrateLibraryItems(oldLibraryItems: Array<objects.LibraryItem>): objec
  * @param {Array<objects.Library>} oldLibraries
  * @returns {object} { library: [], libraryFolder: [] }
  */
-function migrateLibraries(oldLibraries: Array<objects.Library>): object {
+function migrateLibraries(oldLibraries: Array<objects.Library>): Record<string, any> {
   const _newRecords = {
     library: [],
     libraryFolder: []
@@ -375,7 +375,7 @@ function migrateLibraries(oldLibraries: Array<objects.Library>): object {
  * @param {Array<objects.LibraryItem>} oldLibraryItems
  * @returns {Array<object>} Array of Author model objs
  */
-function migrateAuthors(oldAuthors: Array<objects.entities.Author>, oldLibraryItems: Array<objects.LibraryItem>): Array<object> {
+function migrateAuthors(oldAuthors: Array<objects.entities.Author>, oldLibraryItems: Array<objects.LibraryItem>): Array<Record<string, any>> {
   const _newRecords = []
   for (const oldAuthor of oldAuthors) {
     // Get an array of NEW library ids that have this author
@@ -425,7 +425,7 @@ function migrateAuthors(oldAuthors: Array<objects.entities.Author>, oldLibraryIt
  * @param {Array<objects.LibraryItem>} oldLibraryItems
  * @returns {Array<object>} Array of Series model objs
  */
-function migrateSeries(oldSerieses: Array<objects.entities.Series>, oldLibraryItems: Array<objects.LibraryItem>): Array<object> {
+function migrateSeries(oldSerieses: Array<objects.entities.Series>, oldLibraryItems: Array<objects.LibraryItem>): Array<Record<string, any>> {
   const _newRecords = []
   // Originaly series were shared between libraries if they had the same name
   // Series will be separate between libraries
@@ -469,7 +469,7 @@ function migrateSeries(oldSerieses: Array<objects.entities.Series>, oldLibraryIt
  * @param {Array<objects.User>} oldUsers
  * @returns {object} { user: [], mediaProgress: [] }
  */
-function migrateUsers(oldUsers: Array<objects.User>): object {
+function migrateUsers(oldUsers: Array<objects.User>): Record<string, any> {
   const _newRecords = {
     user: [],
     mediaProgress: []
@@ -574,7 +574,7 @@ function migrateUsers(oldUsers: Array<objects.User>): object {
  * @param {Array<objects.PlaybackSession>} oldSessions
  * @returns {object} { playbackSession: [], device: [] }
  */
-function migrateSessions(oldSessions: Array<objects.PlaybackSession>): object {
+function migrateSessions(oldSessions: Array<objects.PlaybackSession>): Record<string, any> {
   const _newRecords = {
     device: [],
     playbackSession: []
@@ -698,7 +698,7 @@ function migrateSessions(oldSessions: Array<objects.PlaybackSession>): object {
  * @param {Array<objects.Collection>} oldCollections
  * @returns {object} { collection: [], collectionBook: [] }
  */
-function migrateCollections(oldCollections: Array<objects.Collection>): object {
+function migrateCollections(oldCollections: Array<objects.Collection>): Record<string, any> {
   const _newRecords = {
     collection: [],
     collectionBook: []
@@ -747,7 +747,7 @@ function migrateCollections(oldCollections: Array<objects.Collection>): object {
  * @param {Array<objects.Playlist>} oldPlaylists
  * @returns {object} { playlist: [], playlistMediaItem: [] }
  */
-function migratePlaylists(oldPlaylists: Array<objects.Playlist>): object {
+function migratePlaylists(oldPlaylists: Array<objects.Playlist>): Record<string, any> {
   const _newRecords = {
     playlist: [],
     playlistMediaItem: []
@@ -814,7 +814,7 @@ function migratePlaylists(oldPlaylists: Array<objects.Playlist>): object {
  * @param {Array<objects.Feed>} oldFeeds
  * @returns {object} { feed: [], feedEpisode: [] }
  */
-function migrateFeeds(oldFeeds: Array<objects.Feed>): object {
+function migrateFeeds(oldFeeds: Array<objects.Feed>): Record<string, any> {
   const _newRecords = {
     feed: [],
     feedEpisode: []
@@ -915,7 +915,7 @@ function migrateFeeds(oldFeeds: Array<objects.Feed>): object {
  * @param {Array<objects.settings.*>} oldSettings
  * @returns {Array<object>} Array of Setting model objs
  */
-function migrateSettings(oldSettings): Array<object> {
+function migrateSettings(oldSettings): Array<Record<string, any>> {
   const _newRecords = []
   const serverSettings = oldSettings.find((s) => s.id === 'server-settings')
   const notificationSettings = oldSettings.find((s) => s.id === 'notification-settings')

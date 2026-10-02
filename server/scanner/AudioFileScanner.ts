@@ -205,7 +205,7 @@ class AudioFileScanner {
    * @param {string} audioFilePath
    * @returns {object}
    */
-  probeAudioFile(audioFilePath: string): object {
+  probeAudioFile(audioFilePath: string): Record<string, any> {
     Logger.debug(`[AudioFileScanner] Running ffprobe for audio file at "${audioFilePath}"`)
     return prober.rawProbe(audioFilePath)
   }
@@ -218,7 +218,7 @@ class AudioFileScanner {
    * @param {Object} bookMetadata
    * @param {import('./LibraryScan')} libraryScan
    */
-  setBookMetadataFromAudioMetaTags(bookTitle: string, audioFiles, bookMetadata: object, libraryScan: import('./LibraryScan')) {
+  setBookMetadataFromAudioMetaTags(bookTitle: string, audioFiles, bookMetadata: Record<string, any>, libraryScan: import('./LibraryScan')) {
     const MetadataMapArray = [
       {
         tag: 'tagComposer',
@@ -357,7 +357,7 @@ class AudioFileScanner {
    * @param {Object} podcastMetadata
    * @param {import('./LibraryScan')} libraryScan
    */
-  setPodcastMetadataFromAudioMetaTags(audioFile: import('../models/Book').AudioFileObject, podcastMetadata: object, libraryScan: import('./LibraryScan')) {
+  setPodcastMetadataFromAudioMetaTags(audioFile: import('../models/Book').AudioFileObject, podcastMetadata: Record<string, any>, libraryScan: import('./LibraryScan')) {
     const audioFileMetaTags = audioFile.metaTags
 
     const MetadataMapArray = [

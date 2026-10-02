@@ -12,7 +12,7 @@ export = {
    * @param {import('../../models/User')} user
    * @returns {{ podcastWhere:Sequelize.WhereOptions, replacements:object }}
    */
-  getUserPermissionPodcastWhereQuery(user: import('../../models/User')): { podcastWhere: Sequelize.WhereOptions; replacements: object } {
+  getUserPermissionPodcastWhereQuery(user: import('../../models/User')): { podcastWhere: Sequelize.WhereOptions; replacements: Record<string, any> } {
     const podcastWhere = []
     const replacements = {}
     if (!user.canAccessExplicitContent) {
@@ -46,7 +46,7 @@ export = {
    * @param {[string]} value
    * @returns {object} { Sequelize.WhereOptions, string[] }
    */
-  getMediaGroupQuery(group: string, value: [string]): object {
+  getMediaGroupQuery(group: string, value: [string]): Record<string, any> {
     if (!group) return { mediaWhere: {}, replacements: {} }
 
     let mediaWhere = {}
@@ -358,7 +358,7 @@ export = {
    * @param {number} offset
    * @returns {{podcast:object[], tags:object[]}}
    */
-  async search(user: import('../../models/User'), library: import('../../models/Library'), query: string, limit: number, offset: number): Promise<{ podcast: object[]; tags: object[] }> {
+  async search(user: import('../../models/User'), library: import('../../models/Library'), query: string, limit: number, offset: number): Promise<{ podcast: Record<string, any>[]; tags: Record<string, any>[] }> {
     const userPermissionPodcastWhere = this.getUserPermissionPodcastWhereQuery(user)
 
     const textSearchQuery = await Database.createTextSearchQuery(query)
@@ -503,7 +503,7 @@ export = {
    * @param {number} offset
    * @returns {Promise<object[]>}
    */
-  async getRecentEpisodes(user: import('../../models/User'), library: import('../../models/Library'), limit: number, offset: number): Promise<object[]> {
+  async getRecentEpisodes(user: import('../../models/User'), library: import('../../models/Library'), limit: number, offset: number): Promise<Record<string, any>[]> {
     const userPermissionPodcastWhere = this.getUserPermissionPodcastWhereQuery(user)
 
     const findOptions = {

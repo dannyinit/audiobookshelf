@@ -31,7 +31,7 @@ class FantLab {
    * @param {number} [timeout] response timeout in ms
    * @returns {Promise<Object[]>}
    **/
-  async search(title: string, author: string, timeout: number = this.#responseTimeout): Promise<object[]> {
+  async search(title: string, author: string, timeout: number = this.#responseTimeout): Promise<Record<string, any>[]> {
     if (!timeout || isNaN(timeout)) timeout = this.#responseTimeout
 
     let searchString = encodeURIComponent(title)
@@ -60,7 +60,7 @@ class FantLab {
    * @param {number} [timeout] response timeout in ms
    * @returns {Promise<Object>}
    **/
-  async getWork(item: object, timeout: number = this.#responseTimeout): Promise<object> {
+  async getWork(item: Record<string, any>, timeout: number = this.#responseTimeout): Promise<Record<string, any>> {
     if (!timeout || isNaN(timeout)) timeout = this.#responseTimeout
     const { work_id, work_type_id } = item
 
@@ -94,7 +94,7 @@ class FantLab {
    * @param {number} [timeout]
    * @returns {Promise<Object>}
    */
-  async cleanBookData(bookData: object, timeout: number = this.#responseTimeout): Promise<object> {
+  async cleanBookData(bookData: Record<string, any>, timeout: number = this.#responseTimeout): Promise<Record<string, any>> {
     let { authors, work_name_alts, work_id, work_name, work_year, work_description, image, classificatory, editions_blocks } = bookData
 
     const subtitle = Array.isArray(work_name_alts) ? work_name_alts[0] : null
@@ -150,7 +150,7 @@ class FantLab {
    * @param {number} [timeout]
    * @returns {Promise<{imageUrl: string, isbn: string}>
    */
-  async tryGetCoverFromEditions(editions: object, timeout: number = this.#responseTimeout): Promise<{ imageUrl: string; isbn: string }> {
+  async tryGetCoverFromEditions(editions: Record<string, any>, timeout: number = this.#responseTimeout): Promise<{ imageUrl: string; isbn: string }> {
     if (!editions) {
       return null
     }

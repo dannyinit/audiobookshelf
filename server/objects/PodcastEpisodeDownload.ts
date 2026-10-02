@@ -1,5 +1,5 @@
 import Path = require('path')
-const uuidv4 = require('uuid').v4
+import { v4 as uuidv4 } from 'uuid'
 import { sanitizeFilename, filePathToPOSIX } from '../utils/fileUtils'
 import globals = require('../utils/globals')
 

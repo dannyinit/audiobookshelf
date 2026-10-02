@@ -1,4 +1,4 @@
-const uuidv4 = require('uuid').v4
+import { v4 as uuidv4 } from 'uuid'
 
 interface TaskString {
   text: string
@@ -12,7 +12,7 @@ class Task {
   /** @type {string} */
   action: string
   /** @type {Object} custom data */
-  data: object
+  data: Record<string, any>
   /** @type {string} */
   title: string
   /** @type {string} - Used for translation */
@@ -101,7 +101,7 @@ class Task {
    * @param {boolean} showSuccess
    * @param {Object} [data]
    */
-  setData(action: string, titleString: TaskString, descriptionString: TaskString | null, showSuccess: boolean, data: object = {}) {
+  setData(action: string, titleString: TaskString, descriptionString: TaskString | null, showSuccess: boolean, data: Record<string, any> = {}) {
     this.id = uuidv4()
     this.action = action
     this.data = { ...data }

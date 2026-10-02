@@ -523,15 +523,6 @@ class LibraryController {
     }
     return res.json(req.library.toOldJSON())
   }
-  checkRemoveEmptySeries(seriesIds: any[]) {
-    throw new Error('Method not implemented.')
-  }
-  checkRemoveAuthorsWithNoBooks(authorIds: any[]) {
-    throw new Error('Method not implemented.')
-  }
-  handleDeleteLibraryItem(id: any, mediaItemIds: any, id1: string) {
-    throw new Error('Method not implemented.')
-  }
 
   /**
    * DELETE: /api/libraries/:id
@@ -587,7 +578,7 @@ class LibraryController {
     // Set PlaybackSessions libraryId to null
     const [sessionsUpdated] = await Database.playbackSessionModel.update(
       {
-        libraryId
+        libraryId: null
       },
       {
         where: {

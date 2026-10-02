@@ -22,7 +22,7 @@ class MediaItemShare extends Model {
   /** @type {Date} */
   declare expiresAt: Date
   /** @type {Object} */
-  declare extraData: object
+  declare extraData: Record<string, any>
   /** @type {Date} */
   declare createdAt: Date
   /** @type {Date} */
@@ -54,11 +54,11 @@ class MediaItemShare extends Model {
    */
   static async getMediaItemsLibraryItem(mediaItemId: string, mediaItemType: string): Promise<import('./LibraryItem').LibraryItemExpanded> {
     /** @type {typeof import('./LibraryItem')} */
-    const libraryItemModel: typeof import('./LibraryItem') = this.sequelize.models.libraryItem
+    const libraryItemModel: typeof import('./LibraryItem') = this.sequelize!.models.libraryItem
 
     if (mediaItemType === 'book') {
       const libraryItem = await libraryItemModel.findOneExpanded({ mediaId: mediaItemId }, null, {
-        model: this.sequelize.models.library,
+        model: this.sequelize!.models.library,
         attributes: ['settings']
       })
 

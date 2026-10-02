@@ -1,4 +1,7 @@
-import { DataTypes, Model, Sequelize } from 'sequelize'
+import { DataTypes, Model, Sequelize, FindOptions, BelongsToGetAssociationMixin } from 'sequelize'
+
+type Book = import('./Book')
+type PodcastEpisode = import('./PodcastEpisode')
 
 class PlaylistMediaItem extends Model {
   /** @type {string} */
@@ -13,12 +16,18 @@ class PlaylistMediaItem extends Model {
   declare playlistId: string
   /** @type {Date} */
   declare createdAt: Date
-  /** @type {import('./Book')|import('./PodcastEpisode')} - only set when expanded */
-  declare mediaItem: import('./Book') | import('./PodcastEpisode')
+  /** only set when expanded */
+  declare mediaItem: Book | PodcastEpisode
+  // Polymorphic association includes, moved to mediaItem by the afterFind hook
+  declare book?: Book
+  declare podcastEpisode?: PodcastEpisode
 
-  getMediaItem(options) {
+  declare getBook: BelongsToGetAssociationMixin<Book>
+  declare getPodcastEpisode: BelongsToGetAssociationMixin<PodcastEpisode>
+
+  getMediaItem(options?: FindOptions): Promise<Book | PodcastEpisode | null> {
     if (!this.mediaItemType) return Promise.resolve(null)
-    const mixinMethodName = `get${this.sequelize.uppercaseFirst(this.mediaItemType)}`
+    const mixinMethodName = `get${this.sequelize.uppercaseFirst(this.mediaItemType)}` as 'getBook' | 'getPodcastEpisode'
     return this[mixinMethodName](options)
   }
 
@@ -69,9 +78,9 @@ class PlaylistMediaItem extends Model {
     PlaylistMediaItem.addHook('afterFind', (findResult) => {
       if (!findResult) return
 
-      if (!Array.isArray(findResult)) findResult = [findResult]
+      const instances = (Array.isArray(findResult) ? findResult : [findResult]) as PlaylistMediaItem[]
 
-      for (const instance of findResult) {
+      for (const instance of instances) {
         if (instance.mediaItemType === 'book' && instance.book !== undefined) {
           instance.mediaItem = instance.book
           instance.dataValues.mediaItem = instance.dataValues.book

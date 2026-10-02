@@ -26,7 +26,7 @@ export = {
    * @param {object} options
    * @returns {Promise<{ libraryItems:import('../../models/LibraryItem')[], count:number }>}
    */
-  async getFilteredLibraryItems(libraryId: string, user: import('../../models/User'), options: object): Promise<{ libraryItems: import('../../models/LibraryItem')[]; count: number }> {
+  async getFilteredLibraryItems(libraryId: string, user: import('../../models/User'), options: Record<string, any>): Promise<{ libraryItems: import('../../models/LibraryItem')[]; count: number }> {
     const { filterBy, sortBy, sortDesc, limit, offset, collapseseries, include, mediaType } = options
 
     let filterValue = null
@@ -90,7 +90,7 @@ export = {
    * @param {number} limit
    * @returns {object} { libraryItems:LibraryItem[], count:number }
    */
-  async getLibraryItemsMostRecentlyAdded(library: import('../../models/Library'), user: import('../../models/User'), include: string[], limit: number): Promise<object> {
+  async getLibraryItemsMostRecentlyAdded(library: import('../../models/Library'), user: import('../../models/User'), include: string[], limit: number): Promise<Record<string, any>> {
     if (library.isBook) {
       const { libraryItems, count } = await libraryItemsBookFilters.getFilteredLibraryItems(library.id, user, 'recent', null, 'addedAt', true, false, include, limit, 0)
       return {
@@ -138,7 +138,7 @@ export = {
    * @param {number} limit
    * @returns {object} { libraryItems:LibraryItem[], count:number }
    */
-  async getLibraryItemsContinueSeries(library: import('../../models/Library'), user: import('../../models/User'), include: string[], limit: number): Promise<object> {
+  async getLibraryItemsContinueSeries(library: import('../../models/Library'), user: import('../../models/User'), include: string[], limit: number): Promise<Record<string, any>> {
     const { libraryItems, count } = await libraryItemsBookFilters.getContinueSeriesLibraryItems(library, user, include, limit, 0)
     return {
       libraryItems: libraryItems.map((li) => {
@@ -446,7 +446,7 @@ export = {
    * @param {string} libraryId
    * @returns {Promise<object>}
    */
-  async getFilterData(mediaType: string, libraryId: string): Promise<object> {
+  async getFilterData(mediaType: string, libraryId: string): Promise<Record<string, any>> {
     const cachedFilterData = Database.libraryFilterData[libraryId]
     if (cachedFilterData) {
       const cacheElapsed = Date.now() - cachedFilterData.loadedAt

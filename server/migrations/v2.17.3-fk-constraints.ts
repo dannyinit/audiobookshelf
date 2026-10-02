@@ -130,7 +130,7 @@ interface SequelizeFKObj {
  * @param {Object} fk - The foreign key object from PRAGMA foreign_key_list
  * @returns {SequelizeFKObj} - The foreign key object formatted for Sequelize
  */
-const formatFKsPragmaToSequelizeFK = (fk: object): SequelizeFKObj => {
+const formatFKsPragmaToSequelizeFK = (fk: Record<string, any>): SequelizeFKObj => {
   return {
     references: {
       model: fk.table,

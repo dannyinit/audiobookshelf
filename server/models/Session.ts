@@ -15,14 +15,15 @@ class Session extends Model {
   declare userId: string
   /** @type {Date} */
   declare expiresAt: Date
+  declare refreshToken: string
   /** @type {string} */
   declare lastRefreshToken: string
   /** @type {Date} */
   declare lastRefreshTokenExpiresAt: Date
-  /** @type {import('./User').User} */
-  declare user: import('./User').User
+  /** @type {import('./User')} */
+  declare user: import('./User')
 
-  static async createSession(userId, ipAddress, userAgent, refreshToken, expiresAt) {
+  static async createSession(userId: string, ipAddress: string | undefined, userAgent: string | undefined, refreshToken: string, expiresAt: Date) {
     const session = await Session.create({ userId, ipAddress, userAgent, refreshToken, expiresAt })
     return session
   }

@@ -2,37 +2,42 @@ import { AudioMimeType } from '../../utils/constants'
 import AudioMetaTags = require('../metadata/AudioMetaTags')
 import FileMetadata = require('../metadata/FileMetadata')
 
-class AudioFile {
-  /** @type {FileMetadata} */
-  metadata: FileMetadata
-  /** @type {AudioMetaTags} */
-  metaTags: AudioMetaTags
-  index: number
-  chapters: { start: any }[]
-  error: null
-  exclude: boolean
-  manuallyVerified: boolean
-  embeddedCoverArt: null
-  channelLayout: null
-  channels: null
-  timeBase: null
-  codec: null
-  language: null
-  bitRate: null
-  duration: number | null
-  format: null
-  discNumFromFilename: number | null
-  trackNumFromFilename: number | null
-  discNumFromMeta: null
-  trackNumFromMeta: null
-  updatedAt: number | null
-  addedAt: number | null
-  ino: string | null
+type ChapterObject = import('../../models/Book').ChapterObject
 
-  constructor(data) {
+class AudioFile {
+  index: number | null
+  ino: string | null
+  /** Set by construct() or setDataFromProbe() */
+  metadata!: FileMetadata
+  addedAt: number | null
+  updatedAt: number | null
+
+  trackNumFromMeta: number | null
+  discNumFromMeta: number | null
+  trackNumFromFilename: number | null
+  discNumFromFilename: number | null
+
+  format: string | null
+  duration: number | null
+  bitRate: number | null
+  language: string | null
+  codec: string | null
+  timeBase: string | null
+  channels: number | null
+  channelLayout: string | null
+  chapters: ChapterObject[]
+  embeddedCoverArt: string | null
+
+  /** Tags scraped from the audio file */
+  metaTags: AudioMetaTags | null
+
+  manuallyVerified: boolean
+  exclude: boolean
+  error: string | null
+
+  constructor(data?: Record<string, any>) {
     this.index = null
     this.ino = null
-    this.metadata = null
     this.addedAt = null
     this.updatedAt = null
 
@@ -93,7 +98,7 @@ class AudioFile {
     }
   }
 
-  construct(data) {
+  construct(data: Record<string, any>) {
     this.index = data.index
     this.ino = data.ino
     this.metadata = new FileMetadata(data.metadata || {})
@@ -125,7 +130,7 @@ class AudioFile {
   }
 
   get mimeType() {
-    const format = this.metadata.format.toUpperCase()
+    const format = this.metadata.format.toUpperCase() as keyof typeof AudioMimeType
     if (AudioMimeType[format]) {
       return AudioMimeType[format]
     } else {
@@ -134,7 +139,7 @@ class AudioFile {
   }
 
   // New scanner creates AudioFile from AudioFileScanner
-  setDataFromProbe(libraryFile, probeData) {
+  setDataFromProbe(libraryFile: import('./LibraryFile'), probeData: import('../../scanner/MediaProbeData')) {
     this.ino = libraryFile.ino || null
 
     if (libraryFile.metadata instanceof FileMetadata) {
@@ -159,7 +164,7 @@ class AudioFile {
     this.embeddedCoverArt = probeData.embeddedCoverArt
   }
 
-  syncChapters(updatedChapters) {
+  syncChapters(updatedChapters: ChapterObject[]) {
     if (this.chapters.length !== updatedChapters.length) {
       this.chapters = updatedChapters.map(ch => ({ ...ch }))
       return true
@@ -200,20 +205,20 @@ class AudioFile {
 
     for (const key in newjson) {
       if (key === 'metadata') {
-        if (this.metadata.update(newjson[key])) {
+        if (this.metadata.update(newjson.metadata)) {
           hasUpdated = true
         }
       } else if (key === 'metaTags') {
         if (!this.metaTags || !this.metaTags.isEqual(scannedAudioFile.metaTags)) {
-          this.metaTags = scannedAudioFile.metaTags.clone()
+          this.metaTags = scannedAudioFile.metaTags!.clone()
           hasUpdated = true
         }
       } else if (key === 'chapters') {
         if (this.syncChapters(newjson.chapters || [])) {
           hasUpdated = true
         }
-      } else if (!ignoreKeys.includes(key) && this[key] !== newjson[key]) {
-        this[key] = newjson[key]
+      } else if (!ignoreKeys.includes(key) && (this as Record<string, any>)[key] !== newjson[key as keyof typeof newjson]) {
+        ;(this as Record<string, any>)[key] = newjson[key as keyof typeof newjson]
         hasUpdated = true
       }
     }

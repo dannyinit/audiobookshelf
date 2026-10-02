@@ -19,7 +19,7 @@ class CustomMetadataProvider extends Model {
   /** @type {string} */
   declare authHeaderValue: string
   /** @type {Object} */
-  declare extraData: object
+  declare extraData: Record<string, any>
   /** @type {Date} */
   declare createdAt: Date
   /** @type {Date} */

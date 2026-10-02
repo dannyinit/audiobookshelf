@@ -24,7 +24,7 @@ class MediaProgress extends Model {
   /** @type {Date} */
   declare finishedAt: Date
   /** @type {Object} */
-  declare extraData: object
+  declare extraData: Record<string, any>
   /** @type {string} */
   declare userId: string
   /** @type {Date} */

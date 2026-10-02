@@ -32,7 +32,7 @@ class SocketAuthority {
    *  a user can have many socket connections
    * @returns {object[]}
    */
-  getUsersOnline(): object[] {
+  getUsersOnline(): Record<string, any>[] {
     const onlineUsersMap = {}
     Object.values(this.clients)
       .filter((c) => c.user)
@@ -376,7 +376,7 @@ class SocketAuthority {
    * @param {SocketIO.Socket} socket
    * @param {Object} payload
    */
-  async handleCoverSearch(socket: SocketIO.Socket, payload: object) {
+  async handleCoverSearch(socket: SocketIO.Socket, payload: Record<string, any>) {
     const client = this.clients[socket.id]
     if (!client?.user) {
       Logger.error('[SocketAuthority] Unauthorized cover search request')

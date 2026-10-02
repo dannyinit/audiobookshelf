@@ -1,6 +1,6 @@
 import Path = require('path')
 import { DataTypes, Model, Sequelize } from 'sequelize'
-const uuidv4 = require('uuid').v4
+import { v4 as uuidv4 } from 'uuid'
 import Logger = require('../Logger')
 import date = require('../libs/dateAndTime')
 import { secondsToTimestamp } from '../utils'

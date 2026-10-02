@@ -1,4 +1,4 @@
-const uuidv4 = require('uuid').v4
+import { v4 as uuidv4 } from 'uuid'
 import Path = require('path')
 import sequelize = require('sequelize')
 import { LogLevel } from '../utils/constants'
@@ -661,7 +661,7 @@ class BookScanner {
       chapters: [],
       explicit: undefined,
       abridged: undefined,
-      coverPath
+      coverPath: undefined
     }
 
     const bookMetadataSourceHandler = new BookScanner.BookMetadataSourceHandler(bookMetadata, audioFiles, ebookFileScanData, libraryItemData, libraryScan, existingLibraryItemId)
@@ -696,7 +696,7 @@ class BookScanner {
     libraryItemData: import("/home/danny/Code/compx574/audiobookshelf/server/scanner/LibraryItemScanData")
     ebookFileScanData
     audioFiles: any[]
-    bookMetadata: object
+    bookMetadata: Record<string, any>
     /**
      *
      * @param {Object} bookMetadata
@@ -706,7 +706,7 @@ class BookScanner {
      * @param {LibraryScan} libraryScan
      * @param {string} existingLibraryItemId
      */
-    constructor(bookMetadata: object, audioFiles: import('../models/Book').AudioFileObject[], ebookFileScanData: import('../utils/parsers/parseEbookMetadata').EBookFileScanData, libraryItemData: import('./LibraryItemScanData'), libraryScan: LibraryScan, existingLibraryItemId: string) {
+    constructor(bookMetadata: Record<string, any>, audioFiles: import('../models/Book').AudioFileObject[], ebookFileScanData: import('../utils/parsers/parseEbookMetadata').EBookFileScanData, libraryItemData: import('./LibraryItemScanData'), libraryScan: LibraryScan, existingLibraryItemId: string) {
       this.bookMetadata = bookMetadata
       this.audioFiles = audioFiles
       this.ebookFileScanData = ebookFileScanData

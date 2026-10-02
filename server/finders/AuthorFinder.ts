@@ -23,7 +23,7 @@ class AuthorFinder {
    * @param {Object} [options={}] 
    * @returns {Promise<import('../providers/Audnexus').AuthorSearchObj>}
    */
-  async findAuthorByName(name: string, region: string, options: object = {}): Promise<import('../providers/Audnexus').AuthorSearchObj> {
+  async findAuthorByName(name: string, region: string, options: Record<string, any> = {}): Promise<import('../providers/Audnexus').AuthorSearchObj> {
     if (!name) return null
     const maxLevenshtein = !isNaN(options.maxLevenshtein) ? Number(options.maxLevenshtein) : 3
 

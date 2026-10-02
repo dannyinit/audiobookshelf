@@ -116,7 +116,7 @@ class BookFinder {
    * @param {number} maxAuthorDistance
    * @returns {Promise<Object[]>}
    */
-  async getOpenLibResults(title: string, author: string, maxTitleDistance: number, maxAuthorDistance: number): Promise<object[]> {
+  async getOpenLibResults(title: string, author: string, maxTitleDistance: number, maxAuthorDistance: number): Promise<Record<string, any>[]> {
     var books = await this.openLibrary.searchTitle(title, this.#providerResponseTimeout)
     if (this.verbose) Logger.debug(`OpenLib Book Search Results: ${books.length || 0}`)
     if (books.errorCode) {
@@ -140,7 +140,7 @@ class BookFinder {
    * @param {string} author
    * @returns {Promise<Object[]>}
    */
-  async getGoogleBooksResults(title: string, author: string): Promise<object[]> {
+  async getGoogleBooksResults(title: string, author: string): Promise<Record<string, any>[]> {
     var books = await this.googleBooks.search(title, author, this.#providerResponseTimeout)
     if (this.verbose) Logger.debug(`GoogleBooks Book Search Results: ${books.length || 0}`)
     if (books.errorCode) {
@@ -157,7 +157,7 @@ class BookFinder {
    * @param {string} author
    * @returns {Promise<Object[]>}
    */
-  async getFantLabResults(title: string, author: string): Promise<object[]> {
+  async getFantLabResults(title: string, author: string): Promise<Record<string, any>[]> {
     var books = await this.fantLab.search(title, author, this.#providerResponseTimeout)
     if (this.verbose) Logger.debug(`FantLab Book Search Results: ${books.length || 0}`)
     if (books.errorCode) {
@@ -173,7 +173,7 @@ class BookFinder {
    * @param {string} search
    * @returns {Promise<Object[]>}
    */
-  async getAudiobookCoversResults(search: string): Promise<object[]> {
+  async getAudiobookCoversResults(search: string): Promise<Record<string, any>[]> {
     const covers = await this.audiobookCovers.search(search, this.#providerResponseTimeout)
     if (this.verbose) Logger.debug(`AudiobookCovers Search Results: ${covers.length || 0}`)
     return covers || []
@@ -184,7 +184,7 @@ class BookFinder {
    * @param {string} title
    * @returns {Promise<Object[]>}
    */
-  async getiTunesAudiobooksResults(title: string): Promise<object[]> {
+  async getiTunesAudiobooksResults(title: string): Promise<Record<string, any>[]> {
     return this.iTunesApi.searchAudiobooks(title, this.#providerResponseTimeout)
   }
 
@@ -196,7 +196,7 @@ class BookFinder {
    * @param {string} provider
    * @returns {Promise<Object[]>}
    */
-  async getAudibleResults(title: string, author: string, asin: string, provider: string): Promise<object[]> {
+  async getAudibleResults(title: string, author: string, asin: string, provider: string): Promise<Record<string, any>[]> {
     const region = provider.includes('.') ? provider.split('.').pop() : ''
     const books = await this.audible.search(title, author, asin, region, this.#providerResponseTimeout)
     if (this.verbose) Logger.debug(`Audible Book Search Results: ${books.length || 0}`)
@@ -212,7 +212,7 @@ class BookFinder {
    * @param {string} providerSlug
    * @returns {Promise<Object[]>}
    */
-  async getCustomProviderResults(title: string, author: string, isbn: string, providerSlug: string): Promise<object[]> {
+  async getCustomProviderResults(title: string, author: string, isbn: string, providerSlug: string): Promise<Record<string, any>[]> {
     try {
       const books = await this.customProviderAdapter.search(title, author, isbn, providerSlug, 'book', this.#providerResponseTimeout)
       if (this.verbose) Logger.debug(`Custom provider '${providerSlug}' Search Results: ${books.length || 0}`)
@@ -389,7 +389,7 @@ class BookFinder {
    * @param {{titleDistance:number, authorDistance:number, maxFuzzySearches:number}} options
    * @returns {Promise<Object[]>}
    */
-  async search(libraryItem: import('../models/LibraryItem'), provider: string, title: string, author: string, isbn: string, asin: string, options: { titleDistance: number; authorDistance: number; maxFuzzySearches: number } = {}): Promise<object[]> {
+  async search(libraryItem: import('../models/LibraryItem'), provider: string, title: string, author: string, isbn: string, asin: string, options: { titleDistance: number; authorDistance: number; maxFuzzySearches: number } = {}): Promise<Record<string, any>[]> {
     let books = []
     const maxTitleDistance = !isNaN(options.titleDistance) ? Number(options.titleDistance) : 4
     const maxAuthorDistance = !isNaN(options.authorDistance) ? Number(options.authorDistance) : 4
@@ -477,7 +477,7 @@ class BookFinder {
    * @param {boolean} isTitleAsin - Whether the title is an ASIN
    * @returns {number|null} - Match confidence score or null if not applicable
    */
-  calculateMatchConfidence(book: object, libraryItemDurationMinutes: number | null, actualTitleQuery: string, actualAuthorQuery: string, isTitleAsin: boolean): number | null {
+  calculateMatchConfidence(book: Record<string, any>, libraryItemDurationMinutes: number | null, actualTitleQuery: string, actualAuthorQuery: string, isTitleAsin: boolean): number | null {
     // ASIN results are always a match
     if (isTitleAsin) return 1.0
 
@@ -593,7 +593,7 @@ class BookFinder {
    * @param {number} maxAuthorDistance only used for openlibrary provider
    * @returns {Promise<Object[]>}
    */
-  async runSearch(title: string, author: string, provider: string, asin: string, maxTitleDistance: number, maxAuthorDistance: number): Promise<object[]> {
+  async runSearch(title: string, author: string, provider: string, asin: string, maxTitleDistance: number, maxAuthorDistance: number): Promise<Record<string, any>[]> {
     Logger.debug(`Book Search: title: "${title}", author: "${author || ''}", provider: ${provider}`)
 
     let books = []

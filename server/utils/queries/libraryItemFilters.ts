@@ -180,7 +180,7 @@ export = {
    * @param {number} limit
    * @returns {{book:object[], narrators:object[], authors:object[], tags:object[], series:object[], podcast:object[]}}
    */
-  search(user: import('../../models/User'), library: import('../../models/Library'), query: string, limit: number): { book: object[]; narrators: object[]; authors: object[]; tags: object[]; series: object[]; podcast: object[] } {
+  search(user: import('../../models/User'), library: import('../../models/Library'), query: string, limit: number): { book: Record<string, any>[]; narrators: Record<string, any>[]; authors: Record<string, any>[]; tags: Record<string, any>[]; series: Record<string, any>[]; podcast: Record<string, any>[] } {
     if (library.isBook) {
       return libraryItemsBookFilters.search(user, library, query, limit, 0)
     } else {

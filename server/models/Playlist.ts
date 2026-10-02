@@ -40,22 +40,22 @@ class Playlist extends Model {
     const playlistsExpanded = await this.findAll({
       where: whereQuery,
       include: {
-        model: this.sequelize.models.playlistMediaItem,
+        model: this.sequelize!.models.playlistMediaItem,
         include: [
           {
-            model: this.sequelize.models.book,
+            model: this.sequelize!.models.book,
             include: [
               {
-                model: this.sequelize.models.libraryItem
+                model: this.sequelize!.models.libraryItem
               },
               {
-                model: this.sequelize.models.author,
+                model: this.sequelize!.models.author,
                 through: {
                   attributes: []
                 }
               },
               {
-                model: this.sequelize.models.series,
+                model: this.sequelize!.models.series,
                 through: {
                   attributes: ['sequence']
                 }
@@ -63,10 +63,10 @@ class Playlist extends Model {
             ]
           },
           {
-            model: this.sequelize.models.podcastEpisode,
+            model: this.sequelize!.models.podcastEpisode,
             include: {
-              model: this.sequelize.models.podcast,
-              include: this.sequelize.models.libraryItem
+              model: this.sequelize!.models.podcast,
+              include: this.sequelize!.models.libraryItem
             }
           }
         ]
@@ -103,7 +103,7 @@ class Playlist extends Model {
   static async getPlaylistsForMediaItemIds(mediaItemIds: string[]): Promise<Playlist[]> {
     if (!mediaItemIds?.length) return []
 
-    const playlistMediaItemsExpanded = await this.sequelize.models.playlistMediaItem.findAll({
+    const playlistMediaItemsExpanded = await this.sequelize!.models.playlistMediaItem.findAll({
       where: {
         mediaItemId: {
           [Op.in]: mediaItemIds
@@ -111,19 +111,19 @@ class Playlist extends Model {
       },
       include: [
         {
-          model: this.sequelize.models.playlist,
+          model: this.sequelize!.models.playlist,
           include: {
-            model: this.sequelize.models.playlistMediaItem,
+            model: this.sequelize!.models.playlistMediaItem,
             include: [
               {
-                model: this.sequelize.models.book,
-                include: this.sequelize.models.libraryItem
+                model: this.sequelize!.models.book,
+                include: this.sequelize!.models.libraryItem
               },
               {
-                model: this.sequelize.models.podcastEpisode,
+                model: this.sequelize!.models.podcastEpisode,
                 include: {
-                  model: this.sequelize.models.podcast,
-                  include: this.sequelize.models.libraryItem
+                  model: this.sequelize!.models.podcast,
+                  include: this.sequelize!.models.libraryItem
                 }
               }
             ]

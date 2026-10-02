@@ -1,6 +1,6 @@
 import date = require('../libs/dateAndTime')
-const uuidv4 = require('uuid').v4
-const serverVersion = require('../../package.json').version
+import { v4 as uuidv4 } from 'uuid'
+import { version as serverVersion } from '../../package.json'
 import DeviceInfo = require('./DeviceInfo')
 
 class PlaybackSession {
@@ -24,9 +24,6 @@ class PlaybackSession {
   episodeId: string | null
   bookId: null
   libraryId: string | null
-  libraryItemId(libraryItemId: any, arg1: { attributes: string[] }) {
-    throw new Error('Method not implemented.')
-  }
   coverPath: null
   coverAspectRatio: null
   shareSessionId: string | null

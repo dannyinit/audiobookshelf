@@ -3,7 +3,59 @@ import MediaProbeData = require('../scanner/MediaProbeData')
 
 import Logger = require('../Logger')
 
-function tryGrabBitRate(stream, all_streams, total_bit_rate) {
+/** A stream/format object from ffprobe's raw json output */
+type FfprobeStream = Record<string, any>
+
+export interface MediaStreamInfo {
+  index: number
+  type: string
+  codec: string | null
+  codec_long: string | null
+  codec_time_base: string | null
+  time_base: string | null
+  bit_rate: number | null
+  language: string | null
+  title: string | null
+  tags?: Record<string, string>
+  is_default?: boolean
+  // Video streams
+  profile?: string | null
+  is_avc?: boolean
+  pix_fmt?: string | null
+  frame_rate?: number | null
+  width?: number | null
+  height?: number | null
+  color_range?: string | null
+  color_space?: string | null
+  color_transfer?: string | null
+  color_primaries?: string | null
+  // Audio streams
+  channels?: number | null
+  sample_rate?: number | null
+  channel_layout?: string | null
+}
+
+export interface ProbeChapter {
+  id: number
+  start: number
+  end: number
+  title: string
+}
+
+export interface ParsedProbeData {
+  format: string
+  duration: number | null
+  size: number | null
+  sizeMb: number | null
+  bit_rate: number | null
+  tags: Record<string, string>
+  rawTags?: Record<string, string>
+  video_stream?: MediaStreamInfo
+  audio_stream?: MediaStreamInfo | null
+  chapters?: ProbeChapter[]
+}
+
+function tryGrabBitRate(stream: FfprobeStream, all_streams: FfprobeStream[], total_bit_rate: number | null): number | null {
   if (!isNaN(stream.bit_rate) && stream.bit_rate) {
     return Number(stream.bit_rate)
   }
@@ -45,7 +97,7 @@ function tryGrabBitRate(stream, all_streams, total_bit_rate) {
   }
 }
 
-function tryGrabFrameRate(stream) {
+function tryGrabFrameRate(stream: FfprobeStream): number | null {
   let avgFrameRate = stream.avg_frame_rate || stream.r_frame_rate
   if (!avgFrameRate) return null
   const parts = avgFrameRate.split('/')
@@ -58,30 +110,30 @@ function tryGrabFrameRate(stream) {
   return null
 }
 
-function tryGrabSampleRate(stream) {
+function tryGrabSampleRate(stream: FfprobeStream): number | null {
   const sample_rate = stream.sample_rate
   if (!isNaN(sample_rate)) return Number(sample_rate)
   return null
 }
 
-function tryGrabChannelLayout(stream) {
+function tryGrabChannelLayout(stream: FfprobeStream): string | null {
   const layout = stream.channel_layout
   if (!layout) return null
-  return String(layout).split('(').shift()
+  return String(layout).split('(').shift()!
 }
 
-function tryGrabTags(stream, ...tags) {
+function tryGrabTags(stream: FfprobeStream, ...tags: string[]): string | null {
   if (!stream.tags) return null
   for (let i = 0; i < tags.length; i++) {
     const tagKey = Object.keys(stream.tags).find((t) => t.toLowerCase() === tags[i].toLowerCase())
-    const value = stream.tags[tagKey]
+    const value = stream.tags[tagKey!]
     if (value && value.trim()) return value.trim()
   }
   return null
 }
 
-function parseMediaStreamInfo(stream, all_streams, total_bit_rate) {
-  const info = {
+function parseMediaStreamInfo(stream: FfprobeStream, all_streams: FfprobeStream[], total_bit_rate: number | null): MediaStreamInfo {
+  const info: MediaStreamInfo = {
     index: stream.index,
     type: stream.codec_type,
     codec: stream.codec_name || null,
@@ -119,7 +171,7 @@ function parseMediaStreamInfo(stream, all_streams, total_bit_rate) {
   return info
 }
 
-function isNullOrNaN(val) {
+function isNullOrNaN(val: any) {
   return val === null || isNaN(val)
 }
 
@@ -136,11 +188,11 @@ function isNullOrNaN(val) {
       }
  * }
  */
-function parseChapters(_chapters) {
+function parseChapters(_chapters: FfprobeStream[] | undefined): ProbeChapter[] {
   if (!_chapters) return []
 
   return _chapters
-    .map((chap) => {
+    .map((chap): Omit<ProbeChapter, 'id'> & { id?: number } => {
       let title = chap['TAG:title'] || chap.title || ''
       if (!title && chap.tags?.title) title = chap.tags.title
       title = title.trim()
@@ -157,11 +209,11 @@ function parseChapters(_chapters) {
     .sort((a, b) => a.start - b.start)
     .map((chap, index) => {
       chap.id = index
-      return chap
+      return chap as ProbeChapter
     })
 }
 
-function parseTags(format, verbose) {
+function parseTags(format: FfprobeStream, verbose: boolean): Record<string, string> {
   if (!format.tags) {
     return {}
   }
@@ -169,7 +221,7 @@ function parseTags(format, verbose) {
     Logger.debug('Tags', format.tags)
   }
 
-  const tags = {
+  const tags: Record<string, string | null> = {
     file_tag_encoder: tryGrabTags(format, 'encoder', 'tsse', 'tss'),
     file_tag_encodedby: tryGrabTags(format, 'encoded_by', 'tenc', 'ten'),
     file_tag_title: tryGrabTags(format, 'title', 'tit2', 'tt2'),
@@ -224,10 +276,10 @@ function parseTags(format, verbose) {
     }
   }
 
-  return tags
+  return tags as Record<string, string>
 }
 
-function getDefaultAudioStream(audioStreams) {
+function getDefaultAudioStream(audioStreams: MediaStreamInfo[]): MediaStreamInfo | null {
   if (!audioStreams || !audioStreams.length) return null
   if (audioStreams.length === 1) return audioStreams[0]
   const defaultStream = audioStreams.find((a) => a.is_default)
@@ -235,14 +287,14 @@ function getDefaultAudioStream(audioStreams) {
   return defaultStream
 }
 
-function parseProbeData(data, verbose = false) {
+function parseProbeData(data: FfprobeStream, verbose = false): ParsedProbeData | null {
   try {
     const { format, streams, chapters } = data
 
     const sizeBytes = !isNaN(format.size) ? Number(format.size) : null
     const sizeMb = sizeBytes !== null ? Number((sizeBytes / (1024 * 1024)).toFixed(2)) : null
 
-    let cleanedData = {
+    let cleanedData: ParsedProbeData = {
       format: format.format_long_name || format.name || 'Unknown',
       duration: !isNaN(format.duration) ? Number(format.duration) : null,
       size: sizeBytes,
@@ -254,7 +306,7 @@ function parseProbeData(data, verbose = false) {
       cleanedData.rawTags = format.tags
     }
 
-    const cleaned_streams = streams.map((s) => parseMediaStreamInfo(s, streams, cleanedData.bit_rate))
+    const cleaned_streams: MediaStreamInfo[] = streams.map((s: FfprobeStream) => parseMediaStreamInfo(s, streams, cleanedData.bit_rate))
     cleanedData.video_stream = cleaned_streams.find((s) => s.type === 'video')
     const audioStreams = cleaned_streams.filter((s) => s.type === 'audio')
     cleanedData.audio_stream = getDefaultAudioStream(audioStreams)
@@ -262,7 +314,7 @@ function parseProbeData(data, verbose = false) {
     if (cleanedData.audio_stream && cleanedData.video_stream) {
       const videoBitrate = cleanedData.video_stream.bit_rate
       // If audio stream bitrate larger then video, most likely incorrect
-      if (cleanedData.audio_stream.bit_rate > videoBitrate) {
+      if (cleanedData.audio_stream.bit_rate! > videoBitrate!) {
         cleanedData.video_stream.bit_rate = cleanedData.bit_rate
       }
     }
@@ -290,13 +342,13 @@ function parseProbeData(data, verbose = false) {
  * @param {boolean} [verbose=false]
  * @returns {import('../scanner/MediaProbeData')|{error:string}}
  */
-function probe(filepath: string, verbose: boolean = false): import('../scanner/MediaProbeData') | { error: string } {
+function probe(filepath: string, verbose: boolean = false): Promise<MediaProbeData | { error: string }> {
   if (process.env.FFPROBE_PATH) {
     ffprobe.FFPROBE_PATH = process.env.FFPROBE_PATH
   }
 
   return ffprobe(filepath)
-    .then((raw) => {
+    .then((raw: FfprobeStream) => {
       if (raw.error) {
         return {
           error: raw.error.string
@@ -314,7 +366,7 @@ function probe(filepath: string, verbose: boolean = false): import('../scanner/M
         return probeData
       }
     })
-    .catch((err) => {
+    .catch((err: any) => {
       return {
         error: err
       }
@@ -328,12 +380,12 @@ export { probe }
  * @param {string} filepath
  * @returns {Object} ffprobe json output
  */
-function rawProbe(filepath: string): object {
+function rawProbe(filepath: string): Promise<Record<string, any>> {
   if (process.env.FFPROBE_PATH) {
     ffprobe.FFPROBE_PATH = process.env.FFPROBE_PATH
   }
 
-  return ffprobe(filepath).catch((err) => {
+  return ffprobe(filepath).catch((err: any) => {
     return {
       error: err
     }

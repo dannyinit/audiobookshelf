@@ -46,7 +46,7 @@ class TaskManager {
    * @param {boolean} showSuccess
    * @param {Object} [data]
    */
-  createAndAddTask(action: string, titleString: TaskString, descriptionString: TaskString | null, showSuccess: boolean, data: object = {}) {
+  createAndAddTask(action: string, titleString: TaskString, descriptionString: TaskString | null, showSuccess: boolean, data: Record<string, any> = {}) {
     const task = new Task()
     task.setData(action, titleString, descriptionString, showSuccess, data)
     this.addTask(task)

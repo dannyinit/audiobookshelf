@@ -67,8 +67,8 @@ class ApiKey extends Model {
   declare userId: string
   /** @type {string} */
   declare createdByUserId: string
-  /** @type {import('./User').User} */
-  declare user: import('./User').User
+  /** @type {import('./User')} */
+  declare user: import('./User')
 
   /**
    * Same properties as User.getDefaultPermissions

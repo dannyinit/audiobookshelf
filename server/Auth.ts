@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 import passport = require('passport')
-const JwtStrategy = require('passport-jwt').Strategy
-const ExtractJwt = require('passport-jwt').ExtractJwt
+import { Strategy as JwtStrategy, ExtractJwt } from 'passport-jwt'
 
 import Database = require('./Database')
 import Logger = require('./Logger')
@@ -99,7 +98,7 @@ class Auth {
    * @param {import('./models/User')} user
    * @returns {Promise<Object>} jsonPayload
    */
-  async getUserLoginResponsePayload(user: import('./models/User')): Promise<object> {
+  async getUserLoginResponsePayload(user: import('./models/User')): Promise<Record<string, any>> {
     const libraryIds = await Database.libraryModel.getAllLibraryIds()
     return {
       user: user.toOldJSONForBrowser(),
@@ -221,7 +220,7 @@ class Auth {
    * @param {string} authMethod - The authentication method, default is 'local'.
    * @returns {Object|null} - Returns error object if validation fails, null if successful
    */
-  paramsToCookies(req: Request, res: Response, authMethod: string = 'local'): object | null {
+  paramsToCookies(req: Request, res: Response, authMethod: string = 'local'): Record<string, any> | null {
     const TWO_MINUTES = 120000 // 2 minutes in milliseconds
     const callback = req.query.redirect_uri || req.query.callback
 

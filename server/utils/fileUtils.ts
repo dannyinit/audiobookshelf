@@ -1,7 +1,7 @@
 import axios = require('axios')
 import Path = require('path')
 import ssrfFilter = require('ssrf-req-filter')
-const exec = require('child_process').exec
+import { exec } from 'child_process'
 import fs = require('../libs/fsExtra')
 import rra = require('../libs/recursiveReaddirAsync')
 import Logger = require('../Logger')

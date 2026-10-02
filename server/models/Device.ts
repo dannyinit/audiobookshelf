@@ -17,7 +17,7 @@ class Device extends Model {
   /** @type {string} */
   declare deviceVersion: string
   /** @type {object} */
-  declare extraData: object
+  declare extraData: Record<string, any>
   /** @type {string} */
   declare userId: string
   /** @type {Date} */

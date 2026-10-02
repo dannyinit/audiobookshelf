@@ -102,7 +102,7 @@ export = {
    * @param {import('../models/Library')} library
    * @returns {Object[]}
    */
-  async handleCollapseSubseries(payload: any, seriesId: string, user: import('../models/User'), library: import('../models/Library')): Promise<object[]> {
+  async handleCollapseSubseries(payload: any, seriesId: string, user: import('../models/User'), library: import('../models/Library')): Promise<Record<string, any>[]> {
     if (payload.sortBy && !VALID_COLLAPSE_SUBSERIES_SORTS.has(payload.sortBy)) {
       Logger.warn(`[libraryHelpers] Invalid "sort" query string "${payload.sortBy}"`)
       payload.sortBy = undefined

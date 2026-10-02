@@ -3,18 +3,17 @@ import Notification = require('../Notification')
 import { isNullOrNaN } from '../../utils'
 
 class NotificationSettings {
-  notifications: any[]
-  appriseType: string
   id: string
-  appriseApiUrl(appriseApiUrl: any, payload: any, arg2: { timeout: number }) {
-    throw new Error('Method not implemented.')
-  }
-  notificationDelay(arg0: () => void, notificationDelay: any) {
-    throw new Error('Method not implemented.')
-  }
-  maxNotificationQueue
-  maxFailedAttempts
-  constructor(settings = null) {
+  appriseType: string
+  appriseApiUrl: string | null
+  notifications: Notification[]
+  maxFailedAttempts: number
+  /** once reached events will be ignored */
+  maxNotificationQueue: number
+  /** ms delay between firing notifications */
+  notificationDelay: number
+
+  constructor(settings: Record<string, any> | null = null) {
     this.id = 'notification-settings'
     this.appriseType = 'api'
     this.appriseApiUrl = null
@@ -28,10 +27,10 @@ class NotificationSettings {
     }
   }
 
-  construct(settings) {
+  construct(settings: Record<string, any>) {
     this.appriseType = settings.appriseType
     this.appriseApiUrl = settings.appriseApiUrl || null
-    this.notifications = (settings.notifications || []).map((n) => new Notification(n))
+    this.notifications = (settings.notifications || []).map((n: Record<string, any>) => new Notification(n))
     this.maxFailedAttempts = settings.maxFailedAttempts || 5
     this.maxNotificationQueue = settings.maxNotificationQueue || 20
     this.notificationDelay = settings.notificationDelay || 1000
@@ -69,11 +68,11 @@ class NotificationSettings {
     return this.notifications.filter((n) => n.eventName === eventName && n.enabled)
   }
 
-  getNotification(id) {
+  getNotification(id: string) {
     return this.notifications.find((n) => n.id === id)
   }
 
-  removeNotification(id) {
+  removeNotification(id: string) {
     if (this.notifications.some((n) => n.id === id)) {
       this.notifications = this.notifications.filter((n) => n.id !== id)
       return true
@@ -81,7 +80,7 @@ class NotificationSettings {
     return false
   }
 
-  update(payload) {
+  update(payload: Record<string, any>) {
     if (!payload) return false
 
     var hasUpdates = false
@@ -105,7 +104,7 @@ class NotificationSettings {
     return hasUpdates
   }
 
-  createNotification(payload) {
+  createNotification(payload: Record<string, any>) {
     if (!payload) return false
     if (!payload.eventName || !payload.urls.length) return false
 
@@ -115,7 +114,7 @@ class NotificationSettings {
     return true
   }
 
-  updateNotification(payload) {
+  updateNotification(payload: Record<string, any>) {
     if (!payload) return false
     const notification = this.notifications.find((n) => n.id === payload.id)
     if (!notification) {

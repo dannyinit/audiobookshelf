@@ -14,7 +14,7 @@ export = {
    * @param {import('../../models/User')} user
    * @returns {{ bookWhere:Sequelize.WhereOptions, replacements:object }}
    */
-  getUserPermissionBookWhereQuery(user: import('../../models/User')): { bookWhere: Sequelize.WhereOptions; replacements: object } {
+  getUserPermissionBookWhereQuery(user: import('../../models/User')): { bookWhere: Sequelize.WhereOptions; replacements: Record<string, any> } {
     const bookWhere = []
     const replacements = {}
     if (!user) return { bookWhere, replacements }
@@ -100,7 +100,7 @@ export = {
    * @param {[string]} value
    * @returns {object} { Sequelize.WhereOptions, string[] }
    */
-  getMediaGroupQuery(group: string, value: [string]): object {
+  getMediaGroupQuery(group: string, value: [string]): Record<string, any> {
     if (!group) return { mediaWhere: {}, replacements: {} }
 
     let mediaWhere = {}
@@ -309,7 +309,7 @@ export = {
    * @param {Sequelize.WhereOptions} seriesWhere
    * @returns {object} { booksToExclude, bookSeriesToInclude }
    */
-  async getCollapseSeriesBooksToExclude(bookFindOptions: Sequelize.ModelStatic, seriesWhere: Sequelize.WhereOptions, replacements = {}): Promise<object> {
+  async getCollapseSeriesBooksToExclude(bookFindOptions: Sequelize.ModelStatic, seriesWhere: Sequelize.WhereOptions, replacements = {}): Promise<Record<string, any>> {
     const allSeries = await Database.seriesModel.findAll({
       attributes: ['id', 'name', [Sequelize.literal('(SELECT count(*) FROM bookSeries bs WHERE bs.seriesId = series.id)'), 'numBooks']],
       distinct: true,
@@ -1090,7 +1090,7 @@ export = {
    * @param {number} offset
    * @returns {{book:object[], narrators:object[], authors:object[], tags:object[], series:object[]}}
    */
-  async search(user: import('../../models/User'), library: import('../../models/Library'), query: string, limit: number, offset: number): Promise<{ book: object[]; narrators: object[]; authors: object[]; tags: object[]; series: object[] }> {
+  async search(user: import('../../models/User'), library: import('../../models/Library'), query: string, limit: number, offset: number): Promise<{ book: Record<string, any>[]; narrators: Record<string, any>[]; authors: Record<string, any>[]; tags: Record<string, any>[]; series: Record<string, any>[] }> {
     const userPermissionBookWhere = this.getUserPermissionBookWhereQuery(user)
 
     const textSearchQuery = await Database.createTextSearchQuery(query)

@@ -4,7 +4,7 @@ class BookSeries extends Model {
   /** @type {string} */
   declare id: string
   /** @type {string} */
-  declare sequence: string
+  declare sequence: string | null
   /** @type {string} */
   declare bookId: string
   /** @type {string} */
@@ -12,8 +12,8 @@ class BookSeries extends Model {
   /** @type {Date} */
   declare createdAt: Date
 
-  static removeByIds(seriesId = null, bookId = null) {
-    const where = {}
+  static removeByIds(seriesId: string | null = null, bookId: string | null = null) {
+    const where: { seriesId?: string; bookId?: string } = {}
     if (seriesId) where.seriesId = seriesId
     if (bookId) where.bookId = bookId
     return this.destroy({
