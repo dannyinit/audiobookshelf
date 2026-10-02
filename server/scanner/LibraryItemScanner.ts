@@ -28,7 +28,7 @@ class LibraryItemScanner {
    */
   async scanLibraryItem(libraryItemId: string, updateLibraryItemDetails: {
     isFile: boolean
-    libraryFolderId: any relPath: string; path: string 
+    libraryFolderId: any; relPath: string; path: string 
 } = null): number {
     // TODO: Add task manager
     const libraryItem = await Database.libraryItemModel.findByPk(libraryItemId)

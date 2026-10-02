@@ -46,7 +46,7 @@ class Audnexus {
    * @returns {Promise<{asin:string, name:string}[]>}
    */
   authorASINsRequest(name: string, region: string): Promise<{
-    levenshteinDistance: any asin: string; name: string 
+    levenshteinDistance: any; asin: string; name: string 
 }[]> {
     const searchParams = new URLSearchParams()
     searchParams.set('name', name)
