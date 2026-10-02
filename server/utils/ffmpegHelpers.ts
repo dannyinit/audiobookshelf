@@ -7,14 +7,21 @@ import Path = require('path')
 import Logger = require('../Logger')
 import { filePathToPOSIX, copyToExisting } from './fileUtils'
 
-function escapeSingleQuotes(path) {
+/** Track fields needed to write an ffmpeg concat file */
+interface ConcatTrack {
+  index: number
+  duration: number
+  metadata: { path: string }
+}
+
+function escapeSingleQuotes(path: string) {
   // A ' within a quoted string is escaped with '\'' in ffmpeg (see https://www.ffmpeg.org/ffmpeg-utils.html#Quoting-and-escaping)
   return filePathToPOSIX(path).replace(/'/g, "'\\''")
 }
 
 // Returns first track start time
 // startTime is for streams starting an encode part-way through an audiobook
-async function writeConcatFile(tracks, outputPath, startTime = 0) {
+async function writeConcatFile(tracks: ConcatTrack[], outputPath: string, startTime = 0): Promise<number | null> {
   var trackToStartWithIndex = 0
   var firstTrackStartTime = 0
 
@@ -48,7 +55,7 @@ async function writeConcatFile(tracks, outputPath, startTime = 0) {
 }
 export { writeConcatFile }
 
-async function extractCoverArt(filepath, outputpath) {
+async function extractCoverArt(filepath: string, outputpath: string): Promise<string | false> {
   var dirname = Path.dirname(outputpath)
   await fs.ensureDir(dirname)
 
@@ -75,7 +82,7 @@ async function extractCoverArt(filepath, outputpath) {
 export { extractCoverArt }
 
 //This should convert based on the output file extension as well
-async function resizeImage(filePath, outputPath, width, height) {
+async function resizeImage(filePath: string, outputPath: string, width?: number | null, height?: number | null): Promise<string | false> {
   return new Promise((resolve) => {
     /** @type {import('../libs/fluentFfmpeg/index').FfmpegCommand} */
     var ffmpeg: import('../libs/fluentFfmpeg/index').FfmpegCommand = Ffmpeg(filePath)
@@ -111,13 +118,13 @@ export const downloadPodcastEpisode = (podcastEpisodeDownload: import('../object
     // See: https://github.com/advplyr/audiobookshelf/issues/4401 (requires no iTMS user agent)
     const userAgents = ['audiobookshelf (+https://audiobookshelf.org; like iTMS)', 'audiobookshelf (+https://audiobookshelf.org)']
 
-    let response = null
-    let lastError = null
+    let response: import('axios').AxiosResponse | null = null
+    let lastError: unknown = null
 
     for (const userAgent of userAgents) {
       try {
         response = await axios({
-          url: podcastEpisodeDownload.url,
+          url: podcastEpisodeDownload.url!,
           method: 'GET',
           responseType: 'stream',
           headers: {
@@ -125,15 +132,15 @@ export const downloadPodcastEpisode = (podcastEpisodeDownload: import('../object
             'User-Agent': userAgent
           },
           timeout: global.PodcastDownloadTimeout,
-          httpAgent: global.DisableSsrfRequestFilter?.(podcastEpisodeDownload.url) ? null : ssrfFilter(podcastEpisodeDownload.url),
-          httpsAgent: global.DisableSsrfRequestFilter?.(podcastEpisodeDownload.url) ? null : ssrfFilter(podcastEpisodeDownload.url)
+          httpAgent: global.DisableSsrfRequestFilter?.(podcastEpisodeDownload.url!) ? null : ssrfFilter(podcastEpisodeDownload.url!),
+          httpsAgent: global.DisableSsrfRequestFilter?.(podcastEpisodeDownload.url!) ? null : ssrfFilter(podcastEpisodeDownload.url!)
         })
 
         Logger.debug(`[ffmpegHelpers] Successfully connected with User-Agent: ${userAgent}`)
         break
       } catch (error) {
         lastError = error
-        Logger.warn(`[ffmpegHelpers] Failed to download podcast episode with User-Agent "${userAgent}" for url "${podcastEpisodeDownload.url}"`, error.message)
+        Logger.warn(`[ffmpegHelpers] Failed to download podcast episode with User-Agent "${userAgent}" for url "${podcastEpisodeDownload.url}"`, (error as Error).message)
 
         // If this is the last attempt, log the full error
         if (userAgent === userAgents[userAgents.length - 1]) {
@@ -155,11 +162,11 @@ export const downloadPodcastEpisode = (podcastEpisodeDownload: import('../object
     ffmpeg.outputOptions('-c:a', 'copy', '-map', '0:a', '-metadata', 'podcast=1')
 
     /** @type {import('../models/Podcast')} */
-    const podcast: import('../models/Podcast') = podcastEpisodeDownload.libraryItem.media
+    const podcast = podcastEpisodeDownload.libraryItem.media as import('../models/Podcast')
     const podcastEpisode = podcastEpisodeDownload.rssPodcastEpisode
     const finalSizeInBytes = Number(podcastEpisode.enclosure?.length || 0)
 
-    const taggings = {
+    const taggings: Record<string, any> = {
       album: podcast.title,
       'album-sort': podcast.title,
       artist: podcast.author,
@@ -195,7 +202,7 @@ export const downloadPodcastEpisode = (podcastEpisodeDownload: import('../object
 
     ffmpeg.addOutput(podcastEpisodeDownload.targetPath)
 
-    const stderrLines = []
+    const stderrLines: string[] = []
     ffmpeg.on('stderr', (stderrLine) => {
       if (typeof stderrLine === 'string') {
         stderrLines.push(stderrLine)
@@ -299,7 +306,7 @@ export { writeFFMetadataFile }
  * @param {function(string, string): Promise<void>} copyFunc - The function to use for copying files (optional). Used for dependency injection in tests.
  * @returns {Promise<void>} A promise that resolves if the operation is successful, rejects otherwise.
  */
-async function addCoverAndMetadataToFile(audioFilePath: string, coverFilePath: string | null, metadataFilePath: string, track: number, mimeType: string, progressCB: (arg0: number) => void | null = null, ffmpeg: import('../libs/fluentFfmpeg/index').FfmpegCommand = Ffmpeg(), copyFunc: (arg0: string, arg1: string) => Promise<void> = copyToExisting): Promise<void> {
+async function addCoverAndMetadataToFile(audioFilePath: string, coverFilePath: string | null, metadataFilePath: string, track: number, mimeType: string, progressCB: ((percent: number) => void) | null = null, ffmpeg: import('../libs/fluentFfmpeg/index').FfmpegCommand = Ffmpeg(), copyFunc: (arg0: string, arg1: string) => Promise<void> = copyToExisting): Promise<void> {
   const isMp4 = mimeType === 'audio/mp4'
   const isMp3 = mimeType === 'audio/mpeg'
 
@@ -393,7 +400,7 @@ async function addCoverAndMetadataToFile(audioFilePath: string, coverFilePath: s
 
 export { addCoverAndMetadataToFile }
 
-function escapeFFMetadataValue(value) {
+function escapeFFMetadataValue(value: string) {
   return value.replace(/([;=\n\\#])/g, '\\$1')
 }
 
@@ -405,21 +412,23 @@ function escapeFFMetadataValue(value) {
  * @returns {Object} - The FFmpeg metadata object.
  */
 function getFFMetadataObject(libraryItem: import('../models/LibraryItem'), audioFilesLength: number): Record<string, any> {
-  const ffmetadata = {
-    title: libraryItem.media.title,
-    artist: libraryItem.media.authorName,
-    album_artist: libraryItem.media.authorName,
-    album: (libraryItem.media.title || '') + (libraryItem.media.subtitle ? `: ${libraryItem.media.subtitle}` : ''),
-    TIT3: libraryItem.media.subtitle, // mp3 only
-    genre: libraryItem.media.genres?.join('; '),
-    date: libraryItem.media.publishedYear,
-    comment: libraryItem.media.description,
-    description: libraryItem.media.description,
-    composer: (libraryItem.media.narrators || []).join(', '),
-    copyright: libraryItem.media.publisher,
-    publisher: libraryItem.media.publisher, // mp3 only
+  // Only used for books
+  const book = libraryItem.media as import('../models/Book').BookExpanded
+  const ffmetadata: Record<string, any> = {
+    title: book.title,
+    artist: book.authorName,
+    album_artist: book.authorName,
+    album: (book.title || '') + (book.subtitle ? `: ${book.subtitle}` : ''),
+    TIT3: book.subtitle, // mp3 only
+    genre: book.genres?.join('; '),
+    date: book.publishedYear,
+    comment: book.description,
+    description: book.description,
+    composer: (book.narrators || []).join(', '),
+    copyright: book.publisher,
+    publisher: book.publisher, // mp3 only
     TRACKTOTAL: `${audioFilesLength}`, // mp3 only
-    grouping: libraryItem.media.series?.map((s) => s.name + (s.bookSeries.sequence ? ` #${s.bookSeries.sequence}` : '')).join('; ')
+    grouping: book.series?.map((s) => s.name + (s.bookSeries.sequence ? ` #${s.bookSeries.sequence}` : '')).join('; ')
   }
   Object.keys(ffmetadata).forEach((key) => {
     if (!ffmetadata[key]) {
@@ -435,7 +444,7 @@ export { getFFMetadataObject }
 /**
  * Merges audio files into a single output file using FFmpeg.
  *
- * @param {import('../models/Book').AudioFileObject} audioTracks - The audio tracks to merge.
+ * @param {import('../models/Book').AudioFileObject[]} audioTracks - The audio tracks to merge.
  * @param {number} duration - The total duration of the audio tracks.
  * @param {string} itemCachePath - The path to the item cache.
  * @param {string} outputFilePath - The path to the output file.
@@ -444,7 +453,7 @@ export { getFFMetadataObject }
  * @param {import('../libs/fluentFfmpeg/index').FfmpegCommand} [ffmpeg=Ffmpeg()] - The FFmpeg instance to use for merging.
  * @returns {Promise<void>} A promise that resolves when the audio files are merged successfully.
  */
-async function mergeAudioFiles(audioTracks: import('../models/Book').AudioFileObject, duration: number, itemCachePath: string, outputFilePath: string, encodingOptions: import('../managers/AbMergeManager').AbMergeEncodeOptions, progressCB: Function = null, ffmpeg: import('../libs/fluentFfmpeg/index').FfmpegCommand = Ffmpeg()): Promise<void> {
+async function mergeAudioFiles(audioTracks: import('../models/Book').AudioFileObject[], duration: number, itemCachePath: string, outputFilePath: string, encodingOptions: import('../managers/AbMergeManager').AbMergeEncodeOptions, progressCB: ((percent: number) => void) | null = null, ffmpeg: import('../libs/fluentFfmpeg/index').FfmpegCommand = Ffmpeg()): Promise<void> {
   const audioBitrate = encodingOptions.bitrate || '128k'
   const audioCodec = encodingOptions.codec || 'aac'
   const audioChannels = encodingOptions.channels || 2
@@ -456,7 +465,7 @@ async function mergeAudioFiles(audioTracks: import('../models/Book').AudioFileOb
   const firstTrackIsM4b = audioTracks[0].metadata.ext.toLowerCase() === '.m4b'
   const isOneTrack = audioTracks.length === 1
 
-  let concatFilePath = null
+  let concatFilePath: string | null = null
   if (!isOneTrack) {
     concatFilePath = Path.join(itemCachePath, 'files.txt')
     if ((await writeConcatFile(audioTracks, concatFilePath)) == null) {
