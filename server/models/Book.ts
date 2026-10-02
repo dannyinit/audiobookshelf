@@ -5,6 +5,8 @@ import parseNameString = require('../utils/parsers/parseNameString')
 import htmlSanitizer = require('../utils/htmlSanitizer')
 import libraryItemsBookFilters = require('../utils/queries/libraryItemsBookFilters')
 import SocketAuthority = require('../SocketAuthority')
+import { Literal } from 'sequelize/types/utils'
+import { Literal } from 'sequelize/types/utils'
 
 interface EBookFileObject {
   ino: string
@@ -41,6 +43,10 @@ interface BookExpandedWithLibraryItemProperties {
 type BookExpandedWithLibraryItem = BookExpanded & BookExpandedWithLibraryItemProperties
 
 interface AudioFileObject {
+  contentUrl: string
+  startOffset: number
+  title: string
+  exclude: any
   index: number
   ino: string
   metadata: { filename: string; ext: string; path: string; relPath: string; size: number; mtimeMs: number; ctimeMs: number; birthtimeMs: number} 
@@ -73,6 +79,19 @@ interface AudioTrackProperties {
 type AudioTrack = AudioFileObject & AudioTrackProperties
 
 class Book extends Model {
+  libraryItem: any
+  getSeries(arg0: { joinTableAttributes: string[]; order: Literal[] }): import("./Series")[] | PromiseLike<import("./Series")[]> {
+    throw new Error('Method not implemented.')
+  }
+  getAuthors(arg0: { joinTableAttributes: string[]; order: Literal[] }): import("./Author")[] | PromiseLike<import("./Author")[]> {
+    throw new Error('Method not implemented.')
+  }
+  addSeries(newSeries: any, arg1: { through: { sequence: any } }) {
+    throw new Error('Method not implemented.')
+  }
+  addAuthor(newAuthor: any) {
+    throw new Error('Method not implemented.')
+  }
   /** @type {string} */
   declare id: string
   /** @type {string} */

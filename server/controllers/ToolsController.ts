@@ -15,6 +15,8 @@ interface RequestEntityObject {
 type RequestWithLibraryItem = RequestWithUser & RequestEntityObject
 
 class ToolsController {
+  audioMetadataManager: any
+  abMergeManager: any
   constructor() {}
 
   /**

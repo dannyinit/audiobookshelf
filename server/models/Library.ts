@@ -17,6 +17,9 @@ import Logger = require('../Logger')
  */
 
 class Library extends Model {
+  getLibraryFolders(): import("./LibraryFolder")[] | PromiseLike<import("./LibraryFolder")[] | undefined> | undefined {
+    throw new Error('Method not implemented.')
+  }
   /** @type {string} */
   declare id: string
   /** @type {string} */

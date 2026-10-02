@@ -8,6 +8,7 @@ import { isNullOrNaN } from '../utils'
 import TokenManager = require('../auth/TokenManager')
 
 class UserCache {
+  cache: LRUCache<{}, {}, unknown>
   constructor() {
     this.cache = new LRUCache({ max: 100 })
   }
@@ -63,6 +64,7 @@ interface AudioBookmarkObject {
 }
 
 interface ProgressUpdatePayload {
+  createdAt: Date
   libraryItemId: string
   episodeId?: string
   duration?: number
@@ -109,6 +111,7 @@ class User extends Model {
   declare updatedAt: Date
   /** @type {import('./MediaProgress')[]?} - Only included when extended */
   declare mediaProgresses: import('./MediaProgress')[] | null
+  isOldToken: any
 
   constructor(values, options) {
     super(values, options)

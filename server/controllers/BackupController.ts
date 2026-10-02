@@ -12,6 +12,7 @@ interface RequestUserObject {
 type RequestWithUser = Request & RequestUserObject
 
 class BackupController {
+  backupManager: any
   constructor() {}
 
   /**
@@ -152,6 +153,9 @@ class BackupController {
    */
   apply(req: RequestWithUser, res: Response) {
     this.backupManager.requestApplyBackup(this.apiCacheManager, req.backup, res)
+  }
+  apiCacheManager(apiCacheManager: any, backup: any, res: Response<any, Record<string, any>>) {
+    throw new Error('Method not implemented.')
   }
 
   /**

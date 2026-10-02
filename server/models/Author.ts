@@ -20,6 +20,8 @@ class Author extends Model {
   declare updatedAt: Date
   /** @type {Date} */
   declare createdAt: Date
+  books: any
+  bookAuthor: any
 
   constructor(values, options) {
     super(values, options)

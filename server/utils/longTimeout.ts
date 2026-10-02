@@ -2,6 +2,8 @@
  * Handle timeouts greater than 32-bit signed integer
  */
 class LongTimeout {
+  timer: null
+  timeout: number
   constructor() {
     this.timeout = 0
     this.timer = null

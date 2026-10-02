@@ -23,6 +23,10 @@ import { getRequestOrigin } from '../utils/requestUtils'
  * OpenID Connect authentication strategy
  */
 class OidcAuthStrategy {
+  openIdAuthSession: Map<any, any>
+  client: null
+  strategy: null
+  name: string
   constructor() {
     this.name = 'openid-client'
     this.strategy = null

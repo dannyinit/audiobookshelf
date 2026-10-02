@@ -1,6 +1,25 @@
 import AudioMetaTags = require('../objects/metadata/AudioMetaTags')
 
 class MediaProbeData {
+  discTotal: null
+  discNumber: null
+  trackTotal: null
+  trackNumber: null
+  audioMetaTags: null
+  chapters: never[]
+  sampleRate: null
+  channels: null
+  channelLayout: null
+  language: null
+  timeBase: null
+  codec: null
+  bitRate: null
+  videoStream: null
+  audioStream: null
+  size: null
+  duration: null
+  format: null
+  embeddedCoverArt: null
   constructor(probeData) {
     this.embeddedCoverArt = null
     this.format = null

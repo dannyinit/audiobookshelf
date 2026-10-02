@@ -5,6 +5,9 @@ import util = require('util')
 class Logger {
   /** @type {import('./managers/LogManager')} */
   logManager: import('./managers/LogManager')
+  socketListeners: never[]
+  logLevel: number
+  isDev: boolean
 
   constructor() {
     this.logManager = null

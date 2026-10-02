@@ -4,6 +4,7 @@ import { isValidASIN } from '../utils/index'
 
 class Audible {
   #responseTimeout = 10000
+  regionMap: { us: string; ca: string; uk: string; au: string; fr: string; de: string; jp: string; it: string; in: string; es: string }
 
   constructor() {
     this.regionMap = {

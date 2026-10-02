@@ -19,6 +19,8 @@ import Stream = require('../objects/Stream')
 class PlaybackSessionManager {
   /** @type {PlaybackSession[]} */
   sessions: PlaybackSession[]
+  oldPlaybackSessionMap: {}
+  StreamsPath: string
 
   constructor() {
     this.StreamsPath = Path.join(global.MetadataPath, 'streams')

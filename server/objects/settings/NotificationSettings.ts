@@ -3,6 +3,17 @@ import Notification = require('../Notification')
 import { isNullOrNaN } from '../../utils'
 
 class NotificationSettings {
+  notifications: never[]
+  appriseType: string
+  id: string
+  appriseApiUrl(appriseApiUrl: any, payload: any, arg2: { timeout: number }) {
+    throw new Error('Method not implemented.')
+  }
+  notificationDelay(arg0: () => void, notificationDelay: any) {
+    throw new Error('Method not implemented.')
+  }
+  maxNotificationQueue: any
+  maxFailedAttempts: any
   constructor(settings = null) {
     this.id = 'notification-settings'
     this.appriseType = 'api'

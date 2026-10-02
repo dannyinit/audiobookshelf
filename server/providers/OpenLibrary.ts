@@ -2,6 +2,7 @@ const axios = require('axios').default
 
 class OpenLibrary {
   #responseTimeout = 10000
+  baseUrl: string
 
   constructor() {
     this.baseUrl = 'https://openlibrary.org'

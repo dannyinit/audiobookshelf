@@ -1,6 +1,12 @@
-import { DataTypes, Model, Sequelize } from 'sequelize'
+import { DataTypes, Model, ModelCtor, Sequelize } from 'sequelize'
+import { Literal } from 'sequelize/types/utils'
 
 class Collection extends Model {
+  feeds: any
+  static books: any[]
+  getCollectionBooks(arg0: { include: { model: any; include: any }; order: string[][] }) {
+    throw new Error('Method not implemented.')
+  }
   /** @type {string} */
   declare id: string
   /** @type {string} */
@@ -212,6 +218,9 @@ class Collection extends Model {
       order: [Sequelize.literal('`collectionBook.order` ASC')]
     })
   }
+  getBooks(arg0: { include: ({ model: ModelCtor<Model<any, any>> } | { model: ModelCtor<Model<any, any>>; through: { attributes: string[] } })[]; order: Literal[] }): Promise<any[]> {
+    throw new Error('Method not implemented.')
+  }
 
   /**
    * Get toOldJSONExpanded, items filtered for user permissions
@@ -254,6 +263,9 @@ class Collection extends Model {
     }
 
     return collectionExpanded
+  }
+  getFeeds() {
+    throw new Error('Method not implemented.')
   }
 
   /**

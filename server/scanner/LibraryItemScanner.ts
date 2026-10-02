@@ -26,7 +26,10 @@ class LibraryItemScanner {
    * @param {{relPath:string, path:string}} [updateLibraryItemDetails] used by watcher when item folder was renamed
    * @returns {number} ScanResult
    */
-  async scanLibraryItem(libraryItemId: string, updateLibraryItemDetails: { relPath: string; path: string } = null): number {
+  async scanLibraryItem(libraryItemId: string, updateLibraryItemDetails: {
+    isFile: boolean
+    libraryFolderId: any relPath: string; path: string 
+} = null): number {
     // TODO: Add task manager
     const libraryItem = await Database.libraryItemModel.findByPk(libraryItemId)
     if (!libraryItem) {

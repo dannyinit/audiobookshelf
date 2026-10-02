@@ -24,6 +24,8 @@ class LogManager {
   dailyLogBuffer: LogObject[]
   /** @type {string[]} */
   dailyLogFiles: string[]
+  ScanLogPath: string
+  DailyLogPath: string
 
   constructor() {
     this.DailyLogPath = Path.posix.join(global.MetadataPath, 'logs', 'daily')

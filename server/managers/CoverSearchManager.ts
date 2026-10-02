@@ -9,6 +9,8 @@ import PodcastFinder = require('../finders/PodcastFinder')
 class CoverSearchManager {
   /** @type {Map<string, AbortController>} Map of requestId to AbortController */
   activeSearches: Map<string, AbortController>
+  maxListeners: number
+  providerTimeout: number
 
   constructor() {
     this.activeSearches = new Map()

@@ -11,6 +11,7 @@ import fileUtils = require('../utils/fileUtils')
 import StreamZip = require('../libs/nodeStreamZip')
 
 class ZippedAssetDownloader {
+  assetCache: {}
   constructor() {
     this.assetCache = {}
   }
@@ -123,6 +124,7 @@ class ZippedAssetDownloader {
 }
 
 class FFBinariesDownloader extends ZippedAssetDownloader {
+  platformSuffix: string | null
   constructor() {
     super()
     this.platformSuffix = this.getPlatformSuffix()
@@ -173,6 +175,7 @@ class FFBinariesDownloader extends ZippedAssetDownloader {
 }
 
 class NunicodeDownloader extends ZippedAssetDownloader {
+  platformSuffix: string | null
   constructor() {
     super()
     this.platformSuffix = this.getPlatformSuffix()
@@ -220,6 +223,14 @@ class NunicodeDownloader extends ZippedAssetDownloader {
 }
 
 class Binary {
+  exec: { (command: string): child_process.PromiseWithChild<{ stdout: string; stderr: string }>; (command: string, options: child_process.ExecOptionsWithBufferEncoding): child_process.PromiseWithChild<{ stdout: NonSharedBuffer; stderr: NonSharedBuffer }>; (command: string, options: child_process.ExecOptionsWithStringEncoding): child_process.PromiseWithChild<{ stdout: string; stderr: string }>; (command: string, options: child_process.ExecOptions | undefined | null): child_process.PromiseWithChild<{ stdout: string | NonSharedBuffer; stderr: string | NonSharedBuffer }> }
+  required: boolean
+  fileName: any
+  source: ZippedAssetDownloader
+  validVersions: any
+  envVariable: any
+  type: any
+  name: any
   constructor(name, type, envVariable, validVersions, source, required = true) {
     if (!name) throw new Error('Binary name is required')
     this.name = name
@@ -326,6 +337,10 @@ class BinaryManager {
     new Binary('ffprobe', 'executable', 'FFPROBE_PATH', ['5.1'], ffbinaries), // ffprobe executable
     new Binary('libnusqlite3', 'library', 'NUSQLITE3_PATH', ['1.2'], nunicode, false) // nunicode sqlite3 extension
   ]
+  initialized: boolean
+  altInstallDir: any
+  mainInstallDir: any
+  requiredBinaries: Binary[]
 
   constructor(requiredBinaries = this.defaultRequiredBinaries) {
     this.requiredBinaries = requiredBinaries

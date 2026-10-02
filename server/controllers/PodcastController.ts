@@ -32,6 +32,8 @@ interface RequestEntityObject {
 type RequestWithLibraryItem = RequestWithUser & RequestEntityObject
 
 class PodcastController {
+  podcastManager: any
+  cronManager: any
   /**
    * POST /api/podcasts
    * Create podcast

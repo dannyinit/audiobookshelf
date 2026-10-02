@@ -75,6 +75,12 @@ class LibraryItem extends Model {
   declare authorNamesFirstLast: string
   /** @type {string} */
   declare authorNamesLastFirst: string
+  mediaItemShare: any
+  numEpisodesIncomplete: any
+  rssFeed: any
+  series: any
+  collapsedSeries: any
+  recentEpisode: any
 
   constructor(values, options) {
     super(values, options)

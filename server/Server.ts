@@ -59,6 +59,22 @@ function getPreparedNextBasePath(nextApp) {
 }
 
 class Server {
+  server: null
+  publicRouter: PublicRouter
+  hlsRouter: HlsRouter
+  apiRouter: ApiRouter
+  binaryManager: BinaryManager
+  apiCacheManager: ApiCacheManager
+  cronManager: CronManager
+  audioMetadataManager: AudioMetadataMangaer
+  podcastManager: PodcastManager
+  playbackSessionManager: PlaybackSessionManager
+  abMergeManager: AbMergeManager
+  backupManager: BackupManager
+  emailManager: EmailManager
+  auth: Auth
+  Host: any
+  Port: any
   constructor(SOURCE, PORT, HOST, CONFIG_PATH, METADATA_PATH, ROUTER_BASE_PATH) {
     this.Port = PORT
     this.Host = HOST

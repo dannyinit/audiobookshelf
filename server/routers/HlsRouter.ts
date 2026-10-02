@@ -8,6 +8,9 @@ import fs = require('../libs/fsExtra')
 
 
 class HlsRouter {
+  router: any
+  playbackSessionManager: any
+  auth: any
   constructor(auth, playbackSessionManager) {
     this.auth = auth
     this.playbackSessionManager = playbackSessionManager

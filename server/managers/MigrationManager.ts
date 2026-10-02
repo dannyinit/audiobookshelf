@@ -8,6 +8,16 @@ import Logger = require('../Logger')
 
 class MigrationManager {
   static MIGRATIONS_META_TABLE = 'migrationsMeta'
+  umzug: null
+  serverVersion: null
+  databaseVersion: null
+  maxVersion: null
+  migrationsDir: null
+  initialized: boolean
+  migrationsSourceDir: string
+  configPath: string
+  isDatabaseNew: boolean
+  sequelize: Sequelize
 
   /**
    * @param {import('../Database').sequelize} sequelize

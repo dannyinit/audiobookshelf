@@ -3,6 +3,7 @@ import Logger = require('../Logger')
 import htmlSanitizer = require('../utils/htmlSanitizer')
 
 interface iTunesSearchParams {
+  lang: any
   term: string
   country: string
   media: string

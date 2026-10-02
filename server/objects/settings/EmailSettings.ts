@@ -13,6 +13,15 @@ import { areEquivalent, copyValue, isNullOrNaN } from '../../utils'
 class EmailSettings {
   /** @type {EreaderDeviceObject[]} */
   ereaderDevices: EreaderDeviceObject[]
+  testAddress: any
+  fromAddress: string | Address | undefined
+  pass: null
+  user: null
+  rejectUnauthorized: boolean
+  secure: boolean
+  port: number
+  host: null
+  id: string
 
   constructor(settings = null) {
     this.id = 'email-settings'

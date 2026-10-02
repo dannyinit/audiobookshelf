@@ -27,6 +27,8 @@ class PodcastManager {
   downloadQueue: PodcastEpisodeDownload[]
   /** @type {PodcastEpisodeDownload} */
   currentDownload: PodcastEpisodeDownload
+  MaxFailedEpisodeChecks: any
+  failedCheckMap: {}
 
   constructor() {
     this.downloadQueue = []

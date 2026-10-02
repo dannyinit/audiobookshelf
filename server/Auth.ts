@@ -18,6 +18,10 @@ import { escapeRegExp } from './utils'
 class Auth {
   /** @type {import('express-rate-limit').RateLimitRequestHandler} */
   authRateLimiter: import('express-rate-limit').RateLimitRequestHandler
+  oidcAuthStrategy: OidcAuthStrategy
+  localAuthStrategy: LocalAuthStrategy
+  tokenManager: TokenManager
+  ignorePatterns: RegExp[]
 
   constructor() {
     const escapedRouterBasePath = escapeRegExp(global.RouterBasePath)

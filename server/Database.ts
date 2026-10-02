@@ -17,6 +17,14 @@ class Database {
   notificationSettings: import('./objects/settings/NotificationSettings')
   /** @type {import('./objects/settings/EmailSettings')} */
   emailSettings: import('./objects/settings/EmailSettings')
+  supportsUnicodeFoldings: boolean
+  supportsUnaccent: boolean
+  libraryFilterData: {}
+  settings: never[]
+  hasRootUser: boolean
+  isNew: boolean
+  dbPath: null
+  sequelize: null
 
   constructor() {
     this.sequelize = null
@@ -946,6 +954,10 @@ WHERE EXISTS (
   }
 
   TextSearchQuery = class {
+    hasAccents: boolean
+    query: any
+    supportsUnaccent: any
+    sequelize: any
     constructor(sequelize, supportsUnaccent, query) {
       this.sequelize = sequelize
       this.supportsUnaccent = supportsUnaccent

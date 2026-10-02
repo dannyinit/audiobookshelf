@@ -10,6 +10,7 @@ interface RequestUserObject {
 type RequestWithUser = Request & RequestUserObject
 
 class EmailController {
+  emailManager: any
   constructor() {}
 
   /**

@@ -42,6 +42,8 @@ class Task {
   startedAt: number
   /** @type {number} */
   finishedAt: number
+  task: any
+  failedAt: number
 
   constructor() {
     this.id = null

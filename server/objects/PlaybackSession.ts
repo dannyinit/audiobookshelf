@@ -4,6 +4,38 @@ const serverVersion = require('../../package.json').version
 import DeviceInfo = require('./DeviceInfo')
 
 class PlaybackSession {
+  updatedAt: number
+  stream: null
+  userId: any
+  id: string
+  lastSave: number
+  startedAt: null
+  startTime: null
+  timeListening: null
+  dayOfWeek: null
+  date: null
+  serverVersion: null
+  deviceInfo: null
+  mediaPlayer: null
+  displayAuthor: null
+  chapters: null
+  mediaMetadata: null
+  mediaType: null
+  episodeId: null
+  bookId: null
+  libraryId: null
+  libraryItemId(libraryItemId: any, arg1: { attributes: string[] }) {
+    throw new Error('Method not implemented.')
+  }
+  coverPath: any
+  coverAspectRatio: any
+  shareSessionId: any
+  playMethod: number
+  audioTracks: any
+  displayTitle: any
+  currentTime: number
+  duration: number
+  mediaItemShareId: any
   constructor(session) {
     this.id = null
     this.userId = null

@@ -19,6 +19,8 @@ interface RequestEntityObject {
 type UserControllerRequest = RequestWithUser & RequestEntityObject
 
 class UserController {
+  playbackSessionManager: any
+  auth: any
   constructor() {}
 
   /**
@@ -459,6 +461,9 @@ class UserController {
 
     res.json(payload)
   }
+  getUserListeningSessionsHelper(id: string) {
+    throw new Error('Method not implemented.')
+  }
 
   /**
    * GET: /api/users/:id/listening-stats
@@ -471,6 +476,9 @@ class UserController {
   async getListeningStats(req: UserControllerRequest, res: Response) {
     var listeningStats = await this.getUserListeningStatsHelpers(req.params.id)
     res.json(listeningStats)
+  }
+  getUserListeningStatsHelpers(id: string) {
+    throw new Error('Method not implemented.')
   }
 
   /**

@@ -289,6 +289,10 @@ export const timestampToSeconds = (timestamp: string): number => {
 }
 
 class ValidationError extends Error {
+  paramName: string
+  status(status: any) {
+    throw new Error('Method not implemented.')
+  }
   constructor(paramName, message, status = 400) {
     super(`Query parameter "${paramName}" ${message}`)
     this.name = 'ValidationError'

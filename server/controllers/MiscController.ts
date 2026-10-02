@@ -24,6 +24,9 @@ interface RequestUserObject {
 type RequestWithUser = Request & RequestUserObject
 
 class MiscController {
+  auth: any
+  backupManager: any
+  audioMetadataManager: any
   constructor() {}
 
   /**

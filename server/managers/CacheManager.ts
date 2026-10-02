@@ -12,6 +12,10 @@ function isValidCacheDimension(dimension) {
 }
 
 class CacheManager {
+  ItemCachePath: null
+  ImageCachePath: null
+  CoverCachePath: null
+  CachePath: null
   constructor() {
     this.CachePath = null
     this.CoverCachePath = null

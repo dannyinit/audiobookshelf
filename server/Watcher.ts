@@ -31,6 +31,9 @@ class FolderWatcher extends EventEmitter {
   declare pendingDirsToRemoveFromIgnore: string[]
   /** @type {NodeJS.Timeout} */
   declare removeFromIgnoreTimer: NodeJS.Timeout
+  disabled: boolean
+  filesBeingAdded: Set<unknown>
+  pendingDelay: number
 
   constructor() {
     super()

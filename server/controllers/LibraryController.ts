@@ -45,6 +45,8 @@ interface RequestEntityObject {
 type LibraryControllerRequest = RequestWithUser & RequestEntityObject
 
 class LibraryController {
+  cronManager: any
+  podcastManager: any
   constructor() {}
 
   /**
@@ -520,6 +522,15 @@ class LibraryController {
       await Database.resetLibraryIssuesFilterData(req.library.id)
     }
     return res.json(req.library.toOldJSON())
+  }
+  checkRemoveEmptySeries(seriesIds: any[]) {
+    throw new Error('Method not implemented.')
+  }
+  checkRemoveAuthorsWithNoBooks(authorIds: any[]) {
+    throw new Error('Method not implemented.')
+  }
+  handleDeleteLibraryItem(id: any, mediaItemIds: any, id1: string) {
+    throw new Error('Method not implemented.')
   }
 
   /**

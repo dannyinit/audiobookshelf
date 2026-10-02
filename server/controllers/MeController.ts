@@ -15,6 +15,7 @@ interface RequestUserObject {
 type RequestWithUser = Request & RequestUserObject
 
 class MeController {
+  auth: any
   constructor() {}
 
   /**
@@ -172,6 +173,9 @@ class MeController {
 
     res.json(payload)
   }
+  getUserListeningSessionsHelper(id: string) {
+    throw new Error('Method not implemented.')
+  }
 
   /**
    * GET: /api/me/item/listening-sessions/:libraryItemId/:episodeId
@@ -215,6 +219,9 @@ class MeController {
 
     res.json(payload)
   }
+  getUserItemListeningSessionsHelper(id: string, mediaItemId: any) {
+    throw new Error('Method not implemented.')
+  }
 
   /**
    * GET: /api/me/listening-stats
@@ -227,6 +234,9 @@ class MeController {
   async getListeningStats(req: RequestWithUser, res: Response) {
     const listeningStats = await this.getUserListeningStatsHelpers(req.user.id)
     res.json(listeningStats)
+  }
+  getUserListeningStatsHelpers(id: string) {
+    throw new Error('Method not implemented.')
   }
 
   /**

@@ -8,6 +8,8 @@ class ApiCacheManager {
   highChurnModels = new Set(['session', 'mediaProgress', 'playbackSession', 'device'])
   modelsInvalidatingPersonalized = new Set(['mediaProgress'])
   modelsInvalidatingMe = new Set(['session', 'mediaProgress', 'playbackSession', 'device'])
+  ttlOptions: { ttl: number }
+  cache: LRUCache<{}, any, unknown>
 
   constructor(cache = new LRUCache(this.defaultCacheOptions), ttlOptions = this.defaultTtlOptions) {
     this.cache = cache

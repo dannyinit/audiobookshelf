@@ -1,4 +1,12 @@
 class AudioTrack {
+  metadata: null
+  codec: null
+  mimeType: null
+  contentUrl: null
+  title: null
+  duration: null
+  startOffset: null
+  index: null
   constructor() {
     this.index = null
     this.startOffset = null

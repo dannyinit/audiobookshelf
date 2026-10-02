@@ -2,6 +2,7 @@ import Logger = require('../Logger')
 import iTunes = require('../providers/iTunes')
 
 class PodcastFinder {
+  iTunesApi: iTunes
   constructor() {
     this.iTunesApi = new iTunes()
   }

@@ -15,6 +15,24 @@ import AudioTrack = require('./files/AudioTrack')
 class Stream extends EventEmitter {
   /** @type {import('../models/LibraryItem')} */
   declare libraryItem: import('../models/LibraryItem')
+  furthestSegmentCreated: number
+  segmentsCreated: Set<unknown>
+  isTranscodeComplete: boolean
+  isClientInitialized: boolean
+  isResetting: boolean
+  loop: null
+  ffmpeg: null
+  startTime: any
+  finalPlaylistPath: string
+  playlistPath: string
+  concatFilesPath: string
+  streamPath: string
+  maxSeekBackTime: number
+  segmentLength: number
+  transcodeOptions: {}
+  episodeId: any
+  user: any
+  id: any
 
   constructor(sessionId, streamPath, user, libraryItem, episodeId, startTime, transcodeOptions = {}) {
     super()

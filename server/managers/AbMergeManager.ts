@@ -19,6 +19,7 @@ import TrackProgressMonitor = require('../objects/TrackProgressMonitor')
 class AbMergeManager {
   /** @type {Task[]} */
   pendingTasks: Task[]
+  itemsCacheDir: string
 
   constructor() {
     this.itemsCacheDir = Path.join(global.MetadataPath, 'cache/items')

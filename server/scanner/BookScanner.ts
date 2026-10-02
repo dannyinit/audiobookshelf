@@ -710,6 +710,12 @@ class BookScanner {
   }
 
   static BookMetadataSourceHandler = class {
+    existingLibraryItemId: string
+    libraryScan: LibraryScan
+    libraryItemData: import("/home/danny/Code/compx574/audiobookshelf/server/scanner/LibraryItemScanData")
+    ebookFileScanData: any
+    audioFiles: any[]
+    bookMetadata: object
     /**
      *
      * @param {Object} bookMetadata

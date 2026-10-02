@@ -16,6 +16,8 @@ import { LogLevel } from './utils/constants'
 class SocketAuthority {
   /** @type {Object.<string, SocketClient>} */
   clients: { [s: string]: SocketClient }
+  socketIoServers: never[]
+  Server: null
 
   constructor() {
     this.Server = null

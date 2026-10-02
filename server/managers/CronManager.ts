@@ -11,6 +11,9 @@ class CronManager {
   podcastManager: import('./PodcastManager')
   /** @type {import('./PlaybackSessionManager')} */
   playbackSessionManager: import('./PlaybackSessionManager')
+  podcastCronExpressionsExecuting: never[]
+  podcastCrons: never[]
+  libraryScanCrons: never[]
 
   constructor(podcastManager, playbackSessionManager) {
     this.podcastManager = podcastManager

@@ -6,6 +6,7 @@ import Audnexus = require('../providers/Audnexus')
 import { downloadImageFile } from '../utils/fileUtils'
 
 class AuthorFinder {
+  audnexus: Audnexus
   constructor() {
     this.audnexus = new Audnexus()
   }

@@ -19,6 +19,7 @@ interface RequestUserObject {
 type RequestWithUser = Request & RequestUserObject
 
 class ShareController {
+  playbackSessionManager: any
   constructor() {}
 
   /**

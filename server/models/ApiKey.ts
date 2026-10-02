@@ -19,6 +19,7 @@ import Logger = require('../Logger')
  */
 
 class ApiKeyCache {
+  cache: LRUCache<{}, {}, unknown>
   constructor() {
     this.cache = new LRUCache({ max: 100 })
   }

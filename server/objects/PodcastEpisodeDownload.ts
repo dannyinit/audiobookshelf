@@ -8,6 +8,17 @@ class PodcastEpisodeDownload {
   rssPodcastEpisode: import('../utils/podcastUtils').RssPodcastEpisode
   /** @type {import('../models/LibraryItem')} */
   libraryItem: import('../models/LibraryItem')
+  isAutoDownload: any
+  libraryId: any
+  url: any
+  finishedAt: null
+  createdAt: null
+  startedAt: null
+  targetFilename: null
+  appendRandomId: boolean
+  failed: boolean
+  isFinished: boolean
+  id: null
 
   constructor() {
     this.id = null

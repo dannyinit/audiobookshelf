@@ -18,6 +18,10 @@ import CacheManager = require('./CacheManager')
 import NotificationManager = require('./NotificationManager')
 
 class BackupManager {
+  backups: never[]
+  scheduleTask: null
+  AuthorsMetadataPath: string
+  ItemsMetadataPath: string
   constructor() {
     this.ItemsMetadataPath = Path.join(global.MetadataPath, 'items')
     this.AuthorsMetadataPath = Path.join(global.MetadataPath, 'authors')

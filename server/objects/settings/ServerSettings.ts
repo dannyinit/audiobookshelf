@@ -32,6 +32,56 @@ class ServerSettings {
   static patchableSettingsKeys = PATCHABLE_SETTINGS_KEYS
   /** @type {string} JWT secret key ONLY used when JWT_SECRET_KEY is not set in ENV */
   tokenSecret: string
+  buildNumber: number
+  version: string
+  authActiveAuthMethods: any
+  language: any
+  scannerDisableWatcher: any
+  authOpenIDMobileRedirectURIs: any
+  authOpenIDAdvancedPermsClaim: any
+  authOpenIDGroupClaim: any
+  backupPath: string
+  sortingPrefixes: any
+  authOpenIDSubfolderForRedirectURLs: undefined
+  authOpenIDMatchExistingBy: null
+  authOpenIDAutoRegister: boolean
+  authOpenIDAutoLaunch: boolean
+  authOpenIDButtonText: string
+  authOpenIDTokenSigningAlgorithm: string
+  authOpenIDClientSecret: null
+  authOpenIDClientID: null
+  authOpenIDLogoutURL: null
+  authOpenIDJwksURL: null
+  authOpenIDUserInfoURL: null
+  authOpenIDTokenURL: null
+  authOpenIDAuthorizationURL: null
+  authOpenIDIssuerURL: null
+  authLoginCustomMessage: null
+  logLevel: number
+  allowedOrigins: never[]
+  timeFormat: string
+  dateFormat: string
+  chromecastEnabled: boolean
+  sortingIgnorePrefix: boolean
+  podcastEpisodeSchedule: string
+  bookshelfView: number
+  homeBookshelfView: number
+  loggerScannerLogsToKeep: number
+  loggerDailyLogsToKeep: number
+  maxBackupSize: number
+  backupsToKeep: number
+  backupSchedule: boolean
+  allowIframe: boolean
+  rateLimitLoginWindow: number
+  rateLimitLoginRequests: number
+  metadataFileFormat: string
+  storeMetadataWithItem: boolean
+  storeCoverWithItem: boolean
+  scannerPreferMatchedMetadata: boolean
+  scannerCoverProvider: string
+  scannerFindCovers: boolean
+  scannerParseSubtitle: boolean
+  id: string
 
   constructor(settings) {
     this.id = 'server-settings'

@@ -1,4 +1,15 @@
 class TrackProgressMonitor {
+  currentTrackProgress: number
+  allTracksFinished: boolean
+  numTracks: any
+  currentTrackPercentage: number
+  cummulativeProgress: number
+  currentTrackIndex: number
+  trackFinishedCallback: TrackFinishedCallback
+  progressCallback: ProgressCallback
+  trackStartedCallback: TrackStartedCallback
+  totalDuration: number
+  trackDurations: number[]
   /**
    * @callback TrackStartedCallback
    * @param {number} trackIndex - The index of the track that started.

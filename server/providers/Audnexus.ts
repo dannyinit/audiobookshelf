@@ -14,6 +14,8 @@ import { isValidASIN } from '../utils/index'
 
 class Audnexus {
   static _instance = null
+  limiter: <Argument extends readonly unknown[], ReturnValue>(function_: (...arguments: Argument) => ReturnValue) => Throttle.ThrottledFunction<Argument, ReturnValue>
+  baseUrl: string
 
   constructor() {
     // ensures Audnexus class is singleton
@@ -43,7 +45,9 @@ class Audnexus {
    * @param {string} region
    * @returns {Promise<{asin:string, name:string}[]>}
    */
-  authorASINsRequest(name: string, region: string): Promise<{ asin: string; name: string }[]> {
+  authorASINsRequest(name: string, region: string): Promise<{
+    levenshteinDistance: any asin: string; name: string 
+}[]> {
     const searchParams = new URLSearchParams()
     searchParams.set('name', name)
 

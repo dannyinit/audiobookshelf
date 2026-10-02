@@ -53,6 +53,8 @@ class ApiRouter {
   cronManager: import('../managers/CronManager')
   /** @type {import('../managers/EmailManager')} */
   emailManager: import('../managers/EmailManager')
+  router: any
+  apiCacheManager: any
 
   constructor(Server) {
     this.auth = Server.auth

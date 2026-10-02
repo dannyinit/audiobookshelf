@@ -12,6 +12,16 @@ import htmlSanitizer = require('../utils/htmlSanitizer')
 
 class BookFinder {
   #providerResponseTimeout = 10000
+  providers: any
+  verbose: boolean
+  customProviderAdapter: CustomProviderAdapter
+  audiobookCovers: AudiobookCovers
+  fantLab: FantLab
+  audnexus: Audnexus
+  iTunesApi: iTunes
+  audible: Audible
+  googleBooks: GoogleBooks
+  openLibrary: OpenLibrary
 
   constructor() {
     this.openLibrary = new OpenLibrary()
@@ -214,6 +224,11 @@ class BookFinder {
   }
 
   static TitleCandidates = class {
+    currentPosition: number
+    positions: {}
+    priorities: {}
+    cleanAuthor: any
+    candidates: Set<unknown>
     constructor(cleanAuthor) {
       this.candidates = new Set()
       this.cleanAuthor = cleanAuthor
@@ -298,6 +313,9 @@ class BookFinder {
   }
 
   static AuthorCandidates = class {
+    cleanAuthor: any
+    candidates: Set<unknown>
+    audnexus: any
     constructor(cleanAuthor, audnexus) {
       this.audnexus = audnexus
       this.candidates = new Set()

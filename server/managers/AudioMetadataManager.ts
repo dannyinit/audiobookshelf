@@ -14,6 +14,10 @@ import fileUtils = require('../utils/fileUtils')
  */
 
 class AudioMetadataMangaer {
+  tasksQueued: never[]
+  tasksRunning: never[]
+  MAX_CONCURRENT_TASKS: number
+  itemsCacheDir: string
   constructor() {
     this.itemsCacheDir = Path.join(global.MetadataPath, 'cache/items')
 

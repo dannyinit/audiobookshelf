@@ -8,6 +8,14 @@ class ScanLogger {
   authorsNumBooksChangedIds: Set<string>
   /** @type {string[]} */
   seriesRemovedFromBooks: string[]
+  verbose: boolean
+  logs: never[]
+  elapsed: null
+  finishedAt: null
+  startedAt: null
+  name: null
+  type: null
+  id: null
 
   constructor() {
     this.id = null

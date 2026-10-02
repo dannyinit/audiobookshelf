@@ -5,6 +5,8 @@ import Database = require('../Database')
 import { notificationData } from '../utils/notifications'
 
 class NotificationManager {
+  notificationQueue: never[]
+  sendingNotification: boolean
   constructor() {
     this.sendingNotification = false
     this.notificationQueue = []

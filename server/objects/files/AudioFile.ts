@@ -7,6 +7,27 @@ class AudioFile {
   metadata: FileMetadata
   /** @type {AudioMetaTags} */
   metaTags: AudioMetaTags
+  index: number
+  chapters: any
+  error: null
+  exclude: boolean
+  manuallyVerified: boolean
+  embeddedCoverArt: null
+  channelLayout: null
+  channels: null
+  timeBase: null
+  codec: null
+  language: null
+  bitRate: null
+  duration: null
+  format: null
+  discNumFromFilename: null
+  trackNumFromFilename: null
+  discNumFromMeta: null
+  trackNumFromMeta: null
+  updatedAt: null
+  addedAt: null
+  ino: null
 
   constructor(data) {
     this.index = null

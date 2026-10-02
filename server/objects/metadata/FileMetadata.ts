@@ -1,4 +1,13 @@
 class FileMetadata {
+  ext: string
+  relPath: string
+  path: string
+  filename: string
+  wasModified: boolean
+  birthtimeMs: null
+  ctimeMs: null
+  mtimeMs: null
+  size: null
   constructor(metadata) {
     this.filename = null
     this.ext = null
