@@ -1,13 +1,35 @@
 
 
 // https://github.com/RateGravity/parse-full-name/blob/master/index.js
-export = (nameToParse, partToReturn, fixCase, stopOnError, useLongLists) => {
 
-  var i, j, k, l, m, n, part, comma, titleList, suffixList, prefixList, regex,
-    partToCheck, partFound, partsFoundCount, firstComma, remainingCommas,
-    nameParts = [], nameCommas = [null], partsFound = [],
+interface ParsedName {
+  title: string
+  first: string
+  middle: string
+  last: string
+  nick: string
+  suffix: string
+  error: string[]
+}
+
+type NamePart = keyof ParsedName
+
+/**
+ * @param nameToParse
+ * @param partToReturn 'all' (default) returns the parsed name object, otherwise a single part
+ * @param fixCase true/1 fix case, false/0 don't, otherwise fix only if input is all upper or lowercase
+ * @param stopOnError true/1 throws on parse errors instead of collecting them in `error`
+ * @param useLongLists true/1 uses the long title/suffix/prefix lists
+ */
+function parseFullName(nameToParse: unknown, partToReturn?: 'all', fixCase?: any, stopOnError?: any, useLongLists?: any): ParsedName
+function parseFullName(nameToParse: unknown, partToReturn?: string, fixCase?: any, stopOnError?: any, useLongLists?: any): ParsedName | ParsedName[NamePart]
+function parseFullName(nameToParse: any, partToReturn?: any, fixCase?: any, stopOnError?: any, useLongLists?: any): ParsedName | ParsedName[NamePart] {
+
+  var i: number, j: number, k: number, l: number, m: number, n: string[], part: string, comma: string | null, titleList: string[], suffixList: string[], prefixList: string[], regex: RegExp,
+    partToCheck: string, partFound: RegExpMatchArray | null, partsFoundCount: number, firstComma: number, remainingCommas: number,
+    nameParts: string[] = [], nameCommas: (string | null)[] = [null], partsFound: string[] = [],
     conjunctionList = ['&', 'and', 'et', 'e', 'of', 'the', 'und', 'y'],
-    parsedName = {
+    parsedName: ParsedName = {
       title: '', first: '', middle: '', last: '', nick: '', suffix: '', error: []
     };
 
@@ -27,7 +49,7 @@ export = (nameToParse, partToReturn, fixCase, stopOnError, useLongLists) => {
   useLongLists = useLongLists && useLongLists === 1 ? 1 : 0; // 0 = short lists
 
   // If stopOnError = 1, throw error, otherwise return error messages in array
-  function handleError(errorMessage) {
+  function handleError(errorMessage: string) {
     if (stopOnError) {
       throw 'Error: ' + errorMessage;
     } else {
@@ -36,15 +58,15 @@ export = (nameToParse, partToReturn, fixCase, stopOnError, useLongLists) => {
   }
 
   // If fixCase = 1, fix case of parsedName parts before returning
-  function fixParsedNameCase(fixedCaseName, fixCaseNow) {
+  function fixParsedNameCase(fixedCaseName: ParsedName, fixCaseNow: number): ParsedName {
     var forceCaseList = ['e', 'y', 'av', 'af', 'da', 'dal', 'de', 'del', 'der', 'di',
       'la', 'le', 'van', 'der', 'den', 'vel', 'von', 'II', 'III', 'IV', 'J.D.', 'LL.M.',
       'M.D.', 'D.O.', 'D.C.', 'Ph.D.'];
     var forceCaseListIndex;
-    var namePartLabels = [];
-    var namePartWords;
+    var namePartLabels: NamePart[] = [];
+    var namePartWords: string[];
     if (fixCaseNow) {
-      namePartLabels = Object.keys(parsedName)
+      namePartLabels = (Object.keys(parsedName) as NamePart[])
         .filter(function (v) { return v !== 'error'; });
       for (i = 0, l = namePartLabels.length; i < l; i++) {
         if (fixedCaseName[namePartLabels[i]]) {
@@ -81,7 +103,7 @@ export = (nameToParse, partToReturn, fixCase, stopOnError, useLongLists) => {
                 namePartWords[j].slice(1).toLowerCase();
             }
           }
-          fixedCaseName[namePartLabels[i]] = namePartWords.join(' ');
+          ;(fixedCaseName as unknown as Record<string, string>)[namePartLabels[i]] = namePartWords.join(' ');
         }
       }
     }
@@ -92,7 +114,7 @@ export = (nameToParse, partToReturn, fixCase, stopOnError, useLongLists) => {
   if (!nameToParse || typeof nameToParse !== 'string') {
     handleError('No input');
     parsedName = fixParsedNameCase(parsedName, fixCase);
-    return partToReturn === 'all' ? parsedName : parsedName[partToReturn];
+    return partToReturn === 'all' ? parsedName : parsedName[partToReturn as NamePart];
   } else {
     nameToParse = nameToParse.trim();
   }
@@ -188,7 +210,7 @@ export = (nameToParse, partToReturn, fixCase, stopOnError, useLongLists) => {
   }
   if (!nameToParse.trim().length) {
     parsedName = fixParsedNameCase(parsedName, fixCase);
-    return partToReturn === 'all' ? parsedName : parsedName[partToReturn];
+    return partToReturn === 'all' ? parsedName : parsedName[partToReturn as NamePart];
   }
 
   // Split remaining nameToParse into parts, remove and store preceding commas
@@ -230,7 +252,7 @@ export = (nameToParse, partToReturn, fixCase, stopOnError, useLongLists) => {
   }
   if (!nameParts.length) {
     parsedName = fixParsedNameCase(parsedName, fixCase);
-    return partToReturn === 'all' ? parsedName : parsedName[partToReturn];
+    return partToReturn === 'all' ? parsedName : parsedName[partToReturn as NamePart];
   }
 
   // Title: remove and store matching parts as titles
@@ -260,7 +282,7 @@ export = (nameToParse, partToReturn, fixCase, stopOnError, useLongLists) => {
   }
   if (!nameParts.length) {
     parsedName = fixParsedNameCase(parsedName, fixCase);
-    return partToReturn === 'all' ? parsedName : parsedName[partToReturn];
+    return partToReturn === 'all' ? parsedName : parsedName[partToReturn as NamePart];
   }
 
   // Join name prefixes to following names
@@ -321,18 +343,18 @@ export = (nameToParse, partToReturn, fixCase, stopOnError, useLongLists) => {
     }
   } else {
     // Remove and store last part as last name
-    parsedName.last = nameParts.pop();
+    parsedName.last = nameParts.pop()!;
   }
   if (!nameParts.length) {
     parsedName = fixParsedNameCase(parsedName, fixCase);
-    return partToReturn === 'all' ? parsedName : parsedName[partToReturn];
+    return partToReturn === 'all' ? parsedName : parsedName[partToReturn as NamePart];
   }
 
   // First name: remove and store first part as first name
-  parsedName.first = nameParts.shift();
+  parsedName.first = nameParts.shift()!;
   if (!nameParts.length) {
     parsedName = fixParsedNameCase(parsedName, fixCase);
-    return partToReturn === 'all' ? parsedName : parsedName[partToReturn];
+    return partToReturn === 'all' ? parsedName : parsedName[partToReturn as NamePart];
   }
 
   // Middle name: store all remaining parts as middle name
@@ -342,5 +364,7 @@ export = (nameToParse, partToReturn, fixCase, stopOnError, useLongLists) => {
   parsedName.middle = nameParts.join(' ');
 
   parsedName = fixParsedNameCase(parsedName, fixCase);
-  return partToReturn === 'all' ? parsedName : parsedName[partToReturn];
-};
+  return partToReturn === 'all' ? parsedName : parsedName[partToReturn as NamePart];
+}
+
+export = parseFullName

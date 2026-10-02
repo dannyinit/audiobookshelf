@@ -35,7 +35,7 @@ export { extractCoverImage }
  * @param {import('../../models/Book').EBookFileObject} ebookFile
  * @returns {Promise<import('./parseEbookMetadata').EBookFileScanData>}
  */
-async function parse(ebookFile: import('../../models/Book').EBookFileObject): Promise<import('./parseEbookMetadata').EBookFileScanData> {
+async function parse(ebookFile: import('../../models/Book').EBookFileObject): Promise<import('./parseEbookMetadata').EBookFileScanData | null> {
   const comicPath = ebookFile.metadata.path
   Logger.debug(`[parseComicMetadata] Parsing comic metadata at "${comicPath}"`)
   let archive = null
@@ -43,9 +43,10 @@ async function parse(ebookFile: import('../../models/Book').EBookFileObject): Pr
     archive = createComicBookExtractor(comicPath)
     await archive.open()
 
-    const filePaths = await archive.getFilePaths().catch((error) => {
+    // A failure here leaves filePaths undefined, which throws below and is handled by the catch
+    const filePaths = (await archive.getFilePaths().catch((error) => {
       Logger.error(`[parseComicMetadata] Failed to get file paths from comic at "${comicPath}"`, error)
-    })
+    }))!
 
     // Sort the file paths in a natural order to get the first image
     filePaths.sort((a, b) => {
@@ -68,7 +69,7 @@ async function parse(ebookFile: import('../../models/Book').EBookFileObject): Pr
       }
     }
 
-    const payload = {
+    const payload: import('./parseEbookMetadata').EBookFileScanData = {
       path: comicPath,
       ebookFormat: ebookFile.ebookFormat,
       metadata

@@ -6,7 +6,7 @@
  * @param {Object} comicInfoJson 
  * @returns {import('../../scanner/BookScanner').BookMetadataObject}
  */
-export const parse = (comicInfoJson) => {
+export const parse = (comicInfoJson: Record<string, any>) => {
   if (!comicInfoJson?.ComicInfo) return null
 
   const ComicSeries = comicInfoJson.ComicInfo.Series?.[0]?.trim() || null

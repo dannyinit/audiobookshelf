@@ -31,7 +31,7 @@ async function extractFileFromEpub(epubPath: string, filepath: string): Promise<
  * @param {string} xmlFilepath
  * @returns {Promise<Object>}
  */
-async function extractXmlToJson(epubPath: string, xmlFilepath: string): Promise<Record<string, any>> {
+async function extractXmlToJson(epubPath: string, xmlFilepath: string): Promise<Record<string, any> | null> {
   const filedata = await extractFileFromEpub(epubPath, xmlFilepath)
   if (!filedata) return null
   return xmlToJSON(filedata)
@@ -70,7 +70,7 @@ export { extractCoverImage }
  * @param {import('../../models/Book').EBookFileObject} ebookFile
  * @returns {Promise<import('./parseEbookMetadata').EBookFileScanData>}
  */
-async function parse(ebookFile: import('../../models/Book').EBookFileObject): Promise<import('./parseEbookMetadata').EBookFileScanData> {
+async function parse(ebookFile: import('../../models/Book').EBookFileObject): Promise<import('./parseEbookMetadata').EBookFileScanData | null> {
   const epubPath = ebookFile.metadata.path
   Logger.debug(`Parsing metadata from epub at "${epubPath}"`)
   // Entrypoint of the epub that contains the filepath to the package document (opf file)
@@ -99,7 +99,7 @@ async function parse(ebookFile: import('../../models/Book').EBookFileObject): Pr
     return null
   }
 
-  const payload = {
+  const payload: import('./parseEbookMetadata').EBookFileScanData = {
     path: epubPath,
     ebookFormat: 'epub',
     metadata: opfMetadata
@@ -113,17 +113,17 @@ async function parse(ebookFile: import('../../models/Book').EBookFileObject): Pr
   if (Array.isArray(packageMetadata)) {
     packageMetadata = packageMetadata[0]
   }
-  const metaCoverId = packageMetadata?.meta?.find?.((meta) => meta.$?.name === 'cover')?.$?.content
+  const metaCoverId = packageMetadata?.meta?.find?.((meta: Record<string, any>) => meta.$?.name === 'cover')?.$?.content
 
   let manifestFirstImage = null
   if (metaCoverId) {
-    manifestFirstImage = packageJson.package?.manifest?.[0]?.item?.find((item) => item.$?.id === metaCoverId)
+    manifestFirstImage = packageJson.package?.manifest?.[0]?.item?.find((item: Record<string, any>) => item.$?.id === metaCoverId)
   }
   if (!manifestFirstImage) {
-    manifestFirstImage = packageJson.package?.manifest?.[0]?.item?.find((item) => item.$?.['properties']?.split(' ')?.includes('cover-image'))
+    manifestFirstImage = packageJson.package?.manifest?.[0]?.item?.find((item: Record<string, any>) => item.$?.['properties']?.split(' ')?.includes('cover-image'))
   }
   if (!manifestFirstImage) {
-    manifestFirstImage = packageJson.package?.manifest?.[0]?.item?.find((item) => item.$?.['media-type']?.startsWith('image/'))
+    manifestFirstImage = packageJson.package?.manifest?.[0]?.item?.find((item: Record<string, any>) => item.$?.['media-type']?.startsWith('image/'))
   }
 
   let coverImagePath = manifestFirstImage?.$?.href

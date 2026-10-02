@@ -1040,22 +1040,22 @@ namespace bookScanner {
   export interface BookMetadataObject {
     title: string
     titleIgnorePrefix: string
-    subtitle: string
-    publishedYear: string
-    publisher: string
-    description: string
-    isbn: string
-    asin: string
-    language: string
+    subtitle: string | null
+    publishedYear: string | null
+    publisher: string | null
+    description: string | null
+    isbn: string | null
+    asin: string | null
+    language: string | null
     narrators: string[]
     genres: string[]
     tags: string[]
     authors: string[]
-    series: { name: string; sequence: string }[]
+    series: { name: string; sequence: string | null }[]
     chapters: { id: number; start: number; end: number; title: string }[]
     explicit: boolean
     abridged: boolean
-    coverPath: string
+    coverPath: string | null
   }
 }
 

@@ -1,7 +1,25 @@
-function parseNfoMetadata(nfoText) {
+interface NfoMetadata {
+  title?: string
+  subtitle?: string
+  authors?: string[]
+  narrators?: string[]
+  series?: string
+  sequence?: string
+  genres?: string[]
+  tags?: string[]
+  publishedYear?: string
+  abridged?: boolean
+  publisher?: string
+  asin?: string
+  isbn?: string
+  language?: string
+  description?: string
+}
+
+function parseNfoMetadata(nfoText: string): NfoMetadata | null {
   if (!nfoText) return null
   const lines = nfoText.split(/\r?\n/)
-  const metadata = {}
+  const metadata: NfoMetadata = {}
   let insideBookDescription = false
   lines.forEach(line => {
     if (line.search(/^\s*book description\s*$/i) !== -1) {
@@ -98,7 +116,7 @@ function parseNfoMetadata(nfoText) {
 }
 export { parseNfoMetadata }
 
-function extractYear(str) {
+function extractYear(str: string) {
   const match = str.match(/\d{4}/g)
   return match ? match[match.length - 1] : null
 }

@@ -6,8 +6,8 @@ import Logger = require('../../Logger')
  * @param {string} opmlText
  * @returns {Array<{title: string, feedUrl: string}>
  */
-function parse(opmlText) {
-  var feeds = []
+function parse(opmlText: string): { title: string; feedUrl: string }[] {
+  var feeds: { title: string; feedUrl: string }[] = []
   var parser = new h.Parser({
     onopentag: (name, attribs) => {
       if (name === 'outline' && attribs.type === 'rss') {

@@ -1,9 +1,28 @@
 import xml2js = require('xml2js')
 import Logger = require('../../Logger')
 
+/** A media marker parsed from the Overdrive xml, e.g. { Name: 'Chapter 1', Time: '0:00.000' } */
+interface OverdriveMarker {
+  Name: string
+  Time: string
+}
+
+interface ParsedChapter {
+  id: number
+  start: number
+  end?: number
+  title: string
+}
+
+/** Audio file shape needed here (works for both scanned AudioFile objects and book audioFiles json) */
+interface AudioFileWithMarkers {
+  duration: number | null
+  metaTags: { tagOverdriveMediaMarker?: string | null } | null
+}
+
 // given the array of Overdrive Media Markers from generateOverdriveMediaMarkers()
 //  parse and clean them in to something a bit more usable
-function cleanOverdriveMediaMarkers(overdriveMediaMarkers) {
+function cleanOverdriveMediaMarkers(overdriveMediaMarkers: string[]): OverdriveMarker[][] {
   Logger.debug('[parseOverdriveMediaMarkers] Cleaning up overdrive media markers')
   /*
   returns an array of arrays of objects. Each inner array corresponds to an audio track, with it's objects being a chapter:
@@ -22,9 +41,9 @@ function cleanOverdriveMediaMarkers(overdriveMediaMarkers) {
   ]
   */
 
-  const parsedOverdriveMediaMarkers = []
+  const parsedOverdriveMediaMarkers: OverdriveMarker[][] = []
   overdriveMediaMarkers.forEach((item, index) => {
-    let parsed_result = null
+    let parsed_result: OverdriveMarker[] | null = null
     // convert xml to JSON
     xml2js.parseString(item, function (err, result) {
       /*
@@ -60,7 +79,7 @@ function cleanOverdriveMediaMarkers(overdriveMediaMarkers) {
 }
 
 // given an array of objects, convert any values that are arrays to strings
-function objectValuesArrayToString(arrayOfObjects) {
+function objectValuesArrayToString(arrayOfObjects: Record<string, any>[]): OverdriveMarker[] {
   Logger.debug('[parseOverdriveMediaMarkers] Converting Marker object values from arrays to strings')
   arrayOfObjects.forEach((item) => {
     Object.keys(item).forEach((key) => {
@@ -68,15 +87,15 @@ function objectValuesArrayToString(arrayOfObjects) {
     })
   })
 
-  return arrayOfObjects
+  return arrayOfObjects as OverdriveMarker[]
 }
 
 // Overdrive sometimes has weird chapters and subchapters defined
 //  These aren't necessary, so lets remove them
-function removeExtraChapters(parsedOverdriveMediaMarkers) {
+function removeExtraChapters(parsedOverdriveMediaMarkers: OverdriveMarker[][]): OverdriveMarker[][] {
   Logger.debug('[parseOverdriveMediaMarkers] Removing any unnecessary chapters')
   const weirdChapterFilterRegex = /([(]\d|[cC]ontinued)/
-  var cleaned = []
+  var cleaned: OverdriveMarker[][] = []
   parsedOverdriveMediaMarkers.forEach(function (item) {
     cleaned.push(item.filter((chapter) => !weirdChapterFilterRegex.test(chapter.Name)))
   })
@@ -85,7 +104,7 @@ function removeExtraChapters(parsedOverdriveMediaMarkers) {
 }
 
 // Given a set of chapters from generateParsedChapters, add the end time to each one
-function addChapterEndTimes(chapters, totalAudioDuration) {
+function addChapterEndTimes(chapters: ParsedChapter[], totalAudioDuration: number): ParsedChapter[] {
   Logger.debug('[parseOverdriveMediaMarkers] Adding chapter end times')
   chapters.forEach((chapter, chapter_index) => {
     if (chapter_index < chapters.length - 1) {
@@ -99,11 +118,11 @@ function addChapterEndTimes(chapters, totalAudioDuration) {
 }
 
 // The function that actually generates the Chapters object that we update ABS with
-function generateParsedChapters(includedAudioFiles, cleanedOverdriveMediaMarkers) {
+function generateParsedChapters(includedAudioFiles: AudioFileWithMarkers[], cleanedOverdriveMediaMarkers: OverdriveMarker[][]): ParsedChapter[] {
   Logger.debug('[parseOverdriveMediaMarkers] Generating new chapters for ABS')
   // logic ported over from benonymity's OverdriveChapterizer:
   //    https://github.com/benonymity/OverdriveChapterizer/blob/main/chapters.py
-  var parsedChapters = []
+  var parsedChapters: ParsedChapter[] = []
   var length = 0.0
   var index = 0
   var time = 0.0
@@ -115,14 +134,14 @@ function generateParsedChapters(includedAudioFiles, cleanedOverdriveMediaMarkers
     cleanedOverdriveMediaMarkers[track_index].forEach((chapter) => {
       let timeParts = chapter.Time.split(':')
       // add seconds
-      time = length + parseFloat(timeParts.pop())
+      time = length + parseFloat(timeParts.pop()!)
       if (timeParts.length) {
         // add minutes
-        time += parseFloat(timeParts.pop()) * 60
+        time += parseFloat(timeParts.pop()!) * 60
       }
       if (timeParts.length) {
         // add hours
-        time += parseFloat(timeParts.pop()) * 3600
+        time += parseFloat(timeParts.pop()!) * 3600
       }
       var newChapterData = {
         id: index++,
@@ -131,7 +150,7 @@ function generateParsedChapters(includedAudioFiles, cleanedOverdriveMediaMarkers
       }
       parsedChapters.push(newChapterData)
     })
-    length += track.duration
+    length += track.duration!
   })
 
   parsedChapters = addChapterEndTimes(parsedChapters, length) // we need all the start times sorted out before we can add the end times
@@ -139,8 +158,8 @@ function generateParsedChapters(includedAudioFiles, cleanedOverdriveMediaMarkers
   return parsedChapters
 }
 
-export const parseOverdriveMediaMarkersAsChapters = (includedAudioFiles) => {
-  const overdriveMediaMarkers = includedAudioFiles.map((af) => af.metaTags.tagOverdriveMediaMarker).filter((af) => af) || []
+export const parseOverdriveMediaMarkersAsChapters = (includedAudioFiles: AudioFileWithMarkers[]) => {
+  const overdriveMediaMarkers = (includedAudioFiles.map((af) => af.metaTags!.tagOverdriveMediaMarker).filter((af) => af) as string[]) || []
   if (!overdriveMediaMarkers.length) return null
 
   var cleanedOverdriveMediaMarkers = cleanOverdriveMediaMarkers(overdriveMediaMarkers)

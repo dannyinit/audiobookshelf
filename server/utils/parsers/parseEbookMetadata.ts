@@ -1,12 +1,15 @@
 import parseEpubMetadata = require('./parseEpubMetadata')
 import parseComicMetadata = require('./parseComicMetadata')
 
+type BookMetadataObject = import('../../scanner/BookScanner').BookMetadataObject
+
 export interface EBookFileScanData {
   path: string
   ebookFormat: string
-  /** internal image path */
-  ebookCoverPath: string
-  metadata: import('../../scanner/BookScanner').BookMetadataObject
+  /** internal image path, set when a cover image was found */
+  ebookCoverPath?: string
+  /** only the fields found in the ebook are set */
+  metadata: { [K in keyof BookMetadataObject]?: BookMetadataObject[K] | null } | null
 }
 
 
@@ -16,7 +19,7 @@ export interface EBookFileScanData {
  * @param {import('../../models/Book').EBookFileObject} ebookFile 
  * @returns {Promise<EBookFileScanData>}
  */
-async function parse(ebookFile: import('../../models/Book').EBookFileObject): Promise<EBookFileScanData> {
+async function parse(ebookFile: import('../../models/Book').EBookFileObject): Promise<EBookFileScanData | null> {
   if (!ebookFile) return null
 
   if (ebookFile.ebookFormat === 'epub') {

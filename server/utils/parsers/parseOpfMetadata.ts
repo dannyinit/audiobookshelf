@@ -3,9 +3,12 @@ import htmlSanitizer = require('../htmlSanitizer')
 
 interface MetadataCreatorObject {
   value: string
-  role: string
-  fileAs: string
+  role: string | null
+  fileAs: string | null
 }
+
+/** xml2js output */
+type XmlJson = Record<string, any>
 
 
 /**
@@ -14,28 +17,28 @@ interface MetadataCreatorObject {
  * <dc:creator opf:role="aut" opf:file-as="Orwell, George">George Orwell</dc:creator>
  *
  * @param {Object} metadata
- * @returns {MetadataCreatorObject[]}
+ * @returns {(MetadataCreatorObject|false)[]} false for creator elements that couldn't be parsed
  */
-function parseCreators(metadata: Record<string, any>): MetadataCreatorObject[] {
+function parseCreators(metadata: XmlJson): (MetadataCreatorObject | false)[] | null {
   if (!metadata['dc:creator']?.length) return null
-  return metadata['dc:creator'].map((c) => {
+  return metadata['dc:creator'].map((c: XmlJson | string) => {
     if (typeof c !== 'object' || !c['$'] || !c['_']) return false
     const namespace =
       Object.keys(c['$'])
         .find((key) => key.startsWith('xmlns:'))
         ?.split(':')[1] || 'opf'
-    const creator = {
+    const creator: MetadataCreatorObject = {
       value: c['_'],
       role: c['$'][`${namespace}:role`] || null,
       fileAs: c['$'][`${namespace}:file-as`] || null
     }
 
     const id = c['$']['id']
-    if (id && metadata.meta.refines?.some((r) => r.refines === `#${id}`)) {
-      const creatorMeta = metadata.meta.refines.filter((r) => r.refines === `#${id}`)
+    if (id && metadata.meta.refines?.some((r: XmlJson) => r.refines === `#${id}`)) {
+      const creatorMeta = metadata.meta.refines.filter((r: XmlJson) => r.refines === `#${id}`)
       if (creatorMeta) {
-        creator.role = creatorMeta.find((r) => r.property === 'role')?.value || creator.role || null
-        creator.fileAs = creatorMeta.find((r) => r.property === 'file-as')?.value || creator.fileAs || null
+        creator.role = creatorMeta.find((r: XmlJson) => r.property === 'role')?.value || creator.role || null
+        creator.fileAs = creatorMeta.find((r: XmlJson) => r.property === 'file-as')?.value || creator.fileAs || null
       }
     }
 
@@ -43,12 +46,14 @@ function parseCreators(metadata: Record<string, any>): MetadataCreatorObject[] {
   })
 }
 
-function fetchCreators(creators, role) {
+function fetchCreators(creators: (MetadataCreatorObject | false)[] | null, role: string): string[] | null {
   if (!creators?.length) return null
-  return [...new Set(creators.filter((c) => c.role === role && c.value).map((c) => c.value))]
+  // `false` entries have no role so they are filtered out here
+  const parsedCreators = creators as MetadataCreatorObject[]
+  return [...new Set(parsedCreators.filter((c) => c.role === role && c.value).map((c) => c.value))]
 }
 
-function fetchTagString(metadata, tag) {
+function fetchTagString(metadata: XmlJson, tag: string): string | null {
   if (!metadata[tag] || !metadata[tag].length) return null
   let value = metadata[tag][0]
 
@@ -75,15 +80,15 @@ function fetchTagString(metadata, tag) {
   return value
 }
 
-function fetchDate(metadata) {
+function fetchDate(metadata: XmlJson) {
   const date = fetchTagString(metadata, 'dc:date')
   if (!date) return null
   const dateSplit = date.split('-')
-  if (!dateSplit.length || dateSplit[0].length !== 4 || isNaN(dateSplit[0])) return null
+  if (!dateSplit.length || dateSplit[0].length !== 4 || isNaN(Number(dateSplit[0]))) return null
   return dateSplit[0]
 }
 
-function fetchPublisher(metadata) {
+function fetchPublisher(metadata: XmlJson) {
   return fetchTagString(metadata, 'dc:publisher')
 }
 
@@ -96,9 +101,9 @@ function fetchPublisher(metadata) {
  * @param {string} scheme
  * @returns {string}
  */
-function fetchIdentifier(metadata: Record<string, any>, scheme: string): string {
+function fetchIdentifier(metadata: XmlJson, scheme: string): string | null {
   if (!metadata['dc:identifier']?.length) return null
-  const identifierObj = metadata['dc:identifier'].find((i) => {
+  const identifierObj = metadata['dc:identifier'].find((i: XmlJson) => {
     if (!i['$']) return false
     const namespace =
       Object.keys(i['$'])
@@ -109,23 +114,23 @@ function fetchIdentifier(metadata: Record<string, any>, scheme: string): string 
   return identifierObj?.['_'] || null
 }
 
-function fetchISBN(metadata) {
+function fetchISBN(metadata: XmlJson) {
   return fetchIdentifier(metadata, 'ISBN')
 }
 
-function fetchASIN(metadata) {
+function fetchASIN(metadata: XmlJson) {
   return fetchIdentifier(metadata, 'ASIN')
 }
 
-function fetchTitle(metadata) {
+function fetchTitle(metadata: XmlJson) {
   return fetchTagString(metadata, 'dc:title')
 }
 
-function fetchSubtitle(metadata) {
+function fetchSubtitle(metadata: XmlJson) {
   return fetchTagString(metadata, 'dc:subtitle')
 }
 
-function fetchDescription(metadata) {
+function fetchDescription(metadata: XmlJson) {
   let description = fetchTagString(metadata, 'dc:description')
   if (!description) return null
   // check if description is HTML or plain text. only plain text allowed
@@ -134,18 +139,18 @@ function fetchDescription(metadata) {
   return htmlSanitizer.stripAllTags(description)
 }
 
-function fetchGenres(metadata) {
+function fetchGenres(metadata: XmlJson): string[] {
   if (!metadata['dc:subject'] || !metadata['dc:subject'].length) return []
-  return [...new Set(metadata['dc:subject'].filter((g) => g && typeof g === 'string'))]
+  return [...new Set<string>(metadata['dc:subject'].filter((g: unknown) => g && typeof g === 'string'))]
 }
 
-function fetchLanguage(metadata) {
+function fetchLanguage(metadata: XmlJson) {
   return fetchTagString(metadata, 'dc:language')
 }
 
-function fetchSeries(metadataMeta) {
+function fetchSeries(metadataMeta: XmlJson[] | undefined): { name: string; sequence: string | null }[] {
   if (!metadataMeta) return []
-  const result = []
+  const result: { name: string; sequence: string | null }[] = []
   for (let i = 0; i < metadataMeta.length; i++) {
     if (metadataMeta[i].$?.name === 'calibre:series' && metadataMeta[i].$.content?.trim()) {
       const name = metadataMeta[i].$.content.trim()
@@ -160,7 +165,7 @@ function fetchSeries(metadataMeta) {
   // If one series was found with no series_index then check if any series_index meta can be found
   //   this is to support when calibre:series_index is not directly underneath calibre:series
   if (result.length === 1 && !result[0].sequence) {
-    const seriesIndexMeta = metadataMeta.find((m) => m.$?.name === 'calibre:series_index' && m.$.content?.trim())
+    const seriesIndexMeta = metadataMeta.find((m: XmlJson) => m.$?.name === 'calibre:series_index' && m.$.content?.trim())
     if (seriesIndexMeta) {
       result[0].sequence = seriesIndexMeta.$.content.trim()
     }
@@ -172,28 +177,29 @@ function fetchSeries(metadataMeta) {
   return dedupedResult
 }
 
-function fetchNarrators(creators, metadata) {
+function fetchNarrators(creators: (MetadataCreatorObject | false)[] | null, metadata: XmlJson): string[] | null {
   const narrators = fetchCreators(creators, 'nrt')
   if (narrators?.length) return narrators
   try {
-    const narratorsJSON = JSON.parse(fetchTagString(metadata.meta, 'calibre:user_metadata:#narrators').replace(/&quot;/g, '"'))
+    // A missing tag throws here and is handled by the catch
+    const narratorsJSON = JSON.parse(fetchTagString(metadata.meta, 'calibre:user_metadata:#narrators')!.replace(/&quot;/g, '"'))
     return narratorsJSON['#value#']
   } catch {
     return null
   }
 }
 
-function fetchTags(metadata) {
+function fetchTags(metadata: XmlJson): string[] {
   if (!metadata['dc:tag'] || !metadata['dc:tag'].length) return []
-  return [...new Set(metadata['dc:tag'].filter((tag) => tag && typeof tag === 'string'))]
+  return [...new Set<string>(metadata['dc:tag'].filter((tag: unknown) => tag && typeof tag === 'string'))]
 }
 
-function stripPrefix(str) {
+function stripPrefix(str: string) {
   if (!str) return ''
   return str.split(':').pop()
 }
 
-export const parseOpfMetadataJson = (json) => {
+export const parseOpfMetadataJson = (json: XmlJson) => {
   // Handle <package ...> or with prefix <ns0:package ...>
   const packageKey = Object.keys(json).find((key) => stripPrefix(key) === 'package')
   if (!packageKey) return null
@@ -209,7 +215,7 @@ export const parseOpfMetadataJson = (json) => {
 
   metadata.meta = {}
   if (metadataMeta?.length) {
-    metadataMeta.forEach((meta) => {
+    metadataMeta.forEach((meta: XmlJson) => {
       if (meta?.['$']?.name) {
         metadata.meta[meta['$'].name] = [meta['$'].content || '']
       } else if (meta?.['$']?.refines) {
@@ -228,7 +234,7 @@ export const parseOpfMetadataJson = (json) => {
   }
   const creators = parseCreators(metadata)
   const authors = (fetchCreators(creators, 'aut') || []).map((au) => au?.trim()).filter((au) => au)
-  const narrators = (fetchNarrators(creators, metadata) || []).map((nrt) => nrt?.trim()).filter((nrt) => nrt)
+  const narrators = (fetchNarrators(creators, metadata) || []).map((nrt: string) => nrt?.trim()).filter((nrt: string) => nrt)
   return {
     title: fetchTitle(metadata),
     subtitle: fetchSubtitle(metadata),
@@ -246,7 +252,7 @@ export const parseOpfMetadataJson = (json) => {
   }
 }
 
-export const parseOpfMetadataXML = async (xml) => {
+export const parseOpfMetadataXML = async (xml: string) => {
   const json = await xmlToJSON(xml)
   if (!json) return null
 
