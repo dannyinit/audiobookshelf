@@ -6,6 +6,24 @@ const naturalSort = createNewSortInstance({
   comparer: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare
 })
 
+type LibraryItem = import('../models/LibraryItem')
+type BookExpanded = import('../models/Book').BookExpanded
+/** Old library item json (toOldJSONMinified) with extra properties attached */
+type OldLibraryItemJson = Record<string, any>
+
+interface SeriesWithBooks {
+  id: string
+  name: string
+  nameIgnorePrefix: string
+  nameIgnorePrefixSort: string
+  type: 'series'
+  books: OldLibraryItemJson[]
+  totalDuration: number
+}
+
+/** Library item with the series it was collapsed into (see collapseBookSeries) */
+type CollapsedLibraryItem = LibraryItem
+
 const VALID_COLLAPSE_SUBSERIES_SORTS = new Set(['addedAt', 'size', 'birthtimeMs', 'mtimeMs', 'media.duration', 'media.metadata.publishedYear', 'media.metadata.authorName', 'media.metadata.authorNameLF', 'media.metadata.title', 'sequence', 'progress', 'progress.createdAt', 'progress.finishedAt', 'random'])
 
 export = {
@@ -16,19 +34,20 @@ export = {
    * @param {*} hideSingleBookSeries
    * @returns
    */
-  getSeriesFromBooks(libraryItems: import('../models/LibraryItem')[], filterSeries: any, hideSingleBookSeries: any) {
-    const _series = {}
-    const seriesToFilterOut = {}
+  getSeriesFromBooks(libraryItems: LibraryItem[], filterSeries: string | null | undefined, hideSingleBookSeries: boolean): SeriesWithBooks[] {
+    const _series: Record<string, SeriesWithBooks> = {}
+    const seriesToFilterOut: Record<string, boolean> = {}
     libraryItems.forEach((libraryItem) => {
+      const book = libraryItem.media as BookExpanded
       // get all book series for item that is not already filtered out
-      const allBookSeries = (libraryItem.media.series || []).filter((se) => !seriesToFilterOut[se.id])
+      const allBookSeries = (book.series || []).filter((se) => !seriesToFilterOut[se.id])
       if (!allBookSeries.length) return
 
       allBookSeries.forEach((bookSeries) => {
-        const abJson = libraryItem.toOldJSONMinified()
+        const abJson: OldLibraryItemJson = libraryItem.toOldJSONMinified()
         abJson.sequence = bookSeries.bookSeries.sequence
         if (filterSeries) {
-          const series = libraryItem.media.series.find((se) => se.id === filterSeries)
+          const series = book.series.find((se) => se.id === filterSeries)!
           abJson.filterSeriesSequence = series.bookSeries.sequence
         }
         if (!_series[bookSeries.id]) {
@@ -68,12 +87,12 @@ export = {
    * @param {boolean} hideSingleBookSeries
    * @returns
    */
-  collapseBookSeries(libraryItems: import('../models/LibraryItem')[], filterSeries: string, hideSingleBookSeries: boolean) {
+  collapseBookSeries(libraryItems: LibraryItem[], filterSeries: string | null | undefined, hideSingleBookSeries: boolean): CollapsedLibraryItem[] {
     // Get series from the library items. If this list is being collapsed after filtering for a series,
     // don't collapse that series, only books that are in other series.
     const seriesObjects = this.getSeriesFromBooks(libraryItems, filterSeries, hideSingleBookSeries).filter((s) => s.id != filterSeries)
 
-    const filteredLibraryItems = []
+    const filteredLibraryItems: CollapsedLibraryItem[] = []
 
     libraryItems.forEach((li) => {
       if (li.mediaType != 'book') return
@@ -141,10 +160,10 @@ export = {
     const books = seriesWithBooks.books
     payload.total = books.length
 
-    let libraryItems = books
+    let libraryItems: CollapsedLibraryItem[] = books
       .map((book) => {
         const libraryItem = book.libraryItem
-        delete book.libraryItem
+        delete (book as { libraryItem?: unknown }).libraryItem
         libraryItem.media = book
         return libraryItem
       })
@@ -160,19 +179,19 @@ export = {
 
     const sortingIgnorePrefix = Database.serverSettings.sortingIgnorePrefix
 
-    let sortArray = []
+    let sortArray: Record<string, (li: CollapsedLibraryItem) => any>[] = []
     const direction = payload.sortDesc ? 'desc' : 'asc'
     if (!payload.sortBy || payload.sortBy === 'sequence') {
       sortArray = [
         {
-          [direction]: (li) => {
-            const series = li.media.series.find((se) => se.id === seriesId)
+          [direction]: (li: CollapsedLibraryItem) => {
+            const series = (li.media as BookExpanded).series.find((se) => se.id === seriesId)!
             return series.bookSeries.sequence
           }
         },
         {
           // If no series sequence then fallback to sorting by title (or collapsed series name for sub-series)
-          [direction]: (li) => {
+          [direction]: (li: CollapsedLibraryItem) => {
             if (sortingIgnorePrefix) {
               return li.collapsedSeries?.nameIgnorePrefix || li.media.titleIgnorePrefix
             } else {
@@ -186,7 +205,7 @@ export = {
       // sort all collapsed series to the end in alphabetical order
       if (payload.sortBy !== 'media.metadata.title') {
         sortArray.push({
-          asc: (li) => {
+          asc: (li: CollapsedLibraryItem) => {
             if (li.collapsedSeries) {
               return sortingIgnorePrefix ? li.collapsedSeries.nameIgnorePrefix : li.collapsedSeries.name
             } else {
@@ -196,7 +215,7 @@ export = {
         })
       }
       sortArray.push({
-        [direction]: (li) => {
+        [direction]: (li: CollapsedLibraryItem) => {
           if (payload.sortBy === 'media.metadata.title') {
             if (sortingIgnorePrefix) {
               return li.collapsedSeries?.nameIgnorePrefix || li.media.titleIgnorePrefix
@@ -206,7 +225,7 @@ export = {
           } else {
             if (payload.sortBy === 'media.metadata.authorName') return li.authorNamesFirstLast ?? ''
             if (payload.sortBy === 'media.metadata.authorNameLF') return li.authorNamesLastFirst ?? ''
-            return payload.sortBy.split('.').reduce((a, b) => a?.[b], li) ?? ''
+            return payload.sortBy.split('.').reduce((a: any, b: string) => a?.[b], li) ?? ''
           }
         }
       })
@@ -221,8 +240,8 @@ export = {
 
     return Promise.all(
       libraryItems.map(async (li) => {
-        const filteredSeries = li.media.series.find((se) => se.id === seriesId)
-        const json = li.toOldJSONMinified()
+        const filteredSeries = (li.media as BookExpanded).series.find((se) => se.id === seriesId)!
+        const json: OldLibraryItemJson = li.toOldJSONMinified()
         json.media.metadata.series = {
           id: filteredSeries.id,
           name: filteredSeries.name,
@@ -234,15 +253,15 @@ export = {
             id: li.collapsedSeries.id,
             name: li.collapsedSeries.name,
             nameIgnorePrefix: li.collapsedSeries.nameIgnorePrefix,
-            libraryItemIds: li.collapsedSeries.books.map((b) => b.id),
+            libraryItemIds: li.collapsedSeries.books.map((b: OldLibraryItemJson) => b.id),
             numBooks: li.collapsedSeries.books.length
           }
 
           // If collapsing by series and filtering by a series, generate the list of sequences the collapsed
           // series represents in the filtered series
-          json.collapsedSeries.seriesSequenceList = naturalSort(li.collapsedSeries.books.filter((b) => b.filterSeriesSequence).map((b) => b.filterSeriesSequence))
+          json.collapsedSeries.seriesSequenceList = naturalSort(li.collapsedSeries.books.filter((b: OldLibraryItemJson) => b.filterSeriesSequence).map((b: OldLibraryItemJson) => b.filterSeriesSequence))
             .asc()
-            .reduce((ranges, currentSequence) => {
+            .reduce((ranges: { start: any; end: any; isNumber: boolean }[], currentSequence: any) => {
               let lastRange = ranges.at(-1)
               let isNumber = /^(\d+|\d+\.\d*|\d*\.\d+)$/.test(currentSequence)
               if (isNumber) currentSequence = parseFloat(currentSequence)
