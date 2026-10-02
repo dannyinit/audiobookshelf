@@ -1,4 +1,4 @@
-import { DataTypes, Model } from 'sequelize'
+import { DataTypes, Model, Sequelize } from 'sequelize'
 
 class BookSeries extends Model {
   /** @type {string} */
@@ -12,11 +12,6 @@ class BookSeries extends Model {
   /** @type {Date} */
   declare createdAt: Date
 
-  constructor(values, options) {
-    super(values, options)
-
-  }
-
   static removeByIds(seriesId = null, bookId = null) {
     const where = {}
     if (seriesId) where.seriesId = seriesId
@@ -28,9 +23,9 @@ class BookSeries extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {

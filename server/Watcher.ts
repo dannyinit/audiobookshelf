@@ -7,13 +7,8 @@ import TaskManager = require('./managers/TaskManager')
 
 import { filePathToPOSIX, isSameOrSubPath, getFileMTimeMs, shouldIgnoreFile } from './utils/fileUtils'
 
-/**
- * @typedef PendingFileUpdate
- * @property {string} path
- * @property {string} relPath
- * @property {string} folderId
- * @property {string} type
- */
+type PendingFileUpdate = folderWatcher.PendingFileUpdate
+
 class FolderWatcher extends EventEmitter {
   /** @type {{id:string, name:string, libraryFolders:import('./models/Folder')[], paths:string[], watcher:Watcher[]}[]} */
   declare libraryWatchers: { id: string; name: string; libraryFolders: import('./models/Folder')[]; paths: string[]; watcher: Watcher[] }[]
@@ -438,4 +433,14 @@ class FolderWatcher extends EventEmitter {
     }, 5000)
   }
 }
-export = new FolderWatcher()
+const folderWatcher = new FolderWatcher()
+namespace folderWatcher {
+  export interface PendingFileUpdate {
+    path: string
+    relPath: string
+    folderId: string
+    type: string
+  }
+}
+
+export = folderWatcher

@@ -1,11 +1,10 @@
 const uuidv4 = require('uuid').v4
 
-/**
- * @typedef TaskString
- * @property {string} text
- * @property {string} key
- * @property {string[]} [subs]
- */
+interface TaskString {
+  text: string
+  key: string
+  subs?: string[]
+}
 
 class Task {
   /** @type {string} */

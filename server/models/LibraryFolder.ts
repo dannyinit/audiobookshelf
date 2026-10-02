@@ -1,4 +1,4 @@
-import { DataTypes, Model } from 'sequelize'
+import { DataTypes, Model, Sequelize } from 'sequelize'
 
 class LibraryFolder extends Model {
   /** @type {string} */
@@ -12,16 +12,11 @@ class LibraryFolder extends Model {
   /** @type {Date} */
   declare updatedAt: Date
 
-  constructor(values, options) {
-    super(values, options)
-
-  }
-
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {

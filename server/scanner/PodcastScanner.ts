@@ -13,23 +13,23 @@ import PodcastEpisode = require('../models/PodcastEpisode')
 import AbsMetadataFileScanner = require('./AbsMetadataFileScanner')
 import htmlSanitizer = require('../utils/htmlSanitizer')
 
-/**
- * @typedef PodcastMetadataObject
- * @property {string} title
- * @property {string} titleIgnorePrefix
- * @property {string} author
- * @property {string} releaseDate
- * @property {string} feedURL
- * @property {string} imageURL
- * @property {string} description
- * @property {string} itunesPageURL
- * @property {string} itunesId
- * @property {string} language
- * @property {string} podcastType
- * @property {string[]} genres
- * @property {string[]} tags
- * @property {boolean} explicit
- */
+interface PodcastMetadataObject {
+  title: string
+  titleIgnorePrefix: string
+  author: string
+  releaseDate: string
+  feedURL: string
+  imageURL: string
+  description: string
+  itunesPageURL: string
+  itunesId: string
+  language: string
+  podcastType: string
+  genres: string[]
+  tags: string[]
+  explicit: boolean
+}
+
 
 /**
  * Metadata for podcasts pulled from files

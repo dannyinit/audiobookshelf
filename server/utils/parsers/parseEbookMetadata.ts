@@ -1,13 +1,14 @@
 import parseEpubMetadata = require('./parseEpubMetadata')
 import parseComicMetadata = require('./parseComicMetadata')
 
-/**
- * @typedef EBookFileScanData
- * @property {string} path
- * @property {string} ebookFormat
- * @property {string} ebookCoverPath internal image path
- * @property {import('../../scanner/BookScanner').BookMetadataObject} metadata
- */
+export interface EBookFileScanData {
+  path: string
+  ebookFormat: string
+  /** internal image path */
+  ebookCoverPath: string
+  metadata: import('../../scanner/BookScanner').BookMetadataObject
+}
+
 
 /**
  * Parse metadata from ebook file

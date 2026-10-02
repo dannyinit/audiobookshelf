@@ -1,12 +1,12 @@
 import { xmlToJSON } from '../index'
 import htmlSanitizer = require('../htmlSanitizer')
 
-/**
- * @typedef MetadataCreatorObject
- * @property {string} value
- * @property {string} role
- * @property {string} fileAs
- */
+interface MetadataCreatorObject {
+  value: string
+  role: string
+  fileAs: string
+}
+
 
 /**
  * @example

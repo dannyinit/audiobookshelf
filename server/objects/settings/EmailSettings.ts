@@ -1,13 +1,12 @@
 import Logger = require('../../Logger')
 import { areEquivalent, copyValue, isNullOrNaN } from '../../utils'
 
-/**
- * @typedef EreaderDeviceObject
- * @property {string} name
- * @property {string} email
- * @property {string} availabilityOption
- * @property {string[]} users
- */
+interface EreaderDeviceObject {
+  name: string
+  email: string
+  availabilityOption: string
+  users: string[]
+}
 
 // REF: https://nodemailer.com/smtp/
 class EmailSettings {

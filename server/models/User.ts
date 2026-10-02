@@ -56,29 +56,9 @@ const userCache = new UserCache()
 
 const { DataTypes, Model } = sequelize
 
-interface AudioBookmarkObject {
-  libraryItemId: string
-  title: string
-  time: number
-  createdAt: number
-}
+type AudioBookmarkObject = User.AudioBookmarkObject
 
-interface ProgressUpdatePayload {
-  createdAt: Date
-  libraryItemId: string
-  episodeId?: string
-  duration?: number
-  progress?: number
-  currentTime?: number
-  isFinished?: boolean
-  hideFromContinueListening?: boolean
-  ebookLocation?: string
-  ebookProgress?: number
-  finishedAt?: string
-  lastUpdate?: number
-  markAsFinishedTimeRemaining?: number
-  markAsFinishedPercentComplete?: number
-}
+type ProgressUpdatePayload = User.ProgressUpdatePayload
 
 class User extends Model {
   /** @type {string} */
@@ -111,12 +91,7 @@ class User extends Model {
   declare updatedAt: Date
   /** @type {import('./MediaProgress')[]?} - Only included when extended */
   declare mediaProgresses: import('./MediaProgress')[] | null
-  isOldToken: any
-
-  constructor(values, options) {
-    super(values, options)
-
-  }
+  declare isOldToken: any
 
   // Excludes "root" since their can only be 1 root user
   static accountTypes = ['admin', 'user', 'guest']
@@ -502,9 +477,9 @@ class User extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {
@@ -1022,6 +997,32 @@ class User extends Model {
   async destroy(options) {
     userCache.delete(this.id)
     await super.destroy(options)
+  }
+}
+
+namespace User {
+  export interface AudioBookmarkObject {
+    libraryItemId: string
+    title: string
+    time: number
+    createdAt: number
+  }
+
+  export interface ProgressUpdatePayload {
+    createdAt: Date
+    libraryItemId: string
+    episodeId?: string
+    duration?: number
+    progress?: number
+    currentTime?: number
+    isFinished?: boolean
+    hideFromContinueListening?: boolean
+    ebookLocation?: string
+    ebookProgress?: number
+    finishedAt?: string
+    lastUpdate?: number
+    markAsFinishedTimeRemaining?: number
+    markAsFinishedPercentComplete?: number
   }
 }
 

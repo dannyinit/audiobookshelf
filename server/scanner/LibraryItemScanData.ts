@@ -3,11 +3,10 @@ import { LogLevel } from '../utils/constants'
 import LibraryItem = require('../models/LibraryItem')
 import globals = require('../utils/globals')
 
-/**
- * @typedef LibraryFileModifiedObject
- * @property {LibraryItem.LibraryFileObject} old
- * @property {LibraryItem.LibraryFileObject} new
- */
+interface LibraryFileModifiedObject {
+  old: LibraryItem.LibraryFileObject
+  new: LibraryItem.LibraryFileObject
+}
 
 class LibraryItemScanData {
   /** @type {string} */

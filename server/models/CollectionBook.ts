@@ -1,4 +1,4 @@
-import { DataTypes, Model } from 'sequelize'
+import { DataTypes, Model, Sequelize } from 'sequelize'
 
 class CollectionBook extends Model {
   /** @type {string} */
@@ -12,12 +12,7 @@ class CollectionBook extends Model {
   /** @type {Date} */
   declare createdAt: Date
 
-  constructor(values, options) {
-    super(values, options)
-
-  }
-
-  static init(sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {

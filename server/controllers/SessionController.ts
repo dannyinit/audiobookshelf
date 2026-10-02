@@ -8,16 +8,9 @@ import { PlayMethod } from '../utils/constants'
 
 import ShareManager = require('../managers/ShareManager')
 
-/**
- * @typedef batchDeleteReqBody
- * @property {string[]} sessions
- */
+type RequestUserObject = sessionController.RequestUserObject
 
-interface RequestUserObject {
-  user: import('../models/User')
-}
-
-type RequestWithUser = Request & RequestUserObject
+type RequestWithUser = sessionController.RequestWithUser
 
 class SessionController {
   playbackSessionManager: { sessions: any[]; syncSessionRequest: (arg0: Express.User & import("../models/User"), arg1: any, arg2: any, arg3: Response<any, Record<string, any>>) => void; closeSessionRequest: (arg0: Express.User & import("../models/User"), arg1: any, arg2: any, arg3: Response<any, Record<string, any>>) => void; getSession: (arg0: string) => any; removeSession: (arg0: any) => any; syncLocalSessionRequest: (arg0: RequestWithUser, arg1: Response<any, Record<string, any>>) => void; syncLocalSessionsRequest: (arg0: RequestWithUser, arg1: Response<any, Record<string, any>>) => void }
@@ -375,4 +368,17 @@ class SessionController {
     next()
   }
 }
-export = new SessionController()
+const sessionController = new SessionController()
+interface batchDeleteReqBody {
+  sessions: string[]
+}
+
+namespace sessionController {
+  export interface RequestUserObject {
+    user: import('../models/User')
+  }
+
+  export type RequestWithUser = Request & RequestUserObject
+}
+
+export = sessionController

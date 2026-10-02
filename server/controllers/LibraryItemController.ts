@@ -20,23 +20,17 @@ import CacheManager = require('../managers/CacheManager')
 import CoverManager = require('../managers/CoverManager')
 import ShareManager = require('../managers/ShareManager')
 
-interface RequestUserObject {
-  user: import('../models/User')
-}
+type RequestUserObject = libraryItemController.RequestUserObject
 
-type RequestWithUser = Request & RequestUserObject
+type RequestWithUser = libraryItemController.RequestWithUser
 
-interface RequestEntityObject {
-  libraryItem: import('../models/LibraryItem')
-}
+type RequestEntityObject = libraryItemController.RequestEntityObject
 
-type LibraryItemControllerRequest = RequestWithUser & RequestEntityObject
+type LibraryItemControllerRequest = libraryItemController.LibraryItemControllerRequest
 
-interface RequestLibraryFileObject {
-  libraryFile: import('../objects/files/LibraryFile')
-}
+type RequestLibraryFileObject = libraryItemController.RequestLibraryFileObject
 
-type LibraryItemControllerRequestWithFile = RequestWithUser & RequestEntityObject & RequestLibraryFileObject
+type LibraryItemControllerRequestWithFile = libraryItemController.LibraryItemControllerRequestWithFile
 
 /**
  * Enforce per-item access for batch item routes
@@ -1262,4 +1256,25 @@ class LibraryItemController {
     next()
   }
 }
-export = new LibraryItemController()
+const libraryItemController = new LibraryItemController()
+namespace libraryItemController {
+  export interface RequestUserObject {
+    user: import('../models/User')
+  }
+
+  export type RequestWithUser = Request & RequestUserObject
+
+  export interface RequestEntityObject {
+    libraryItem: import('../models/LibraryItem')
+  }
+
+  export type LibraryItemControllerRequest = RequestWithUser & RequestEntityObject
+
+  export interface RequestLibraryFileObject {
+    libraryFile: import('../objects/files/LibraryFile')
+  }
+
+  export type LibraryItemControllerRequestWithFile = RequestWithUser & RequestEntityObject & RequestLibraryFileObject
+}
+
+export = libraryItemController

@@ -7,11 +7,12 @@ import TaskManager = require('./TaskManager')
 import Task = require('../objects/Task')
 import fileUtils = require('../utils/fileUtils')
 
-/**
- * @typedef UpdateMetadataOptions
- * @property {boolean} [forceEmbedChapters=false] - Whether to force embed chapters.
- * @property {boolean} [backup=false] - Whether to backup the files.
- */
+interface UpdateMetadataOptions {
+  /** Whether to force embed chapters. */
+  forceEmbedChapters?: boolean
+  /** Whether to backup the files. */
+  backup?: boolean
+}
 
 class AudioMetadataMangaer {
   tasksQueued: Task[]

@@ -1,20 +1,14 @@
 import Path = require('path')
-import { DataTypes, Model } from 'sequelize'
+import { DataTypes, Model, Sequelize } from 'sequelize'
 import Logger = require('../Logger')
 
 import RSS = require('../libs/rss')
 
-interface FeedOptions {
-  preventIndexing: boolean
-  ownerName: string
-  ownerEmail: string
-}
+type FeedOptions = Feed.FeedOptions
 
-interface FeedExpandedProperties {
-  feedEpisodes: import('./FeedEpisode')
-}
+type FeedExpandedProperties = Feed.FeedExpandedProperties
 
-type FeedExpanded = Feed & FeedExpandedProperties
+type FeedExpanded = Feed.FeedExpanded
 
 class Feed extends Model {
   /** @type {string} */
@@ -63,14 +57,6 @@ class Feed extends Model {
   declare updatedAt: Date
   /** @type {import('./FeedEpisode')[]} - only set if expanded */
   declare feedEpisodes: import('./FeedEpisode')[]
-
-  constructor(values, options) {
-    super(values, options)
-
-
-    // Expanded properties
-
-  }
 
   /**
    * @param {string} feedId
@@ -360,9 +346,9 @@ class Feed extends Model {
    * Polymorphic association: Feeds can be created from LibraryItem, Collection, Playlist or Series
    * @see https://sequelize.org/docs/v6/advanced-association-concepts/polymorphic-associations/
    *
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {
@@ -676,6 +662,20 @@ class Feed extends Model {
       }
     }
   }
+}
+
+namespace Feed {
+  export interface FeedOptions {
+    preventIndexing: boolean
+    ownerName: string
+    ownerEmail: string
+  }
+
+  export interface FeedExpandedProperties {
+    feedEpisodes: import('./FeedEpisode')
+  }
+
+  export type FeedExpanded = Feed & FeedExpandedProperties
 }
 
 export = Feed

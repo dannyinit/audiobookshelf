@@ -9,12 +9,7 @@ import SocketAuthority = require('../SocketAuthority')
 import { isWritable, copyToExisting } from '../utils/fileUtils'
 import TrackProgressMonitor = require('../objects/TrackProgressMonitor')
 
-/**
- * @typedef AbMergeEncodeOptions
- * @property {string} codec
- * @property {string} channels
- * @property {string} bitrate
- */
+type AbMergeEncodeOptions = AbMergeManager.AbMergeEncodeOptions
 
 class AbMergeManager {
   /** @type {Task[]} */
@@ -301,4 +296,12 @@ class AbMergeManager {
     TaskManager.taskFinished(task)
   }
 }
+namespace AbMergeManager {
+  export interface AbMergeEncodeOptions {
+    codec: string
+    channels: string
+    bitrate: string
+  }
+}
+
 export = AbMergeManager

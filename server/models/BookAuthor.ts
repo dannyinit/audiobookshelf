@@ -1,4 +1,4 @@
-import { DataTypes, Model, fn, col } from 'sequelize'
+import { DataTypes, Model, fn, col, Sequelize } from 'sequelize'
 
 class BookAuthor extends Model {
   /** @type {string} */
@@ -9,11 +9,6 @@ class BookAuthor extends Model {
   declare authorId: string
   /** @type {Date} */
   declare createdAt: Date
-
-  constructor(values, options) {
-    super(values, options)
-
-  }
 
   static removeByIds(authorId = null, bookId = null) {
     const where = {}
@@ -66,9 +61,9 @@ class BookAuthor extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {

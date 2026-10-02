@@ -2,10 +2,25 @@ import date = require('./libs/dateAndTime')
 import { LogLevel } from './utils/constants'
 import util = require('util')
 
+type LogLevelName = keyof typeof LogLevel
+
+interface SocketListener {
+  id: string
+  socket: import('socket.io').Socket
+  level: number
+}
+
+interface LogObject {
+  timestamp: string
+  source: string
+  message: string
+  levelName: string
+  level: number
+}
+
 class Logger {
-  /** @type {import('./managers/LogManager')} */
-  logManager: import('./managers/LogManager')
-  socketListeners: any[]
+  logManager: import('./managers/LogManager') | null
+  socketListeners: SocketListener[]
   logLevel: number
   isDev: boolean
 
@@ -18,9 +33,6 @@ class Logger {
     this.socketListeners = []
   }
 
-  /**
-   * @returns {string}
-   */
   get timestamp(): string {
     return date.format(new Date(), 'YYYY-MM-DD HH:mm:ss.SSS')
   }
@@ -29,24 +41,21 @@ class Logger {
     return this.getLogLevelString(this.logLevel)
   }
 
-  /**
-   * @returns {string}
-   */
   get source(): string {
     const regex = global.isWin ? /^.*\\([^\\:]*:[0-9]*):[0-9]*\)*/ : /^.*\/([^/:]*:[0-9]*):[0-9]*\)*/
-    return Error().stack.split('\n')[3].replace(regex, '$1')
+    return Error().stack!.split('\n')[3].replace(regex, '$1')
   }
 
-  getLogLevelString(level) {
+  getLogLevelString(level: number): string {
     for (const key in LogLevel) {
-      if (LogLevel[key] === level) {
+      if (LogLevel[key as LogLevelName] === level) {
         return key
       }
     }
     return 'UNKNOWN'
   }
 
-  addSocketListener(socket, level) {
+  addSocketListener(socket: SocketListener['socket'], level: number) {
     var index = this.socketListeners.findIndex((s) => s.id === socket.id)
     if (index >= 0) {
       this.socketListeners.splice(index, 1, {
@@ -63,20 +72,20 @@ class Logger {
     }
   }
 
-  removeSocketListener(socketId) {
+  removeSocketListener(socketId: string) {
     this.socketListeners = this.socketListeners.filter((s) => s.id !== socketId)
   }
 
   /**
    *
-   * @param {number} level
-   * @param {string} levelName
-   * @param {string[]} args
-   * @param {string} src
+   * @param level
+   * @param levelName
+   * @param args
+   * @param src
    */
-  async #logToFileAndListeners(level: number, levelName: string, args: string[], src: string) {
+  async #logToFileAndListeners(level: number, levelName: string, args: unknown[], src: string) {
     const expandedArgs = args.map((arg) => (typeof arg !== 'string' ? util.inspect(arg) : arg))
-    const logObj = {
+    const logObj: LogObject = {
       timestamp: this.timestamp,
       source: src,
       message: expandedArgs.join(' '),
@@ -97,7 +106,7 @@ class Logger {
     }
   }
 
-  setLogLevel(level) {
+  setLogLevel(level: number) {
     this.logLevel = level
     this.debug(`Set Log Level to ${this.levelString}`)
   }
@@ -110,9 +119,9 @@ class Logger {
     ERROR: 'error',
     FATAL: 'error',
     NOTE: 'log'
-  }
+  } as const
 
-  #log(levelName, source, ...args) {
+  #log(levelName: LogLevelName, source: string, ...args: unknown[]) {
     const level = LogLevel[levelName]
     if (level < LogLevel.FATAL && level < this.logLevel) return
     const consoleMethod = Logger.ConsoleMethods[levelName]
@@ -120,31 +129,31 @@ class Logger {
     return this.#logToFileAndListeners(level, levelName, args, source)
   }
 
-  trace(...args) {
+  trace(...args: unknown[]) {
     this.#log('TRACE', this.source, ...args)
   }
 
-  debug(...args) {
+  debug(...args: unknown[]) {
     this.#log('DEBUG', this.source, ...args)
   }
 
-  info(...args) {
+  info(...args: unknown[]) {
     this.#log('INFO', this.source, ...args)
   }
 
-  warn(...args) {
+  warn(...args: unknown[]) {
     this.#log('WARN', this.source, ...args)
   }
 
-  error(...args) {
+  error(...args: unknown[]) {
     this.#log('ERROR', this.source, ...args)
   }
 
-  fatal(...args) {
+  fatal(...args: unknown[]) {
     return this.#log('FATAL', this.source, ...args)
   }
 
-  note(...args) {
+  note(...args: unknown[]) {
     this.#log('NOTE', this.source, ...args)
   }
 }

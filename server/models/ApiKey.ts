@@ -1,22 +1,21 @@
-import { DataTypes, Model, Op } from 'sequelize'
+import { DataTypes, Model, Op, Sequelize } from 'sequelize'
 import jwt = require('jsonwebtoken')
 import { LRUCache } from 'lru-cache'
 import Logger = require('../Logger')
 
-/**
- * @typedef {Object} ApiKeyPermissions
- * @property {boolean} download
- * @property {boolean} update
- * @property {boolean} delete
- * @property {boolean} upload
- * @property {boolean} createEreader
- * @property {boolean} accessAllLibraries
- * @property {boolean} accessAllTags
- * @property {boolean} accessExplicitContent
- * @property {boolean} selectedTagsNotAccessible
- * @property {string[]} librariesAccessible
- * @property {string[]} itemTagsSelected
- */
+interface ApiKeyPermissions {
+  download: boolean
+  update: boolean
+  delete: boolean
+  upload: boolean
+  createEreader: boolean
+  accessAllLibraries: boolean
+  accessAllTags: boolean
+  accessExplicitContent: boolean
+  selectedTagsNotAccessible: boolean
+  librariesAccessible: string[]
+  itemTagsSelected: string[]
+}
 
 class ApiKeyCache {
   cache: LRUCache<{}, {}, unknown>
@@ -70,14 +69,6 @@ class ApiKey extends Model {
   declare createdByUserId: string
   /** @type {import('./User').User} */
   declare user: import('./User').User
-
-  constructor(values, options) {
-    super(values, options)
-
-
-    // Expanded properties
-
-  }
 
   /**
    * Same properties as User.getDefaultPermissions
@@ -212,9 +203,9 @@ class ApiKey extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {

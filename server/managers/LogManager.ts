@@ -8,14 +8,7 @@ import { LogLevel } from '../utils/constants'
 
 const TAG = '[LogManager]'
 
-/**
- * @typedef LogObject
- * @property {string} timestamp
- * @property {string} source
- * @property {string} message
- * @property {string} levelName
- * @property {number} level
- */
+type LogObject = LogManager.LogObject
 
 class LogManager {
   /** @type {DailyLog} */
@@ -186,4 +179,14 @@ class LogManager {
     return this.currentDailyLog?.logs.slice(-5000) || ''
   }
 }
+namespace LogManager {
+  export interface LogObject {
+    timestamp: string
+    source: string
+    message: string
+    levelName: string
+    level: number
+  }
+}
+
 export = LogManager

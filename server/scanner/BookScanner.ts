@@ -26,27 +26,8 @@ import OpfFileScanner = require('./OpfFileScanner')
 import NfoFileScanner = require('./NfoFileScanner')
 import AbsMetadataFileScanner = require('./AbsMetadataFileScanner')
 
-/**
- * @typedef BookMetadataObject
- * @property {string} title
- * @property {string} titleIgnorePrefix
- * @property {string} subtitle
- * @property {string} publishedYear
- * @property {string} publisher
- * @property {string} description
- * @property {string} isbn
- * @property {string} asin
- * @property {string} language
- * @property {string[]} narrators
- * @property {string[]} genres
- * @property {string[]} tags
- * @property {string[]} authors
- * @property {{name:string, sequence:string}[]} series
- * @property {{id:number, start:number, end:number, title:string}[]} chapters
- * @property {boolean} explicit
- * @property {boolean} abridged
- * @property {string} coverPath
- */
+type BookMetadataObject = bookScanner.BookMetadataObject
+
 
 /**
  * Metadata for books pulled from files
@@ -1051,4 +1032,28 @@ class BookScanner {
     return null
   }
 }
-export = new BookScanner()
+const bookScanner = new BookScanner()
+namespace bookScanner {
+  export interface BookMetadataObject {
+    title: string
+    titleIgnorePrefix: string
+    subtitle: string
+    publishedYear: string
+    publisher: string
+    description: string
+    isbn: string
+    asin: string
+    language: string
+    narrators: string[]
+    genres: string[]
+    tags: string[]
+    authors: string[]
+    series: {name:string, sequence:string}[]
+    chapters: {id:number, start:number, end:number, title:string}[]
+    explicit: boolean
+    abridged: boolean
+    coverPath: string
+  }
+}
+
+export = bookScanner

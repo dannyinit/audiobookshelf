@@ -1,31 +1,10 @@
-import { DataTypes, Model } from 'sequelize'
+import { DataTypes, Model, Sequelize } from 'sequelize'
 
-interface MediaItemShareObject {
-  id: string
-  mediaItemId: string
-  mediaItemType: string
-  slug: string
-  pash: string
-  userId: string
-  expiresAt: Date
-  extraData: Object
-  createdAt: Date
-  updatedAt: Date
-  isDownloadable: boolean
-}
+type MediaItemShareObject = MediaItemShare.MediaItemShareObject
 
-type MediaItemShareModel = MediaItemShareObject & MediaItemShare
+type MediaItemShareModel = MediaItemShare.MediaItemShareModel
 
-interface MediaItemShareForClient {
-  id: string
-  mediaItemId: string
-  mediaItemType: string
-  slug: string
-  expiresAt: Date
-  createdAt: Date
-  updatedAt: Date
-  isDownloadable: boolean
-}
+type MediaItemShareForClient = MediaItemShare.MediaItemShareForClient
 
 class MediaItemShare extends Model {
   /** @type {string} */
@@ -52,14 +31,6 @@ class MediaItemShare extends Model {
   declare isDownloadable: boolean
   /** @type {import('./Book')|import('./PodcastEpisode')} */
   declare mediaItem: import('./Book') | import('./PodcastEpisode')
-
-  constructor(values, options) {
-    super(values, options)
-
-
-    // Expanded properties
-
-  }
 
   toJSONForClient() {
     return {
@@ -110,9 +81,9 @@ class MediaItemShare extends Model {
   /**
    * Initialize model
    *
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {
@@ -177,6 +148,35 @@ class MediaItemShare extends Model {
         delete instance.dataValues.podcastEpisode
       }
     })
+  }
+}
+
+namespace MediaItemShare {
+  export interface MediaItemShareObject {
+    id: string
+    mediaItemId: string
+    mediaItemType: string
+    slug: string
+    pash: string
+    userId: string
+    expiresAt: Date
+    extraData: Object
+    createdAt: Date
+    updatedAt: Date
+    isDownloadable: boolean
+  }
+
+  export type MediaItemShareModel = MediaItemShareObject & MediaItemShare
+
+  export interface MediaItemShareForClient {
+    id: string
+    mediaItemId: string
+    mediaItemType: string
+    slug: string
+    expiresAt: Date
+    createdAt: Date
+    updatedAt: Date
+    isDownloadable: boolean
   }
 }
 

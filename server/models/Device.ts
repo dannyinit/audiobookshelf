@@ -1,4 +1,4 @@
-import { DataTypes, Model } from 'sequelize'
+import { DataTypes, Model, Sequelize } from 'sequelize'
 import oldDevice = require('../objects/DeviceInfo')
 
 class Device extends Model {
@@ -24,11 +24,6 @@ class Device extends Model {
   declare createdAt: Date
   /** @type {Date} */
   declare updatedAt: Date
-
-  constructor(values, options) {
-    super(values, options)
-
-  }
 
   static async getOldDeviceByDeviceId(deviceId) {
     const device = await this.findOne({
@@ -88,9 +83,9 @@ class Device extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {

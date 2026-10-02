@@ -1,4 +1,4 @@
-import { DataTypes, Model } from 'sequelize'
+import { DataTypes, Model, Sequelize } from 'sequelize'
 import { getTitlePrefixAtEnd, getTitleIgnorePrefix } from '../utils'
 import Logger = require('../Logger')
 import libraryItemsPodcastFilters = require('../utils/queries/libraryItemsPodcastFilters')
@@ -64,12 +64,6 @@ class Podcast extends Model {
   /** @type {import('./PodcastEpisode')[]} */
   declare podcastEpisodes: import('./PodcastEpisode')[]
 
-  constructor(values, options) {
-    super(values, options)
-
-
-  }
-
   /**
    * Payload from the /api/podcasts POST endpoint
    *
@@ -122,9 +116,9 @@ class Podcast extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {

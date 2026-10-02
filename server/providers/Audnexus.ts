@@ -4,13 +4,7 @@ import Logger = require('../Logger')
 import { levenshteinDistance } from '../utils/index'
 import { isValidASIN } from '../utils/index'
 
-/**
- * @typedef AuthorSearchObj
- * @property {string} asin
- * @property {string} description
- * @property {string} image
- * @property {string} name
- */
+type AuthorSearchObj = Audnexus.AuthorSearchObj
 
 class Audnexus {
   static _instance = null
@@ -185,6 +179,15 @@ class Audnexus {
 
       throw error
     }
+  }
+}
+
+namespace Audnexus {
+  export interface AuthorSearchObj {
+    asin: string
+    description: string
+    image: string
+    name: string
   }
 }
 

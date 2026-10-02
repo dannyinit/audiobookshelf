@@ -1,4 +1,4 @@
-import { DataTypes, Model, Op } from 'sequelize'
+import { DataTypes, Model, Op, Sequelize } from 'sequelize'
 
 class Session extends Model {
   /** @type {string} */
@@ -22,14 +22,6 @@ class Session extends Model {
   /** @type {import('./User').User} */
   declare user: import('./User').User
 
-  constructor(values, options) {
-    super(values, options)
-
-
-    // Expanded properties
-
-  }
-
   static async createSession(userId, ipAddress, userAgent, refreshToken, expiresAt) {
     const session = await Session.create({ userId, ipAddress, userAgent, refreshToken, expiresAt })
     return session
@@ -52,9 +44,9 @@ class Session extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {

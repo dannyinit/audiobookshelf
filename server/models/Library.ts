@@ -1,20 +1,7 @@
-import { DataTypes, Model } from 'sequelize'
+import { DataTypes, Model, Sequelize } from 'sequelize'
 import Logger = require('../Logger')
 
-/**
- * @typedef LibrarySettingsObject
- * @property {number} coverAspectRatio BookCoverAspectRatio
- * @property {boolean} disableWatcher
- * @property {boolean} skipMatchingMediaWithAsin
- * @property {boolean} skipMatchingMediaWithIsbn
- * @property {string} autoScanCronExpression
- * @property {boolean} audiobooksOnly
- * @property {boolean} hideSingleBookSeries Do not show series that only have 1 book
- * @property {boolean} onlyShowLaterBooksInContinueSeries Skip showing books that are earlier than the max sequence read
- * @property {string[]} metadataPrecedence
- * @property {number} markAsFinishedTimeRemaining Time remaining in seconds to mark as finished. (defaults to 10s)
- * @property {number} markAsFinishedPercentComplete Percent complete to mark as finished (0-100). If this is set it will be used over markAsFinishedTimeRemaining.
- */
+type LibrarySettingsObject = Library.LibrarySettingsObject
 
 class Library extends Model {
   getLibraryFolders(): import("./LibraryFolder")[] | PromiseLike<import("./LibraryFolder")[] | undefined> | undefined {
@@ -46,11 +33,6 @@ class Library extends Model {
   declare updatedAt: Date
   /** @type {import('./LibraryFolder')[]|undefined} */
   declare libraryFolders: import('./LibraryFolder')[] | undefined
-
-  constructor(values, options) {
-    super(values, options)
-
-  }
 
   /**
    *
@@ -153,9 +135,9 @@ class Library extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {
@@ -220,6 +202,27 @@ class Library extends Model {
       createdAt: this.createdAt.valueOf(),
       lastUpdate: this.updatedAt.valueOf()
     }
+  }
+}
+
+namespace Library {
+  export interface LibrarySettingsObject {
+    /** BookCoverAspectRatio */
+    coverAspectRatio: number
+    disableWatcher: boolean
+    skipMatchingMediaWithAsin: boolean
+    skipMatchingMediaWithIsbn: boolean
+    autoScanCronExpression: string
+    audiobooksOnly: boolean
+    /** Do not show series that only have 1 book */
+    hideSingleBookSeries: boolean
+    /** Skip showing books that are earlier than the max sequence read */
+    onlyShowLaterBooksInContinueSeries: boolean
+    metadataPrecedence: string[]
+    /** Time remaining in seconds to mark as finished. (defaults to 10s) */
+    markAsFinishedTimeRemaining: number
+    /** Percent complete to mark as finished (0-100). If this is set it will be used over markAsFinishedTimeRemaining. */
+    markAsFinishedPercentComplete: number
   }
 }
 

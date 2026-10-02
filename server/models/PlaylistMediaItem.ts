@@ -1,4 +1,4 @@
-import { DataTypes, Model } from 'sequelize'
+import { DataTypes, Model, Sequelize } from 'sequelize'
 
 class PlaylistMediaItem extends Model {
   /** @type {string} */
@@ -16,14 +16,6 @@ class PlaylistMediaItem extends Model {
   /** @type {import('./Book')|import('./PodcastEpisode')} - only set when expanded */
   declare mediaItem: import('./Book') | import('./PodcastEpisode')
 
-  constructor(values, options) {
-    super(values, options)
-
-
-    // Expanded properties
-
-  }
-
   getMediaItem(options) {
     if (!this.mediaItemType) return Promise.resolve(null)
     const mixinMethodName = `get${this.sequelize.uppercaseFirst(this.mediaItemType)}`
@@ -32,9 +24,9 @@ class PlaylistMediaItem extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {

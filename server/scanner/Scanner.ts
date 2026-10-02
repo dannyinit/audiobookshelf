@@ -13,16 +13,17 @@ import LibraryScanner = require('./LibraryScanner')
 import CoverManager = require('../managers/CoverManager')
 import TaskManager = require('../managers/TaskManager')
 
-/**
- * @typedef QuickMatchOptions
- * @property {string} [provider]
- * @property {string} [title]
- * @property {string} [author]
- * @property {string} [isbn] - This override is currently unused in Abs clients
- * @property {string} [asin] - This override is currently unused in Abs clients
- * @property {boolean} [overrideCover]
- * @property {boolean} [overrideDetails]
- */
+interface QuickMatchOptions {
+  provider?: string
+  title?: string
+  author?: string
+  /** This override is currently unused in Abs clients */
+  isbn?: string
+  /** This override is currently unused in Abs clients */
+  asin?: string
+  overrideCover?: boolean
+  overrideDetails?: boolean
+}
 
 class Scanner {
   constructor() {}

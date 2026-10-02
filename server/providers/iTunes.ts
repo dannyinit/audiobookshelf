@@ -2,29 +2,9 @@ import axios = require('axios')
 import Logger = require('../Logger')
 import htmlSanitizer = require('../utils/htmlSanitizer')
 
-interface iTunesSearchParams {
-  lang: any
-  term: string
-  country: string
-  media: string
-  entity: string
-  limit: number
-}
+type iTunesSearchParams = iTunes.iTunesSearchParams
 
-interface iTunesPodcastSearchResult {
-  id: string
-  artistId: string
-  title: string
-  artistName: string
-  description: string
-  descriptionPlain: string
-  releaseDate: string
-  genres: string[]
-  cover: string
-  feedUrl: string
-  pageUrl: string
-  explicit: boolean
-}
+type iTunesPodcastSearchResult = iTunes.iTunesPodcastSearchResult
 
 class iTunes {
   #responseTimeout = 10000
@@ -166,4 +146,30 @@ class iTunes {
     })
   }
 }
+namespace iTunes {
+  export interface iTunesSearchParams {
+    lang: any
+    term: string
+    country: string
+    media: string
+    entity: string
+    limit: number
+  }
+
+  export interface iTunesPodcastSearchResult {
+    id: string
+    artistId: string
+    title: string
+    artistName: string
+    description: string
+    descriptionPlain: string
+    releaseDate: string
+    genres: string[]
+    cover: string
+    feedUrl: string
+    pageUrl: string
+    explicit: boolean
+  }
+}
+
 export = iTunes

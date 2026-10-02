@@ -1,4 +1,4 @@
-import { DataTypes, Model } from 'sequelize'
+import { DataTypes, Model, Sequelize } from 'sequelize'
 import Logger = require('../Logger')
 import { getTitlePrefixAtEnd, getTitleIgnorePrefix } from '../utils'
 import parseNameString = require('../utils/parsers/parseNameString')
@@ -8,78 +8,30 @@ import SocketAuthority = require('../SocketAuthority')
 import { Literal } from 'sequelize/types/utils'
 import { Literal } from 'sequelize/types/utils'
 
-interface EBookFileObject {
-  ino: string
-  ebookFormat: string
-  addedAt: number
-  updatedAt: number
-  metadata: { filename: string; ext: string; path: string; relPath: strFing; size: number; mtimeMs: number; ctimeMs: number; birthtimeMs: number} 
-}
+type EBookFileObject = Book.EBookFileObject
 
-interface ChapterObject {
-  id: number
-  start: number
-  end: number
-  title: string
-}
+type ChapterObject = Book.ChapterObject
 
-interface SeriesExpandedProperties {
-  bookSeries: { sequence: string} 
-}
+type SeriesExpandedProperties = Book.SeriesExpandedProperties
 
-type SeriesExpanded = import('./Series') & SeriesExpandedProperties
+type SeriesExpanded = Book.SeriesExpanded
 
-interface BookExpandedProperties {
-  authors: import('./Author')[]
-  series: SeriesExpanded[]
-}
+type BookExpandedProperties = Book.BookExpandedProperties
 
-type BookExpanded = Book & BookExpandedProperties
+type BookExpanded = Book.BookExpanded
 
-interface BookExpandedWithLibraryItemProperties {
-  libraryItem: import('./LibraryItem')
-}
+type BookExpandedWithLibraryItemProperties = Book.BookExpandedWithLibraryItemProperties
 
-type BookExpandedWithLibraryItem = BookExpanded & BookExpandedWithLibraryItemProperties
+type BookExpandedWithLibraryItem = Book.BookExpandedWithLibraryItem
 
-interface AudioFileObject {
-  contentUrl: string
-  startOffset: number
-  title: string
-  exclude: any
-  index: number
-  ino: string
-  metadata: { filename: string; ext: string; path: string; relPath: string; size: number; mtimeMs: number; ctimeMs: number; birthtimeMs: number} 
-  addedAt: number
-  updatedAt: number
-  trackNumFromMeta: number
-  discNumFromMeta: number
-  trackNumFromFilename: number
-  discNumFromFilename: number
-  manuallyVerified: boolean
-  format: string
-  duration: number
-  bitRate: number
-  language: string
-  codec: string
-  timeBase: string
-  channels: number
-  channelLayout: string
-  chapters: ChapterObject[]
-  metaTags: Object
-  mimeType: string
-}
+type AudioFileObject = Book.AudioFileObject
 
-interface AudioTrackProperties {
-  title: string
-  contentUrl: string
-  startOffset: number
-}
+type AudioTrackProperties = Book.AudioTrackProperties
 
-type AudioTrack = AudioFileObject & AudioTrackProperties
+type AudioTrack = Book.AudioTrack
 
 class Book extends Model {
-  libraryItem: { id: any; size: number }
+  declare libraryItem: { id: any; size: number }
   getSeries(arg0: { joinTableAttributes: string[]; order: Literal[] }): import("./Series")[] | PromiseLike<import("./Series")[]> {
     throw new Error('Method not implemented.')
   }
@@ -143,19 +95,11 @@ class Book extends Model {
   /** @type {import('./Series')[]} - optional if expanded */
   declare series: import('./Series')[]
 
-  constructor(values, options) {
-    super(values, options)
-
-
-    // Expanded properties
-
-  }
-
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {
@@ -704,6 +648,78 @@ class Book extends Model {
       tracks: this.getTracklist(libraryItemId)
     }
   }
+}
+
+namespace Book {
+  export interface EBookFileObject {
+    ino: string
+    ebookFormat: string
+    addedAt: number
+    updatedAt: number
+    metadata: { filename: string; ext: string; path: string; relPath: strFing; size: number; mtimeMs: number; ctimeMs: number; birthtimeMs: number} 
+  }
+
+  export interface ChapterObject {
+    id: number
+    start: number
+    end: number
+    title: string
+  }
+
+  export interface SeriesExpandedProperties {
+    bookSeries: { sequence: string} 
+  }
+
+  export type SeriesExpanded = import('./Series') & SeriesExpandedProperties
+
+  export interface BookExpandedProperties {
+    authors: import('./Author')[]
+    series: SeriesExpanded[]
+  }
+
+  export type BookExpanded = Book & BookExpandedProperties
+
+  export interface BookExpandedWithLibraryItemProperties {
+    libraryItem: import('./LibraryItem')
+  }
+
+  export type BookExpandedWithLibraryItem = BookExpanded & BookExpandedWithLibraryItemProperties
+
+  export interface AudioFileObject {
+    contentUrl: string
+    startOffset: number
+    title: string
+    exclude: any
+    index: number
+    ino: string
+    metadata: { filename: string; ext: string; path: string; relPath: string; size: number; mtimeMs: number; ctimeMs: number; birthtimeMs: number} 
+    addedAt: number
+    updatedAt: number
+    trackNumFromMeta: number
+    discNumFromMeta: number
+    trackNumFromFilename: number
+    discNumFromFilename: number
+    manuallyVerified: boolean
+    format: string
+    duration: number
+    bitRate: number
+    language: string
+    codec: string
+    timeBase: string
+    channels: number
+    channelLayout: string
+    chapters: ChapterObject[]
+    metaTags: Object
+    mimeType: string
+  }
+
+  export interface AudioTrackProperties {
+    title: string
+    contentUrl: string
+    startOffset: number
+  }
+
+  export type AudioTrack = AudioFileObject & AudioTrackProperties
 }
 
 export = Book

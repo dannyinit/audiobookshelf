@@ -2,7 +2,7 @@ import { DataTypes, Model, ModelCtor, Sequelize } from 'sequelize'
 import { Literal } from 'sequelize/types/utils'
 
 class Collection extends Model {
-  feeds: string | any[]
+  declare feeds: string | any[]
   static books: any[]
   getCollectionBooks(arg0: { include: { model: any; include: any }; order: string[][] }) {
     throw new Error('Method not implemented.')
@@ -21,14 +21,6 @@ class Collection extends Model {
   declare createdAt: Date
   /** @type {import('./Book').BookExpandedWithLibraryItem[]} - only set when expanded */
   declare books: import('./Book').BookExpandedWithLibraryItem[]
-
-  constructor(values, options) {
-    super(values, options)
-
-
-    // Expanded properties
-
-  }
 
   /**
    * Get all toOldJSONExpanded, items filtered for user permissions
@@ -166,9 +158,9 @@ class Collection extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {

@@ -1,4 +1,4 @@
-import { DataTypes, Model, where, fn, col } from 'sequelize'
+import { DataTypes, Model, where, fn, col, Sequelize } from 'sequelize'
 import parseNameString = require('../utils/parsers/parseNameString')
 
 class Author extends Model {
@@ -20,13 +20,8 @@ class Author extends Model {
   declare updatedAt: Date
   /** @type {Date} */
   declare createdAt: Date
-  books: any
-  bookAuthor: { destroy: () => any }
-
-  constructor(values, options) {
-    super(values, options)
-
-  }
+  declare books: any
+  declare bookAuthor: { destroy: () => any }
 
   /**
    *
@@ -129,9 +124,9 @@ class Author extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {

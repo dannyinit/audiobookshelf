@@ -1,12 +1,6 @@
-import { DataTypes, Model } from 'sequelize'
+import { DataTypes, Model, Sequelize } from 'sequelize'
 import libraryItemsPodcastFilters = require('../utils/queries/libraryItemsPodcastFilters')
-/**
- * @typedef ChapterObject
- * @property {number} id
- * @property {number} start
- * @property {number} end
- * @property {string} title
- */
+type ChapterObject = PodcastEpisode.ChapterObject
 
 class PodcastEpisode extends Model {
   /** @type {string} */
@@ -48,11 +42,6 @@ class PodcastEpisode extends Model {
   /** @type {Date} */
   declare updatedAt: Date
 
-  constructor(values, options) {
-    super(values, options)
-
-  }
-
   /**
    *
    * @param {import('../utils/podcastUtils').RssPodcastEpisode} rssPodcastEpisode
@@ -93,9 +82,9 @@ class PodcastEpisode extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {
@@ -236,6 +225,15 @@ class PodcastEpisode extends Model {
     json.duration = this.duration
 
     return json
+  }
+}
+
+namespace PodcastEpisode {
+  export interface ChapterObject {
+    id: number
+    start: number
+    end: number
+    title: string
   }
 }
 

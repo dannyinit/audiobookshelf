@@ -1,12 +1,11 @@
 import SocketAuthority = require('../SocketAuthority')
 import Task = require('../objects/Task')
 
-/**
- * @typedef TaskString
- * @property {string} text
- * @property {string} key
- * @property {string[]} [subs]
- */
+interface TaskString {
+  text: string
+  key: string
+  subs?: string[]
+}
 
 class TaskManager {
   /** @type {Task[]} */

@@ -1,5 +1,5 @@
 import Path = require('path')
-import { DataTypes, Model } from 'sequelize'
+import { DataTypes, Model, Sequelize } from 'sequelize'
 const uuidv4 = require('uuid').v4
 import Logger = require('../Logger')
 import date = require('../libs/dateAndTime')
@@ -42,11 +42,6 @@ class FeedEpisode extends Model {
   declare createdAt: Date
   /** @type {Date} */
   declare updatedAt: Date
-
-  constructor(values, options) {
-    super(values, options)
-
-  }
 
   /**
    *
@@ -246,9 +241,9 @@ class FeedEpisode extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {

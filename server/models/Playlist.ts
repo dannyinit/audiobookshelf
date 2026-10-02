@@ -1,4 +1,4 @@
-import { DataTypes, Model, Op } from 'sequelize'
+import { DataTypes, Model, Op, Sequelize } from 'sequelize'
 import Logger = require('../Logger')
 import SocketAuthority = require('../SocketAuthority')
 
@@ -19,14 +19,6 @@ class Playlist extends Model {
   declare updatedAt: Date
   /** @type {import('./PlaylistMediaItem')[]} - only set when expanded */
   declare playlistMediaItems: import('./PlaylistMediaItem')[]
-
-  constructor(values, options) {
-    super(values, options)
-
-
-    // Expanded properties
-
-  }
 
   /**
    * Get old playlists for user and library
@@ -210,9 +202,9 @@ class Playlist extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {

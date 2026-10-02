@@ -5,14 +5,14 @@ import { xmlToJSON, timestampToSeconds } from './index'
 import htmlSanitizer = require('../utils/htmlSanitizer')
 import Fuse = require('../libs/fusejs')
 
-interface RssPodcastChapter {
+export interface RssPodcastChapter {
   id: number
   title: string
   start: number
   end: number
 }
 
-interface RssPodcastEpisode {
+export interface RssPodcastEpisode {
   title: string
   subtitle: string
   description: string
@@ -33,7 +33,7 @@ interface RssPodcastEpisode {
   chapters: RssPodcastChapter[]
 }
 
-interface RssPodcastMetadata {
+export interface RssPodcastMetadata {
   title: string
   language: string
   explicit: string
@@ -48,7 +48,7 @@ interface RssPodcastMetadata {
   type: string
 }
 
-interface RssPodcast {
+export interface RssPodcast {
   metadata: RssPodcastMetadata
   episodes: RssPodcastEpisode[]
   numEpisodes: number

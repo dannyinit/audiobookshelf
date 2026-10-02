@@ -3,11 +3,10 @@ import Database = require('../../Database')
 import PlaybackSession = require('../../models/PlaybackSession')
 import fsExtra = require('../../libs/fsExtra')
 
-/**
- * @typedef {Object} SizeObject
- * @property {number} totalSize
- * @property {number} numItems
- */
+interface SizeObject {
+  totalSize: number
+  numItems: number
+}
 
 export = {
   /**

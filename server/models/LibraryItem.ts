@@ -1,5 +1,5 @@
 import Path = require('path')
-import { DataTypes, Model } from 'sequelize'
+import { DataTypes, Model, Sequelize } from 'sequelize'
 import fsExtra = require('../libs/fsExtra')
 import Logger = require('../Logger')
 import libraryFilters = require('../utils/queries/libraryFilters')
@@ -8,19 +8,11 @@ import LibraryFile = require('../objects/files/LibraryFile')
 import Book = require('./Book')
 import Podcast = require('./Podcast')
 
-interface LibraryFileObject {
-  ino: string
-  isSupplementary: boolean
-  addedAt: number
-  updatedAt: number
-  metadata: { filename: string; ext: string; path: string; relPath: string; size: number; mtimeMs: number; ctimeMs: number; birthtimeMs: number} 
-}
+type LibraryFileObject = LibraryItem.LibraryFileObject
 
-interface LibraryItemExpandedProperties {
-  media: Book.BookExpanded | Podcast.PodcastExpanded
-}
+type LibraryItemExpandedProperties = LibraryItem.LibraryItemExpandedProperties
 
-type LibraryItemExpanded = LibraryItem & LibraryItemExpandedProperties
+type LibraryItemExpanded = LibraryItem.LibraryItemExpanded
 
 class LibraryItem extends Model {
   /** @type {string} */
@@ -75,22 +67,12 @@ class LibraryItem extends Model {
   declare authorNamesFirstLast: string
   /** @type {string} */
   declare authorNamesLastFirst: string
-  mediaItemShare: any
-  numEpisodesIncomplete: any
-  rssFeed: { toOldJSONMinified: () => any }
-  series: any
-  collapsedSeries: any
-  recentEpisode: any
-
-  constructor(values, options) {
-    super(values, options)
-
-
- // Only used for sorting
- // Only used for sorting
- // Only used for sorting
- // Only used for sorting
-  }
+  declare mediaItemShare: any
+  declare numEpisodesIncomplete: any
+  declare rssFeed: { toOldJSONMinified: () => any }
+  declare series: any
+  declare collapsedSeries: any
+  declare recentEpisode: any
 
   /**
    * Gets library items partially expanded, not including podcast episodes
@@ -722,9 +704,9 @@ class LibraryItem extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {
@@ -1048,6 +1030,22 @@ class LibraryItem extends Model {
       libraryFiles: this.getLibraryFilesJson()
     }
   }
+}
+
+namespace LibraryItem {
+  export interface LibraryFileObject {
+    ino: string
+    isSupplementary: boolean
+    addedAt: number
+    updatedAt: number
+    metadata: { filename: string; ext: string; path: string; relPath: string; size: number; mtimeMs: number; ctimeMs: number; birthtimeMs: number} 
+  }
+
+  export interface LibraryItemExpandedProperties {
+    media: Book.BookExpanded | Podcast.PodcastExpanded
+  }
+
+  export type LibraryItemExpanded = LibraryItem & LibraryItemExpandedProperties
 }
 
 export = LibraryItem

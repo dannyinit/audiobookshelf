@@ -4,17 +4,23 @@ import globals = require('./globals')
 import LibraryFile = require('../objects/files/LibraryFile')
 import parseNameString = require('./parsers/parseNameString')
 
-/**
- * @typedef LibraryItemFilenameMetadata
- * @property {string} title
- * @property {string} subtitle Book mediaType only
- * @property {string} asin Book mediaType only
- * @property {string[]} authors Book mediaType only
- * @property {string[]} narrators Book mediaType only
- * @property {string} seriesName Book mediaType only
- * @property {string} seriesSequence Book mediaType only
- * @property {string} publishedYear Book mediaType only
- */
+export interface LibraryItemFilenameMetadata {
+  title: string
+  /** Book mediaType only */
+  subtitle: string
+  /** Book mediaType only */
+  asin: string
+  /** Book mediaType only */
+  authors: string[]
+  /** Book mediaType only */
+  narrators: string[]
+  /** Book mediaType only */
+  seriesName: string
+  /** Book mediaType only */
+  seriesSequence: string
+  /** Book mediaType only */
+  publishedYear: string
+}
 
 function isMediaFile(mediaType, ext, audiobooksOnly = false) {
   if (!ext) return false

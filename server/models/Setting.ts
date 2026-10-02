@@ -1,4 +1,4 @@
-import { DataTypes, Model } from 'sequelize'
+import { DataTypes, Model, Sequelize } from 'sequelize'
 
 import oldEmailSettings = require('../objects/settings/EmailSettings')
 import oldServerSettings = require('../objects/settings/ServerSettings')
@@ -13,11 +13,6 @@ class Setting extends Model {
   declare createdAt: Date
   /** @type {Date} */
   declare updatedAt: Date
-
-  constructor(values, options) {
-    super(values, options)
-
-  }
 
   static async getOldSettings() {
     const settings = (await this.findAll()).map((se) => se.value)
@@ -43,9 +38,9 @@ class Setting extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         key: {

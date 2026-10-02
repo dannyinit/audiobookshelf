@@ -1,4 +1,4 @@
-import { DataTypes, Model } from 'sequelize'
+import { DataTypes, Model, Sequelize } from 'sequelize'
 
 import oldPlaybackSession = require('../objects/PlaybackSession')
 
@@ -47,11 +47,6 @@ class PlaybackSession extends Model {
   declare updatedAt: Date
   /** @type {Date} */
   declare createdAt: Date
-
-  constructor(values, options) {
-    super(values, options)
-
-  }
 
   static async getOldPlaybackSessions(where = null) {
     const playbackSessions = await this.findAll({
@@ -170,9 +165,9 @@ class PlaybackSession extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {

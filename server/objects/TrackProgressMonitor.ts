@@ -1,31 +1,32 @@
+/**
+ * @param trackIndex The index of the track that started.
+ */
+type TrackStartedCallback = (trackIndex: number) => void
+
+/**
+ * @param trackIndex The index of the current track.
+ * @param progressInTrack The current track progress in percent.
+ * @param totalProgress The total progress in percent.
+ */
+type ProgressCallback = (trackIndex: number, progressInTrack: number, totalProgress: number) => void
+
+/**
+ * @param trackIndex The index of the track that finished.
+ */
+type TrackFinishedCallback = (trackIndex: number) => void
+
 class TrackProgressMonitor {
-  currentTrackProgress: number
-  allTracksFinished: boolean
-  numTracks
-  currentTrackPercentage: number
-  cummulativeProgress: number
-  currentTrackIndex: number
-  trackFinishedCallback: TrackFinishedCallback
-  progressCallback: ProgressCallback
-  trackStartedCallback: TrackStartedCallback
-  totalDuration: number
   trackDurations: number[]
-  /**
-   * @callback TrackStartedCallback
-   * @param {number} trackIndex - The index of the track that started.
-   */
-
-  /**
-   * @callback ProgressCallback
-   * @param {number} trackIndex - The index of the current track.
-   * @param {number} progressInTrack - The current track progress in percent.
-   * @param {number} totalProgress - The total progress in percent.
-   */
-
-  /**
-   * @callback TrackFinishedCallback
-   * @param {number} trackIndex - The index of the track that finished.
-   */
+  totalDuration: number
+  trackStartedCallback: TrackStartedCallback
+  progressCallback: ProgressCallback
+  trackFinishedCallback: TrackFinishedCallback
+  currentTrackIndex: number
+  cummulativeProgress: number
+  currentTrackPercentage: number
+  currentTrackProgress = 0
+  numTracks: number
+  allTracksFinished: boolean
 
   /**
    * Creates a new TrackProgressMonitor.
@@ -49,7 +50,7 @@ class TrackProgressMonitor {
     this.#moveToNextTrack()
   }
 
-  #outsideCurrentTrack(progress) {
+  #outsideCurrentTrack(progress: number) {
     this.currentTrackProgress = progress - this.cummulativeProgress
     return this.currentTrackProgress >= this.currentTrackPercentage
   }
@@ -70,7 +71,7 @@ class TrackProgressMonitor {
     this.trackStartedCallback(this.currentTrackIndex)
   }
 
-  #progressUpdated(totalProgress) {
+  #progressUpdated(totalProgress: number) {
     const progressInTrack = (this.currentTrackProgress / this.currentTrackPercentage) * 100
     this.progressCallback(this.currentTrackIndex, progressInTrack, totalProgress)
   }

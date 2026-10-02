@@ -165,15 +165,21 @@ export const shouldIgnoreFile = (path: string): string => {
   return null
 }
 
-/**
- * @typedef FilePathItem
- * @property {string} name - file name e.g. "audiofile.m4b"
- * @property {string} path - fullpath excluding folder e.g. "Author/Book/audiofile.m4b"
- * @property {string} reldirpath - path excluding file name e.g. "Author/Book"
- * @property {string} fullpath - full path e.g. "/audiobooks/Author/Book/audiofile.m4b"
- * @property {string} extension - file extension e.g. ".m4b"
- * @property {number} deep - depth of file in directory (0 is file in folder root)
- */
+export interface FilePathItem {
+  /** file name e.g. "audiofile.m4b" */
+  name: string
+  /** fullpath excluding folder e.g. "Author/Book/audiofile.m4b" */
+  path: string
+  /** path excluding file name e.g. "Author/Book" */
+  reldirpath: string
+  /** full path e.g. "/audiobooks/Author/Book/audiofile.m4b" */
+  fullpath: string
+  /** file extension e.g. ".m4b" */
+  extension: string
+  /** depth of file in directory (0 is file in folder root) */
+  deep: number
+}
+
 
 /**
  * Get array of files inside dir

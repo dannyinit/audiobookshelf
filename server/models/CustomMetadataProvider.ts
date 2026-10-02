@@ -1,12 +1,11 @@
-import { DataTypes, Model } from 'sequelize'
+import { DataTypes, Model, Sequelize } from 'sequelize'
 
-/**
- * @typedef ClientCustomMetadataProvider
- * @property {string} id
- * @property {string} name
- * @property {string} url
- * @property {string} slug
- */
+interface ClientCustomMetadataProvider {
+  id: string
+  name: string
+  url: string
+  slug: string
+}
 
 class CustomMetadataProvider extends Model {
   /** @type {string} */
@@ -25,11 +24,6 @@ class CustomMetadataProvider extends Model {
   declare createdAt: Date
   /** @type {Date} */
   declare updatedAt: Date
-
-  constructor(values, options) {
-    super(values, options)
-
-  }
 
   /**
    * Get providers for client by media type
@@ -63,9 +57,9 @@ class CustomMetadataProvider extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {

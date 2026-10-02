@@ -4,12 +4,11 @@ import SocketAuthority = require('../SocketAuthority')
 import LongTimeout = require('../utils/longTimeout')
 import { elapsedPretty } from '../utils/index'
 
-/**
- * @typedef OpenMediaItemShareObject
- * @property {string} id
- * @property {import('../models/MediaItemShare').MediaItemShareObject} mediaItemShare
- * @property {LongTimeout} timeout
- */
+interface OpenMediaItemShareObject {
+  id: string
+  mediaItemShare: import('../models/MediaItemShare').MediaItemShareObject
+  timeout: LongTimeout
+}
 
 class ShareManager {
   /** @type {OpenMediaItemShareObject[]} */

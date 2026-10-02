@@ -1,4 +1,4 @@
-import { DataTypes, Model, where, fn, col, literal } from 'sequelize'
+import { DataTypes, Model, where, fn, col, literal, Sequelize } from 'sequelize'
 
 import { getTitlePrefixAtEnd, getTitleIgnorePrefix } from '../utils/index'
 
@@ -19,15 +19,7 @@ class Series extends Model {
   declare updatedAt: Date
   /** @type {import('./Book').BookExpandedWithLibraryItem[]} - only set when expanded */
   declare books: import('./Book').BookExpandedWithLibraryItem[]
-  bookSeries: import("./BookSeries")
-
-  constructor(values, options) {
-    super(values, options)
-
-
-    // Expanded properties
-
-  }
+  declare bookSeries: import("./BookSeries")
 
   /**
    * Check if series exists
@@ -86,9 +78,9 @@ class Series extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {

@@ -7,17 +7,18 @@ import Logger = require('../Logger')
 import { getRequestOrigin } from '../utils/requestUtils'
 
 /**
- * @typedef {Object} OpenIdIssuerConfig
- * @property {string} issuer
- * @property {string} authorization_endpoint
- * @property {string} token_endpoint
- * @property {string} userinfo_endpoint
- * @property {string} end_session_endpoint
- * @property {string} jwks_uri
- * @property {string} id_token_signing_alg_values_supported
- *
  * Get OpenID Connect configuration from an issuer URL
  */
+interface OpenIdIssuerConfig {
+  issuer: string
+  authorization_endpoint: string
+  token_endpoint: string
+  userinfo_endpoint: string
+  end_session_endpoint: string
+  jwks_uri: string
+  id_token_signing_alg_values_supported: string
+}
+
 
 /**
  * OpenID Connect authentication strategy

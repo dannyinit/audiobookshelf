@@ -6,13 +6,13 @@ import CoverSearchManager = require('./managers/CoverSearchManager')
 import { LogLevel } from './utils/constants'
 import { DefaultEventsMap } from 'socket.io/dist/typed-events'
 
-/**
- * @typedef SocketClient
- * @property {string} id socket id
- * @property {SocketIO.Socket} socket
- * @property {number} connected_at
- * @property {import('./models/User')} user
- */
+interface SocketClient {
+  /** socket id */
+  id: string
+  socket: SocketIO.Socket
+  connected_at: number
+  user: import('./models/User')
+}
 
 class SocketAuthority {
   /** @type {Object.<string, SocketClient>} */

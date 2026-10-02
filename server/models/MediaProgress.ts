@@ -1,4 +1,4 @@
-import { DataTypes, Model } from 'sequelize'
+import { DataTypes, Model, Sequelize } from 'sequelize'
 import Logger = require('../Logger')
 import { isNullOrNaN } from '../utils'
 
@@ -34,11 +34,6 @@ class MediaProgress extends Model {
   /** @type {string} */
   declare podcastId: string
 
-  constructor(values, options) {
-    super(values, options)
-
-  }
-
   static removeById(mediaProgressId) {
     return this.destroy({
       where: {
@@ -53,9 +48,9 @@ class MediaProgress extends Model {
    * Polymorphic association: Book has many MediaProgress. PodcastEpisode has many MediaProgress.
    * @see https://sequelize.org/docs/v6/advanced-association-concepts/polymorphic-associations/
    *
-   * @param {import('../Database').sequelize} sequelize
+   * @param sequelize
    */
-  static init(sequelize: import('../Database').sequelize) {
+  static initModel(sequelize: Sequelize) {
     super.init(
       {
         id: {
