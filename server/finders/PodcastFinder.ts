@@ -1,7 +1,15 @@
-const Logger = require('../Logger')
-const iTunes = require('../providers/iTunes')
+import Logger = require('../Logger')
+import iTunes = require('../providers/iTunes')
+
+type iTunesPodcastSearchResult = import('../providers/iTunes').iTunesPodcastSearchResult
+
+interface PodcastSearchOptions {
+  country?: string
+}
 
 class PodcastFinder {
+  iTunesApi: iTunes
+
   constructor() {
     this.iTunesApi = new iTunes()
   }
@@ -12,10 +20,11 @@ class PodcastFinder {
    * @param {{country:string}} options
    * @returns {Promise<import('../providers/iTunes').iTunesPodcastSearchResult[]>}
    */
-  async search(term, options = {}) {
+  async search(term: string, options: PodcastSearchOptions = {}): Promise<iTunesPodcastSearchResult[] | null> {
     if (!term) return null
     Logger.debug(`[iTunes] Searching for podcast with term "${term}"`)
-    const results = await this.iTunesApi.searchPodcasts(term, options)
+    // iTunes.searchPodcasts JSDoc marks country as required, but it only spreads options into the query
+    const results = await this.iTunesApi.searchPodcasts(term, options as { country: string })
     Logger.debug(`[iTunes] Podcast search for "${term}" returned ${results.length} results`)
     return results
   }
@@ -24,7 +33,7 @@ class PodcastFinder {
    * @param {string} term
    * @returns {Promise<string[]>}
    */
-  async findCovers(term) {
+  async findCovers(term: string): Promise<string[] | null> {
     if (!term) return null
     Logger.debug(`[iTunes] Searching for podcast covers with term "${term}"`)
     const results = await this.iTunesApi.searchPodcasts(term)
@@ -32,4 +41,4 @@ class PodcastFinder {
     return results.map((r) => r.cover).filter((r) => r)
   }
 }
-module.exports = new PodcastFinder()
+export = new PodcastFinder()
