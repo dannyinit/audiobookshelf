@@ -32,6 +32,8 @@ type AudioTrack = Book.AudioTrack
 class Book extends Model {
   /** only set when included */
   declare libraryItem: import('./LibraryItem')
+  /** only set when included */
+  declare mediaProgresses?: import('./MediaProgress')[]
 
   /** @type {string} */
   declare id: string

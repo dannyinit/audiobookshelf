@@ -518,12 +518,14 @@ export = {
           model: Database.podcastModel,
           where: userPermissionPodcastWhere.podcastWhere,
           required: true,
-          include: {
-            model: Database.libraryItemModel,
-            where: {
-              libraryId: library.id
+          include: [
+            {
+              model: Database.libraryItemModel,
+              where: {
+                libraryId: library.id
+              }
             }
-          }
+          ]
         },
         {
           model: Database.mediaProgressModel,

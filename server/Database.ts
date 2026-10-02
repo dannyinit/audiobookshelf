@@ -41,7 +41,7 @@ interface LibraryFilterData {
 }
 
 /** Model classes registered on the sequelize instance, keyed by modelName */
-interface Models {
+interface DatabaseModels {
   user: typeof import('./models/User')
   session: typeof import('./models/Session')
   apiKey: typeof import('./models/ApiKey')
@@ -100,8 +100,8 @@ class Database {
     this.supportsUnicodeFoldings = false
   }
 
-  get models(): Models {
-    return (this.sequelize?.models || {}) as unknown as Models
+  get models(): DatabaseModels {
+    return (this.sequelize?.models || {}) as unknown as DatabaseModels
   }
 
   /** @type {typeof import('./models/User')} */
@@ -846,7 +846,8 @@ class Database {
     }
 
     // Remove mediaProgresses with duplicate mediaItemId (remove the oldest updatedAt or if updatedAt is the same, remove arbitrary one)
-    const duplicateMediaProgresses = await this.sequelize!.query<{ id: string; mediaItemId: string }>(`SELECT mp1.id, mp1.mediaItemId
+    const duplicateMediaProgresses = await this.sequelize!.query<{ id: string; mediaItemId: string }>(
+      `SELECT mp1.id, mp1.mediaItemId
 FROM mediaProgresses mp1
 WHERE EXISTS (
     SELECT 1
@@ -1070,6 +1071,7 @@ WHERE EXISTS (
 const database = new Database()
 namespace database {
   export type LibraryFilterDataObject = LibraryFilterData
+  export type Models = DatabaseModels
 }
 
 export = database

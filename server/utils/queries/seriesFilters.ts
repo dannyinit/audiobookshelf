@@ -161,21 +161,23 @@ export = {
       include: [
         {
           model: Database.bookSeriesModel,
-          include: {
-            model: Database.bookModel,
-            where: userPermissionBookWhere.bookWhere,
-            include: [
-              {
-                model: Database.libraryItemModel
-              },
-              {
-                model: Database.authorModel
-              },
-              {
-                model: Database.seriesModel
-              }
-            ]
-          },
+          include: [
+            {
+              model: Database.bookModel,
+              where: userPermissionBookWhere.bookWhere,
+              include: [
+                {
+                  model: Database.libraryItemModel
+                },
+                {
+                  model: Database.authorModel
+                },
+                {
+                  model: Database.seriesModel
+                }
+              ]
+            }
+          ],
           separate: true
         },
         ...seriesIncludes

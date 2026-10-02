@@ -416,10 +416,12 @@ export = {
     let seriesInclude = {
       model: Database.bookSeriesModel,
       attributes: ['id', 'seriesId', 'sequence', 'createdAt'],
-      include: {
-        model: Database.seriesModel,
-        attributes: ['id', 'name', 'nameIgnorePrefix']
-      },
+      include: [
+        {
+          model: Database.seriesModel,
+          attributes: ['id', 'name', 'nameIgnorePrefix']
+        }
+      ],
       order: [['createdAt', 'ASC']],
       separate: true
     }
@@ -427,10 +429,12 @@ export = {
     let authorInclude = {
       model: Database.bookAuthorModel,
       attributes: ['authorId', 'createdAt'],
-      include: {
-        model: Database.authorModel,
-        attributes: ['id', 'name']
-      },
+      include: [
+        {
+          model: Database.authorModel,
+          attributes: ['id', 'name']
+        }
+      ],
       order: [['createdAt', 'ASC']],
       separate: true
     }
@@ -764,29 +768,31 @@ export = {
             [Sequelize.Op.or]: [null, 0]
           }
         },
-        include: {
-          model: Database.bookModel,
-          where: bookWhere,
-          include: [
-            {
-              model: Database.libraryItemModel,
-              include: libraryItemIncludes
-            },
-            {
-              model: Database.authorModel,
-              through: {
-                attributes: []
-              }
-            },
-            {
-              model: Database.mediaProgressModel,
-              where: {
-                userId: user.id
+        include: [
+          {
+            model: Database.bookModel,
+            where: bookWhere,
+            include: [
+              {
+                model: Database.libraryItemModel,
+                include: libraryItemIncludes
               },
-              required: false
-            }
-          ]
-        }
+              {
+                model: Database.authorModel,
+                through: {
+                  attributes: []
+                }
+              },
+              {
+                model: Database.mediaProgressModel,
+                where: {
+                  userId: user.id
+                },
+                required: false
+              }
+            ]
+          }
+        ]
       },
       order: [[Sequelize.literal('recent_progress DESC')]],
       distinct: true,
@@ -867,10 +873,12 @@ export = {
         attributes: ['bookId', 'sequence'],
         separate: true,
         required: true,
-        include: {
-          model: Database.bookModel,
-          where: userPermissionBookWhere.bookWhere
-        },
+        include: [
+          {
+            model: Database.bookModel,
+            where: userPermissionBookWhere.bookWhere
+          }
+        ],
         order: [[Sequelize.literal('CAST(sequence AS FLOAT) ASC NULLS LAST')]],
         limit: 1
       },
@@ -973,17 +981,21 @@ export = {
         {
           model: Database.bookAuthorModel,
           attributes: ['authorId'],
-          include: {
-            model: Database.authorModel
-          },
+          include: [
+            {
+              model: Database.authorModel
+            }
+          ],
           separate: true
         },
         {
           model: Database.bookSeriesModel,
           attributes: ['seriesId', 'sequence'],
-          include: {
-            model: Database.seriesModel
-          },
+          include: [
+            {
+              model: Database.seriesModel
+            }
+          ],
           separate: true
         }
       ],
@@ -1129,16 +1141,20 @@ export = {
         },
         {
           model: Database.bookSeriesModel,
-          include: {
-            model: Database.seriesModel
-          },
+          include: [
+            {
+              model: Database.seriesModel
+            }
+          ],
           separate: true
         },
         {
           model: Database.bookAuthorModel,
-          include: {
-            model: Database.authorModel
-          },
+          include: [
+            {
+              model: Database.authorModel
+            }
+          ],
           separate: true
         }
       ],
@@ -1239,13 +1255,17 @@ export = {
       include: {
         separate: true,
         model: Database.bookSeriesModel,
-        include: {
-          model: Database.bookModel,
-          where: userPermissionBookWhere.bookWhere,
-          include: {
-            model: Database.libraryItemModel
+        include: [
+          {
+            model: Database.bookModel,
+            where: userPermissionBookWhere.bookWhere,
+            include: [
+              {
+                model: Database.libraryItemModel
+              }
+            ]
           }
-        }
+        ]
       },
       subQuery: false,
       distinct: true,

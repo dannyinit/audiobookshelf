@@ -41,6 +41,10 @@ class PodcastEpisode extends Model {
   declare createdAt: Date
   /** @type {Date} */
   declare updatedAt: Date
+  /** only set when included */
+  declare mediaProgresses?: import('./MediaProgress')[]
+  /** only set when included */
+  declare podcast?: import('./Podcast')
 
   /**
    *

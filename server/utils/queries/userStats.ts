@@ -23,10 +23,12 @@ export = {
       include: {
         model: Database.bookModel,
         attributes: ['id', 'coverPath'],
-        include: {
-          model: Database.libraryItemModel,
-          attributes: ['id', 'mediaId', 'mediaType']
-        },
+        include: [
+          {
+            model: Database.libraryItemModel,
+            attributes: ['id', 'mediaId', 'mediaType']
+          }
+        ],
         required: false
       },
       order: Database.sequelize.random()
@@ -53,10 +55,12 @@ export = {
       include: {
         model: Database.bookModel,
         attributes: ['id', 'title', 'coverPath'],
-        include: {
-          model: Database.libraryItemModel,
-          attributes: ['id', 'mediaId', 'mediaType']
-        },
+        include: [
+          {
+            model: Database.libraryItemModel,
+            attributes: ['id', 'mediaId', 'mediaType']
+          }
+        ],
         required: true
       },
       order: Database.sequelize.random()

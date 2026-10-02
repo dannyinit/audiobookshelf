@@ -127,10 +127,12 @@ class RssFeedManager {
           through: {
             attributes: []
           },
-          include: {
-            model: Database.libraryItemModel,
-            attributes: ['id', 'updatedAt']
-          }
+          include: [
+            {
+              model: Database.libraryItemModel,
+              attributes: ['id', 'updatedAt']
+            }
+          ]
         }
       })
 

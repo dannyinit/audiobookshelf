@@ -28,7 +28,6 @@ import AbsMetadataFileScanner = require('./AbsMetadataFileScanner')
 
 type BookMetadataObject = bookScanner.BookMetadataObject
 
-
 /**
  * Metadata for books pulled from files
  */
@@ -558,15 +557,19 @@ class BookScanner {
         include: [
           {
             model: Database.bookSeriesModel,
-            include: {
-              model: Database.seriesModel
-            }
+            include: [
+              {
+                model: Database.seriesModel
+              }
+            ]
           },
           {
             model: Database.bookAuthorModel,
-            include: {
-              model: Database.authorModel
-            }
+            include: [
+              {
+                model: Database.authorModel
+              }
+            ]
           }
         ]
       }
@@ -693,7 +696,7 @@ class BookScanner {
   static BookMetadataSourceHandler = class {
     existingLibraryItemId: string
     libraryScan: LibraryScan
-    libraryItemData: import("/home/danny/Code/compx574/audiobookshelf/server/scanner/LibraryItemScanData")
+    libraryItemData: import('/home/danny/Code/compx574/audiobookshelf/server/scanner/LibraryItemScanData')
     ebookFileScanData
     audioFiles: any[]
     bookMetadata: Record<string, any>
@@ -1048,8 +1051,8 @@ namespace bookScanner {
     genres: string[]
     tags: string[]
     authors: string[]
-    series: {name:string, sequence:string}[]
-    chapters: {id:number, start:number, end:number, title:string}[]
+    series: { name: string; sequence: string }[]
+    chapters: { id: number; start: number; end: number; title: string }[]
     explicit: boolean
     abridged: boolean
     coverPath: string

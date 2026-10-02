@@ -45,7 +45,7 @@ interface RequestEntityObject {
 type LibraryControllerRequest = RequestWithUser & RequestEntityObject
 
 class LibraryController {
-  cronManager: { updateLibraryScanCron: (arg0: import("../models/Library")) => void }
+  cronManager: { updateLibraryScanCron: (arg0: import('../models/Library')) => void }
   podcastManager: { getDownloadQueueDetails: (arg0: string) => any; generateOPMLFileText: (arg0: Sequelize.Model<any, any>[]) => any }
   constructor() {}
 
@@ -433,10 +433,12 @@ class LibraryController {
               {
                 model: Database.podcastModel,
                 attributes: ['id'],
-                include: {
-                  model: Database.podcastEpisodeModel,
-                  attributes: ['id']
-                }
+                include: [
+                  {
+                    model: Database.podcastEpisodeModel,
+                    attributes: ['id']
+                  }
+                ]
               },
               {
                 model: Database.bookModel,
@@ -556,10 +558,12 @@ class LibraryController {
         {
           model: Database.podcastModel,
           attributes: ['id'],
-          include: {
-            model: Database.podcastEpisodeModel,
-            attributes: ['id']
-          }
+          include: [
+            {
+              model: Database.podcastEpisodeModel,
+              attributes: ['id']
+            }
+          ]
         }
       ]
     })
@@ -679,10 +683,12 @@ class LibraryController {
         {
           model: Database.podcastModel,
           attributes: ['id'],
-          include: {
-            model: Database.podcastEpisodeModel,
-            attributes: ['id']
-          }
+          include: [
+            {
+              model: Database.podcastEpisodeModel,
+              attributes: ['id']
+            }
+          ]
         },
         {
           model: Database.bookModel,

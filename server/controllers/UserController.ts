@@ -20,7 +20,7 @@ type UserControllerRequest = RequestWithUser & RequestEntityObject
 
 class UserController {
   playbackSessionManager: { sessions: any }
-  auth: { localAuthStrategy: { hashPassword: (arg0: any) => string | PromiseLike<string> }; generateAccessToken: (arg0: import("../models/User")) => string; invalidateJwtSessionsForUser: (arg0: import("../models/User"), arg1: UserControllerRequest, arg2: Response<any, Record<string, any>>) => any }
+  auth: { localAuthStrategy: { hashPassword: (arg0: any) => string | PromiseLike<string> }; generateAccessToken: (arg0: import('../models/User')) => string; invalidateJwtSessionsForUser: (arg0: import('../models/User'), arg1: UserControllerRequest, arg2: Response<any, Record<string, any>>) => any }
   constructor() {}
 
   /**
@@ -77,10 +77,12 @@ class UserController {
         {
           model: Database.podcastEpisodeModel,
           attributes: ['id', 'title'],
-          include: {
-            model: Database.podcastModel,
-            attributes: ['id', 'title', 'coverPath', 'updatedAt']
-          }
+          include: [
+            {
+              model: Database.podcastModel,
+              attributes: ['id', 'title', 'coverPath', 'updatedAt']
+            }
+          ]
         }
       ]
     })

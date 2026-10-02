@@ -64,10 +64,12 @@ class Playlist extends Model {
           },
           {
             model: this.sequelize!.models.podcastEpisode,
-            include: {
-              model: this.sequelize!.models.podcast,
-              include: this.sequelize!.models.libraryItem
-            }
+            include: [
+              {
+                model: this.sequelize!.models.podcast,
+                include: this.sequelize!.models.libraryItem
+              }
+            ]
           }
         ]
       },
@@ -112,22 +114,26 @@ class Playlist extends Model {
       include: [
         {
           model: this.sequelize!.models.playlist,
-          include: {
-            model: this.sequelize!.models.playlistMediaItem,
-            include: [
-              {
-                model: this.sequelize!.models.book,
-                include: this.sequelize!.models.libraryItem
-              },
-              {
-                model: this.sequelize!.models.podcastEpisode,
-                include: {
-                  model: this.sequelize!.models.podcast,
+          include: [
+            {
+              model: this.sequelize!.models.playlistMediaItem,
+              include: [
+                {
+                  model: this.sequelize!.models.book,
                   include: this.sequelize!.models.libraryItem
+                },
+                {
+                  model: this.sequelize!.models.podcastEpisode,
+                  include: [
+                    {
+                      model: this.sequelize!.models.podcast,
+                      include: this.sequelize!.models.libraryItem
+                    }
+                  ]
                 }
-              }
-            ]
-          }
+              ]
+            }
+          ]
         }
       ],
       order: [['playlist', 'playlistMediaItems', 'order', 'ASC']]
