@@ -1,4 +1,4 @@
-import axios = require('axios')
+import axios from 'axios'
 import packageJson = require('../../package.json')
 import Logger = require('../Logger')
 import { isNullOrNaN } from '../utils/index'

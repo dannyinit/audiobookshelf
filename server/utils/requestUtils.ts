@@ -32,7 +32,7 @@ function getRequestProtocol(req: import('express').Request): 'https' | 'http' {
  */
 function getRequestOrigin(req: import('express').Request): { protocol: 'https' | 'http'; host: string; origin: string } {
   const protocol = getRequestProtocol(req)
-  const host = req.get('host')
+  const host = req.get('host')!
   return { protocol, host, origin: `${protocol}://${host}` }
 }
 

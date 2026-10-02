@@ -2,21 +2,23 @@ import { performance, createHistogram } from 'perf_hooks'
 import util = require('util')
 import Logger = require('../Logger')
 
-const histograms = new Map()
+type ProfileHistogram = import('perf_hooks').RecordableHistogram & { values: number[] }
 
-function profile(asyncFunc, isFindQuery = true, funcName = asyncFunc.name) {
+const histograms = new Map<string, ProfileHistogram>()
+
+function profile<A extends any[], R>(asyncFunc: (...args: A) => Promise<R>, isFindQuery = true, funcName = asyncFunc.name) {
   if (!histograms.has(funcName)) {
-    const histogram = createHistogram()
+    const histogram = createHistogram() as ProfileHistogram
     histogram.values = []
     histograms.set(funcName, histogram)
   }
-  const histogram = histograms.get(funcName)
+  const histogram = histograms.get(funcName)!
 
-  return async (...args) => {
+  return async (...args: A) => {
     if (isFindQuery) {
       const findOptions = args[0]
       Logger.info(`[${funcName}] findOptions:`, util.inspect(findOptions, { depth: null }))
-      findOptions.logging = (query, time) => Logger.info(`[${funcName}] ${query} Elapsed time: ${time}ms`)
+      findOptions.logging = (query: string, time: number) => Logger.info(`[${funcName}] ${query} Elapsed time: ${time}ms`)
       findOptions.benchmark = true
     }
     const start = performance.now()

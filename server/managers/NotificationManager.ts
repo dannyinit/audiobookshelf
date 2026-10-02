@@ -1,4 +1,4 @@
-import axios = require('axios')
+import axios from 'axios'
 import Logger = require('../Logger')
 import SocketAuthority = require('../SocketAuthority')
 import Database = require('../Database')

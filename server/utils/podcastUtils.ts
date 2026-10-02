@@ -1,4 +1,4 @@
-import axios = require('axios')
+import axios from 'axios'
 import ssrfFilter = require('ssrf-req-filter')
 import Logger = require('../Logger')
 import { xmlToJSON, timestampToSeconds } from './index'
@@ -387,7 +387,7 @@ export const getPodcastFeed = (feedUrl: string, excludeEpisodeMetadata: boolean 
         return null
       }
       Logger.debug(`[podcastUtils] getPodcastFeed for "${feedUrl}" success - parsing xml`)
-      const payload = await this.parsePodcastRssFeedXml(data.data, excludeEpisodeMetadata)
+      const payload = await parsePodcastRssFeedXml(data.data, excludeEpisodeMetadata)
       if (!payload) {
         return null
       }
@@ -403,7 +403,7 @@ export const getPodcastFeed = (feedUrl: string, excludeEpisodeMetadata: boolean 
         if (feedUrl.startsWith('http://') && error.request._options.protocol === 'https:') {
           Logger.info('Redirection from http to https detected. Upgrading Request', error.request._options.href)
           feedUrl = feedUrl.replace('http://', 'https://')
-          return this.getPodcastFeed(feedUrl, excludeEpisodeMetadata)
+          return getPodcastFeed(feedUrl, excludeEpisodeMetadata)
         }
       }
       Logger.error('[podcastUtils] getPodcastFeed Error', error)
@@ -413,11 +413,11 @@ export const getPodcastFeed = (feedUrl: string, excludeEpisodeMetadata: boolean 
 
 // Return array of episodes ordered by closest match using fuse.js
 export const findMatchingEpisodes = async (feedUrl, searchTitle) => {
-  const feed = await this.getPodcastFeed(feedUrl).catch(() => {
+  const feed = await getPodcastFeed(feedUrl).catch(() => {
     return null
   })
 
-  return this.findMatchingEpisodesInFeed(feed, searchTitle)
+  return findMatchingEpisodesInFeed(feed, searchTitle)
 }
 
 /**

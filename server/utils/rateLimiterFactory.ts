@@ -9,6 +9,8 @@ class RateLimiterFactory {
   static DEFAULT_WINDOW_MS = 10 * 60 * 1000 // 10 minutes
   static DEFAULT_MAX = 40 // 40 attempts
 
+  authRateLimiter: RateLimitRequestHandler | import('express').RequestHandler | null
+
   constructor() {
     this.authRateLimiter = null
   }
@@ -17,29 +19,30 @@ class RateLimiterFactory {
    * Get the authentication rate limiter
    * @returns {RateLimitRequestHandler}
    */
-  getAuthRateLimiter() {
+  getAuthRateLimiter(): RateLimitRequestHandler | import('express').RequestHandler {
     if (this.authRateLimiter) {
       return this.authRateLimiter
     }
 
     // Disable by setting max to 0
     if (process.env.RATE_LIMIT_AUTH_MAX === '0') {
-      this.authRateLimiter = (req, res, next) => next()
+      const passthrough: import('express').RequestHandler = (req, res, next) => next()
+      this.authRateLimiter = passthrough
       Logger.info(`[RateLimiterFactory] Authentication rate limiting disabled by ENV variable`)
-      return this.authRateLimiter
+      return passthrough
     }
 
     let windowMs = RateLimiterFactory.DEFAULT_WINDOW_MS
-    if (parseInt(process.env.RATE_LIMIT_AUTH_WINDOW) > 0) {
-      windowMs = parseInt(process.env.RATE_LIMIT_AUTH_WINDOW)
+    if (parseInt(process.env.RATE_LIMIT_AUTH_WINDOW!) > 0) {
+      windowMs = parseInt(process.env.RATE_LIMIT_AUTH_WINDOW!)
       if (windowMs !== RateLimiterFactory.DEFAULT_WINDOW_MS) {
         Logger.info(`[RateLimiterFactory] Authentication rate limiting window set to ${windowMs}ms by ENV variable`)
       }
     }
 
     let max = RateLimiterFactory.DEFAULT_MAX
-    if (parseInt(process.env.RATE_LIMIT_AUTH_MAX) > 0) {
-      max = parseInt(process.env.RATE_LIMIT_AUTH_MAX)
+    if (parseInt(process.env.RATE_LIMIT_AUTH_MAX!) > 0) {
+      max = parseInt(process.env.RATE_LIMIT_AUTH_MAX!)
       if (max !== RateLimiterFactory.DEFAULT_MAX) {
         Logger.info(`[RateLimiterFactory] Authentication rate limiting max set to ${max} by ENV variable`)
       }
@@ -50,14 +53,14 @@ class RateLimiterFactory {
       message = process.env.RATE_LIMIT_AUTH_MESSAGE
     }
 
-    this.authRateLimiter = rateLimit({
+    const authRateLimiter = rateLimit({
       windowMs,
       max,
       standardHeaders: true,
       legacyHeaders: false,
       keyGenerator: (req) => {
         // Override keyGenerator to handle proxy IPs
-        return requestIp.getClientIp(req) || req.ip
+        return (requestIp.getClientIp(req) || req.ip)!
       },
       handler: (req, res) => {
         const userAgent = req.get('User-Agent') || 'Unknown'
@@ -73,9 +76,11 @@ class RateLimiterFactory {
       }
     })
 
+    this.authRateLimiter = authRateLimiter
+
     Logger.debug(`[RateLimiterFactory] Created auth rate limiter: ${max} attempts per ${windowMs / 1000 / 60} minutes`)
 
-    return this.authRateLimiter
+    return authRateLimiter
   }
 }
 

@@ -3,7 +3,7 @@ import { Response } from 'express'
 import Logger = require('../Logger')
 import archiver = require('../libs/archiver')
 
-export const zipDirectoryPipe = (path, filename, res) => {
+export const zipDirectoryPipe = (path: string, filename: string, res: Response): Promise<void> => {
   return new Promise((resolve, reject) => {
     // create a file to stream archive data to
     res.attachment(filename)

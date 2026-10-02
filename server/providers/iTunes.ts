@@ -1,4 +1,4 @@
-import axios = require('axios')
+import axios from 'axios'
 import Logger = require('../Logger')
 import htmlSanitizer = require('../utils/htmlSanitizer')
 

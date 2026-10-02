@@ -6,7 +6,7 @@ import { entities } from './htmlEntities'
  * @param {string} html
  * @returns {string}
  */
-function sanitize(html) {
+function sanitize(html: unknown): string {
   if (typeof html !== 'string') {
     return ''
   }
@@ -25,7 +25,7 @@ function sanitize(html) {
 }
 export { sanitize }
 
-function stripAllTags(html, shouldDecodeEntities = true) {
+function stripAllTags(html: unknown, shouldDecodeEntities = true): string {
   if (typeof html !== 'string') return ''
 
   const sanitizerOptions = {
@@ -38,10 +38,10 @@ function stripAllTags(html, shouldDecodeEntities = true) {
 }
 export { stripAllTags }
 
-function decodeHTMLEntities(strToDecode) {
+function decodeHTMLEntities(strToDecode: string): string {
   return strToDecode.replace(/\&([^;]+);?/g, function (entity) {
     if (entity in entities) {
-      return entities[entity]
+      return entities[entity as keyof typeof entities]
     }
     return entity
   })

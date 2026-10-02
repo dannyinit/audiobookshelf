@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 import passport = require('passport')
 import OpenIDClient = require('openid-client')
-import axios = require('axios')
+import axios from 'axios'
 import Database = require('../Database')
 import Logger = require('../Logger')
 import { getRequestOrigin } from '../utils/requestUtils'

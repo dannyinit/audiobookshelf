@@ -170,7 +170,7 @@ export const checkHasOldDbZip = async () => {
   await zip.extract(null, global.ConfigPath)
   await zip.close()
 
-  return this.checkHasOldDb()
+  return checkHasOldDb()
 }
 
 /**

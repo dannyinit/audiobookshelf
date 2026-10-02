@@ -2,7 +2,7 @@ import child_process = require('child_process')
 import { promisify } from 'util'
 const exec = promisify(child_process.exec)
 import os = require('os')
-import axios = require('axios')
+import axios from 'axios'
 import path = require('path')
 import which = require('../libs/which')
 import fs = require('../libs/fsExtra')

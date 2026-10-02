@@ -250,5 +250,5 @@ export const parseOpfMetadataXML = async (xml) => {
   const json = await xmlToJSON(xml)
   if (!json) return null
 
-  return this.parseOpfMetadataJson(json)
+  return parseOpfMetadataJson(json)
 }

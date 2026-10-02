@@ -6,7 +6,7 @@ import util = require('util')
 import fs = require('./libs/fsExtra')
 import fileUpload = require('./libs/expressFileupload')
 import cookieParser = require('cookie-parser')
-import axios = require('axios')
+import axios from 'axios'
 
 import { version } from '../package.json'
 

@@ -1,4 +1,4 @@
-import axios = require('axios')
+import axios from 'axios'
 import ssrfFilter = require('ssrf-req-filter')
 import Ffmpeg = require('../libs/fluentFfmpeg')
 import ffmpgegUtils = require('../libs/fluentFfmpeg/utils')

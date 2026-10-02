@@ -17,7 +17,7 @@
  @param value2 Other item to compare
  @param stack Used internally to track circular refs - don't set it
  */
-export = function areEquivalent(value1, value2, numToString = false, stack = []) {
+export = function areEquivalent(value1: any, value2: any, numToString = false, stack: unknown[] = []): boolean {
   if (numToString) {
     if (value1 !== null && !isNaN(value1)) value1 = String(value1)
     if (value2 !== null && !isNaN(value2)) value2 = String(value2)
@@ -60,8 +60,9 @@ export = function areEquivalent(value1, value2, numToString = false, stack = [])
   }
 
   // For these types, cannot still be equal at this point, so fast-fail
+  // ('function' was already handled above)
   if (type1 === 'bigint' || type1 === 'boolean' ||
-    type1 === 'function' || type1 === 'string' ||
+    type1 === 'string' ||
     type1 === 'symbol') {
     // console.log('no match for values', value1, value2)
     return false

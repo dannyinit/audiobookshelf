@@ -4,25 +4,25 @@ import Logger = require('../Logger')
 import { parseString } from 'xml2js'
 import areEquivalent = require('./areEquivalent')
 
-const levenshteinDistance = (str1, str2, caseSensitive = false) => {
-  str1 = String(str1)
-  str2 = String(str2)
+const levenshteinDistance = (str1: unknown, str2: unknown, caseSensitive = false): number => {
+  let s1 = String(str1)
+  let s2 = String(str2)
   if (!caseSensitive) {
-    str1 = str1.toLowerCase()
-    str2 = str2.toLowerCase()
+    s1 = s1.toLowerCase()
+    s2 = s2.toLowerCase()
   }
-  const track = Array(str2.length + 1)
+  const track: number[][] = Array(s2.length + 1)
     .fill(null)
-    .map(() => Array(str1.length + 1).fill(null))
-  for (let i = 0; i <= str1.length; i += 1) {
+    .map(() => Array(s1.length + 1).fill(null))
+  for (let i = 0; i <= s1.length; i += 1) {
     track[0][i] = i
   }
-  for (let j = 0; j <= str2.length; j += 1) {
+  for (let j = 0; j <= s2.length; j += 1) {
     track[j][0] = j
   }
-  for (let j = 1; j <= str2.length; j += 1) {
-    for (let i = 1; i <= str1.length; i += 1) {
-      const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1
+  for (let j = 1; j <= s2.length; j += 1) {
+    for (let i = 1; i <= s1.length; i += 1) {
+      const indicator = s1[i - 1] === s2[j - 1] ? 0 : 1
       track[j][i] = Math.min(
         track[j][i - 1] + 1, // deletion
         track[j - 1][i] + 1, // insertion
@@ -30,11 +30,11 @@ const levenshteinDistance = (str1, str2, caseSensitive = false) => {
       )
     }
   }
-  return track[str2.length][str1.length]
+  return track[s2.length][s1.length]
 }
 export { levenshteinDistance }
 
-const levenshteinSimilarity = (str1, str2, caseSensitive = false) => {
+const levenshteinSimilarity = (str1: string, str2: string, caseSensitive = false) => {
   const distance = levenshteinDistance(str1, str2, caseSensitive)
   const maxLength = Math.max(str1.length, str2.length)
   if (maxLength === 0) return 1
@@ -42,16 +42,16 @@ const levenshteinSimilarity = (str1, str2, caseSensitive = false) => {
 }
 export { levenshteinSimilarity }
 
-export const isObject = (val) => {
+export const isObject = (val: unknown): boolean => {
   return val !== null && typeof val === 'object'
 }
 
-export const comparePaths = (path1, path2) => {
+export const comparePaths = (path1: string, path2: string) => {
   return path1 === path2 || Path.normalize(path1) === Path.normalize(path2)
 }
 
-export const isNullOrNaN = (num) => {
-  return num === null || isNaN(num)
+export const isNullOrNaN = (num: unknown) => {
+  return num === null || isNaN(num as number)
 }
 
 /**
@@ -64,7 +64,7 @@ export const clampPositiveInt = (value: number | null | undefined, max: number):
   return Math.min(Math.floor(value), max)
 }
 
-const xmlToJSON = (xml) => {
+const xmlToJSON = (xml: string): Promise<any> => {
   return new Promise((resolve, reject) => {
     parseString(xml, (err, results) => {
       if (err) {
@@ -106,7 +106,7 @@ function elapsedPretty(seconds: number): string {
   let days = Math.floor(hours / 24)
   hours -= days * 24
 
-  const timeParts = []
+  const timeParts: string[] = []
   if (days) {
     timeParts.push(`${days} d`)
   }
@@ -120,7 +120,7 @@ function elapsedPretty(seconds: number): string {
 }
 export { elapsedPretty }
 
-function secondsToTimestamp(seconds, includeMs = false, alwaysIncludeHours = false) {
+function secondsToTimestamp(seconds: number, includeMs = false, alwaysIncludeHours = false) {
   var _seconds = seconds
   var _minutes = Math.floor(seconds / 60)
   _seconds -= _minutes * 60
@@ -141,36 +141,36 @@ function secondsToTimestamp(seconds, includeMs = false, alwaysIncludeHours = fal
 }
 export { secondsToTimestamp }
 
-export const reqSupportsWebp = (req) => {
+export const reqSupportsWebp = (req: import('express').Request) => {
   if (!req || !req.headers || !req.headers.accept) return false
   return req.headers.accept.includes('image/webp') || req.headers.accept === '*/*'
 }
 
 export { areEquivalent }
 
-export const copyValue = (val) => {
+export const copyValue = (val: any): any => {
   if (val === undefined || val === '') return null
   else if (!val) return val
 
-  if (!this.isObject(val)) return val
+  if (!isObject(val)) return val
 
   if (Array.isArray(val)) {
-    return val.map(this.copyValue)
+    return val.map(copyValue)
   } else {
-    var final = {}
+    var final: Record<string, any> = {}
     for (const key in val) {
-      final[key] = this.copyValue(val[key])
+      final[key] = copyValue(val[key])
     }
     return final
   }
 }
 
-export const toNumber = (val, fallback = 0) => {
-  if (isNaN(val) || val === null) return fallback
+export const toNumber = (val: unknown, fallback = 0) => {
+  if (isNaN(val as number) || val === null) return fallback
   return Number(val)
 }
 
-export const cleanStringForSearch = (str) => {
+export const cleanStringForSearch = (str: string | null | undefined) => {
   if (!str) return ''
   // Remove ' . ` " ,
   return str
@@ -179,7 +179,7 @@ export const cleanStringForSearch = (str) => {
     .trim()
 }
 
-const getTitleParts = (title) => {
+const getTitleParts = (title: string): [string, string | null] => {
   if (!title) return ['', null]
   const prefixesToIgnore = global.ServerSettings.sortingPrefixes || []
   for (const prefix of prefixesToIgnore) {
@@ -230,7 +230,7 @@ export const escapeRegExp = (str: string): string => {
  * @param {string} rawUrl
  * @returns {string} null if invalid
  */
-export const validateUrl = (rawUrl: string): string => {
+export const validateUrl = (rawUrl: string): string | null => {
   if (!rawUrl || typeof rawUrl !== 'string') return null
   try {
     return new URL(rawUrl).toString()
@@ -271,7 +271,7 @@ export const isValidASIN = (str: string): boolean => {
  * @param {string} timestamp
  * @returns {number}
  */
-export const timestampToSeconds = (timestamp: string): number => {
+export const timestampToSeconds = (timestamp: string): number | null => {
   if (typeof timestamp !== 'string') {
     return null
   }
@@ -290,7 +290,8 @@ export const timestampToSeconds = (timestamp: string): number => {
 
 class ValidationError extends Error {
   paramName: string
-  constructor(paramName, message, status = 400) {
+  status: number
+  constructor(paramName: string, message: string, status = 400) {
     super(`Query parameter "${paramName}" ${message}`)
     this.name = 'ValidationError'
     this.paramName = paramName
@@ -300,7 +301,8 @@ class ValidationError extends Error {
 export { ValidationError }
 
 class NotFoundError extends Error {
-  constructor(message, status = 404) {
+  status: number
+  constructor(message: string, status = 404) {
     super(message)
     this.name = 'NotFoundError'
     this.status = status
