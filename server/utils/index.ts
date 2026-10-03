@@ -264,8 +264,8 @@ const timestampToSeconds = (timestamp: unknown): number | null => {
 }
 
 class ValidationError extends Error {
-  paramName: string
-  status: number
+  declare paramName: string
+  declare status: number
 
   constructor(paramName: string, message: string, status = 400) {
     super(`Query parameter "${paramName}" ${message}`)
@@ -276,7 +276,7 @@ class ValidationError extends Error {
 }
 
 class NotFoundError extends Error {
-  status: number
+  declare status: number
 
   constructor(message: string, status = 404) {
     super(message)

@@ -10,7 +10,7 @@ class RateLimiterFactory {
   static DEFAULT_WINDOW_MS = 10 * 60 * 1000 // 10 minutes
   static DEFAULT_MAX = 40 // 40 attempts
 
-  authRateLimiter: RequestHandler | null
+  declare authRateLimiter: RequestHandler | null
 
   constructor() {
     this.authRateLimiter = null

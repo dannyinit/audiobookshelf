@@ -2,8 +2,8 @@
  * Handle timeouts greater than 32-bit signed integer
  */
 class LongTimeout {
-  timeout: number
-  timer: NodeJS.Timeout | null
+  declare timeout: number
+  declare timer: NodeJS.Timeout | null
 
   constructor() {
     this.timeout = 0

@@ -53,7 +53,7 @@ interface AbMetadataChapter {
  */
 type ValidatedAbMetadata = Record<string, unknown> & {
   title?: string | null
-  series?: unknown
+  series?: unknown[]
   chapters?: AbMetadataChapter[]
 }
 
@@ -92,7 +92,7 @@ function parseJsonMetadataText(text: string, mediaType: 'book' | 'podcast'): Val
       }
     }
 
-    if (Array.isArray(validated.series) && validated.series.length) {
+    if (validated.series?.length) {
       validated.series = validated.series.map((series) => parseSeriesString.parse(series)).filter(Boolean)
     }
 

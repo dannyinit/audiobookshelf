@@ -53,10 +53,19 @@ Each has a `NOTE:` comment at the line.
 - Incremental tsc crash: changing `server/utils/types.ts` (its `declare global` block) makes `tsc` crash with `Debug Failure. False expression` in `getSpecifierForModuleSymbol` while re-emitting signatures of JS files. A clean build works; fix with `rm dist-server/.tsbuildinfo`.
 - Result: `npm run build:server` reports 0 `error TS`; `npm test` 356 passing, 0 failing.
 
+### Batch 1 fixes (after independent review)
+- abmetadataGenerator: restored the original `validated.series?.length` truthiness check (the batch had changed it to `Array.isArray(...) && ...length`); `series` is now typed `unknown[]` instead of using an `as`.
+- Class fields declared without an initialiser in comicBookExtractors, utils/index (ValidationError, NotFoundError), rateLimiterFactory and longTimeout compiled to `field;` lines that created own properties set to undefined. They are now `declare` fields (rule 12) and compile to nothing, as in the JavaScript.
+- Tried `"useDefineForClassFields": false` in tsconfig.server.json first and reverted it: it changed the compiled output of 21 files, including about 10 JS files that are not converted yet (ApiCacheManager, Database, Logger, TokenManager, MigrationManager, BinaryManager, User, DeviceInfo, ServerSettings, BookScanner), where real field initialisers move into the constructor body after parameter defaults. ApiCacheManager's `new LRUCache(this.defaultCacheOptions)` default then reads undefined and throws (348 passing, 1 failing).
+
 ## Extra rules
 9. If a file cannot be typed cleanly without changing behaviour, first use the smallest possible `as` with a one-line comment and a line in the Bugs section. If that still fails, leave the file as .js, list it under Skipped with the reason, and move on.
 10. You may add missing @types packages to devDependencies in package.json (for example express, passport, cookie-parser). Mention them in the Log.
 11. Add the types in the same edit as the rename: `git mv`, then edit the file before running the build, because a bare rename can crash incremental tsc.
+12. Declare class fields that the JavaScript did not initialise with `declare` (for example `declare timeout: NodeJS.Timeout`), so they compile to nothing whatever the tsconfig says. Fields the JavaScript did initialise stay as normal fields.
+
+## Known deviations to clean up at the end
+- The Phase 2 finders and providers (server/finders, server/providers) have the same class field issue: fields declared without an initialiser compile to `field;` lines (already present at 9c4185a0, for example `baseUrl;` in Audnexus and OpenLibrary). Mark them `declare` (rule 12).
 
 ## Skipped files
 (none yet; batch 1 skipped nothing)
