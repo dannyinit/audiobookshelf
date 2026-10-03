@@ -1,0 +1,313 @@
+import Path = require('path')
+import fileUtils = require('./fileUtils')
+import globals = require('./globals')
+import LibraryFile = require('../objects/files/LibraryFile')
+import parseNameString = require('./parsers/parseNameString')
+import type { FilePathItem } from './types'
+const { filePathToPOSIX } = fileUtils
+
+interface LibraryItemFilenameMetadata {
+  title: string | undefined
+  /** Book mediaType only */
+  subtitle?: string | null | undefined
+  /** Book mediaType only */
+  asin?: string | null
+  /** Book mediaType only */
+  authors?: (string | undefined)[]
+  /** Book mediaType only */
+  narrators?: (string | undefined)[]
+  /** Book mediaType only */
+  seriesName?: string | null | undefined
+  /** Book mediaType only */
+  seriesSequence?: string | null
+  /** Book mediaType only */
+  publishedYear?: string | null
+}
+
+function isMediaFile(mediaType: string, ext: string, audiobooksOnly = false): boolean {
+  if (!ext) return false
+  const extclean = ext.slice(1).toLowerCase()
+  if (mediaType === 'podcast') return globals.SupportedAudioTypes.includes(extclean)
+  else if (audiobooksOnly) return globals.SupportedAudioTypes.includes(extclean)
+  return globals.SupportedAudioTypes.includes(extclean) || globals.SupportedEbookTypes.includes(extclean)
+}
+
+function isScannableNonMediaFile(ext: string): boolean {
+  if (!ext) return false
+  const extclean = ext.slice(1).toLowerCase()
+  return globals.TextFileTypes.includes(extclean) || globals.MetadataFileTypes.includes(extclean) || globals.SupportedImageTypes.includes(extclean)
+}
+
+function checkFilepathIsAudioFile(filepath: string): boolean {
+  const ext = Path.extname(filepath)
+  if (!ext) return false
+  const extclean = ext.slice(1).toLowerCase()
+  return globals.SupportedAudioTypes.includes(extclean)
+}
+
+/**
+ * @param [includeNonMediaFiles=false] - Used by the watcher to re-scan when covers/metadata files are added/removed
+ * @returns map of files grouped into potential libarary item dirs. A media file in the root maps to its file name string
+ */
+function groupFileItemsIntoLibraryItemDirs(mediaType: string, fileItems: FilePathItem[], audiobooksOnly: boolean, includeNonMediaFiles = false): Record<string, string | string[]> {
+  // Step 1: Filter out non-book-media files in root dir (with depth of 0)
+  const itemsFiltered = fileItems.filter((i) => {
+    return i.deep > 0 || (mediaType === 'book' && isMediaFile(mediaType, i.extension, audiobooksOnly))
+  })
+
+  // Step 2: Separate media files and other files
+  //     - Directories without a media file will not be included (unless includeNonMediaFiles is true)
+  const mediaFileItems: FilePathItem[] = []
+  const otherFileItems: FilePathItem[] = []
+  itemsFiltered.forEach((item) => {
+    if (isMediaFile(mediaType, item.extension, audiobooksOnly) || (includeNonMediaFiles && isScannableNonMediaFile(item.extension))) {
+      mediaFileItems.push(item)
+    } else {
+      otherFileItems.push(item)
+    }
+  })
+
+  // Step 3: Group media files (or non-media files if includeNonMediaFiles is true) in library items
+  const libraryItemGroup: Record<string, string | string[]> = {}
+  mediaFileItems.forEach((item) => {
+    const dirparts = item.reldirpath.split('/').filter((p) => !!p)
+    const numparts = dirparts.length
+    let _path = ''
+
+    if (!dirparts.length) {
+      // Media file in root
+      libraryItemGroup[item.name] = item.name
+    } else {
+      // Iterate over directories in path
+      for (let i = 0; i < numparts; i++) {
+        // i < numparts, so dirparts is not empty
+        const dirpart = dirparts.shift() as string
+        _path = Path.posix.join(_path, dirpart)
+
+        if (libraryItemGroup[_path]) {
+          // Directory already has files, add file
+          const relpath = Path.posix.join(dirparts.join('/'), item.name)
+          // NOTE: if a root media file has the same name as this directory the group is a string and push throws
+          // Groups for directories are arrays; a root file group is a string (see NOTE above)
+          ;(libraryItemGroup[_path] as string[]).push(relpath)
+          return
+        } else if (!dirparts.length) {
+          // This is the last directory, create group
+          libraryItemGroup[_path] = [item.name]
+          return
+        } else if (dirparts.length === 1 && /^(cd|dis[ck])\s*\d{1,3}$/i.test(dirparts[0])) {
+          // Next directory is the last and is a CD dir, create group
+          libraryItemGroup[_path] = [Path.posix.join(dirparts[0], item.name)]
+          return
+        }
+      }
+    }
+  })
+
+  // Step 4: Add other files into library item groups
+  otherFileItems.forEach((item) => {
+    const dirparts = item.reldirpath.split('/')
+    const numparts = dirparts.length
+    let _path = ''
+
+    // Iterate over directories in path
+    for (let i = 0; i < numparts; i++) {
+      // i < numparts, so dirparts is not empty
+      const dirpart = dirparts.shift() as string
+      _path = Path.posix.join(_path, dirpart)
+      if (libraryItemGroup[_path]) {
+        // Directory is audiobook group
+        const relpath = Path.posix.join(dirparts.join('/'), item.name)
+        // NOTE: if a root media file has the same name as this directory the group is a string and push throws
+        // Groups for directories are arrays; a root file group is a string (see NOTE above)
+        ;(libraryItemGroup[_path] as string[]).push(relpath)
+        return
+      }
+    }
+  })
+  return libraryItemGroup
+}
+
+/**
+ * Get LibraryFile from filepath
+ */
+function buildLibraryFile(libraryItemPath: string, files: string[]): Promise<LibraryFile[]> {
+  return Promise.all(
+    files.map(async (file) => {
+      const filePath = Path.posix.join(libraryItemPath, file)
+      const newLibraryFile = new LibraryFile()
+      await newLibraryFile.setDataFromPath(filePath, file)
+      return newLibraryFile
+    })
+  )
+}
+
+/**
+ * Get details parsed from filenames
+ */
+function getBookDataFromDir(relPath: string, parseSubtitle = false): LibraryItemFilenameMetadata {
+  const splitDir = relPath.split('/')
+
+  // split always returns at least one element
+  const titleFolder = splitDir.pop() as string // Audio files will always be in the directory named for the title
+  const series = splitDir.length > 1 ? splitDir.pop() : null // If there are at least 2 more directories, next furthest will be the series
+  const author = splitDir.length > 0 ? splitDir.pop() : null // There could be many more directories, but only the top 3 are used for naming /author/series/title/
+
+  // Each extractor strips one piece of metadata and returns the remaining folder name.
+  const [afterAsin, asin] = getASIN(titleFolder)
+  const [afterNarrators, narrators] = getNarrator(afterAsin)
+  const [afterSequence, sequence]: [string, string | null] = series ? getSequence(afterNarrators) : [afterNarrators, null]
+  const [afterYear, publishedYear] = getPublishedYear(afterSequence)
+  const [title, subtitle]: [string | undefined, string | null] = parseSubtitle ? getSubtitle(afterYear) : [afterYear, null]
+
+  return {
+    title,
+    subtitle,
+    asin,
+    authors: parseNameString.parse(author)?.names || [],
+    narrators: parseNameString.parse(narrators)?.names || [],
+    seriesName: series,
+    seriesSequence: sequence,
+    publishedYear
+  }
+}
+
+/**
+ * Extract narrator from folder name
+ *
+ * @returns [folder, narrator]
+ */
+function getNarrator(folder: string): [string, string | null] {
+  const pattern = /^(?<title>.*) \{(?<narrators>.*)\}$/
+  const match = folder.match(pattern)
+  // The pattern has named groups, so groups is set when it matches
+  return match ? [match.groups!.title, match.groups!.narrators] : [folder, null]
+}
+
+/**
+ * Extract series sequence from folder name
+ *
+ * @example
+ * 'Book 2 - Title - Subtitle'
+ * 'Title - Subtitle - Vol 12'
+ * 'Title - volume 9 - Subtitle'
+ * 'Vol. 3 Title Here - Subtitle'
+ * '1980 - Book 2 - Title'
+ * 'Volume 12. Title - Subtitle'
+ * '100 - Book Title'
+ * '6. Title'
+ * '0.5 - Book Title'
+ *
+ * @returns [folder, sequence]
+ */
+function getSequence(folder: string): [string, string | null] {
+  // Matches a valid volume string. Also matches a book whose title starts with a 1 to 3 digit number. Will handle that later.
+  const pattern = /^(?<volumeLabel>vol\.? |volume |book )?(?<sequence>\d{0,3}(?:\.\d{1,2})?)(?<trailingDot>\.?)(?: (?<suffix>.*))?$/i
+
+  let volumeNumber: string | null = null
+  const parts: (string | undefined)[] = folder.split(' - ')
+  for (let i = 0; i < parts.length; i++) {
+    // Parts are only set to undefined right before the loop breaks
+    const match = (parts[i] as string).match(pattern)
+    // The pattern has named groups, so groups is set when it matches
+    const groups = match?.groups as Record<string, string | undefined> | undefined
+    // This excludes '101 Dalmations' but includes '101. Dalmations'
+    if (match && groups && !(groups.suffix && !(groups.volumeLabel || groups.trailingDot))) {
+      // The sequence group always participates in the match; isNaN coerces the string
+      const sequenceMatch = groups.sequence as string
+      // isNaN coerces the string
+      volumeNumber = isNaN(sequenceMatch as unknown as number) ? sequenceMatch : Number(sequenceMatch).toString()
+      parts[i] = groups.suffix
+      if (!parts[i]) {
+        parts.splice(i, 1)
+      }
+      break
+    }
+  }
+
+  folder = parts.join(' - ')
+  return [folder, volumeNumber]
+}
+
+/**
+ * Extract published year from folder name
+ *
+ * @returns [folder, publishedYear]
+ */
+function getPublishedYear(folder: string): [string, string | null] {
+  let publishedYear: string | null = null
+
+  const pattern = /^ *\(?([0-9]{4})\)? * - *(.+)/ //Matches #### - title or (####) - title
+  const match = folder.match(pattern)
+  if (match) {
+    publishedYear = match[1]
+    folder = match[2]
+  }
+
+  return [folder, publishedYear]
+}
+
+/**
+ * Extract subtitle from folder name
+ *
+ * @returns [folder, subtitle]
+ */
+function getSubtitle(folder: string): [string | undefined, string] {
+  // Subtitle is everything after " - "
+  const splitTitle = folder.split(' - ')
+  return [splitTitle.shift(), splitTitle.join(' - ')]
+}
+
+/**
+ * Extract asin from folder name
+ *
+ * @returns [folder, asin]
+ */
+function getASIN(folder: string): [string, string | null] {
+  let asin: string | null = null
+
+  const pattern = /(?: |^)\[([A-Z0-9]{10})](?= |$)/ // Matches "[B0015T963C]"
+  const match = folder.match(pattern)
+  if (match) {
+    asin = match[1]
+    folder = folder.replace(match[0], '')
+  }
+  return [folder.trim(), asin]
+}
+
+function getPodcastDataFromDir(relPath: string): LibraryItemFilenameMetadata {
+  const splitDir = relPath.split('/')
+
+  // Audio files will always be in the directory named for the title
+  const title = splitDir.pop()
+  return {
+    title
+  }
+}
+
+function getDataFromMediaDir(libraryMediaType: string, folderPath: string, relPath: string): { mediaMetadata: LibraryItemFilenameMetadata; relPath: string; path: string } {
+  relPath = filePathToPOSIX(relPath)
+  let fullPath = Path.posix.join(folderPath, relPath)
+  let mediaMetadata: LibraryItemFilenameMetadata | null = null
+
+  if (libraryMediaType === 'podcast') {
+    mediaMetadata = getPodcastDataFromDir(relPath)
+  } else {
+    // book
+    mediaMetadata = getBookDataFromDir(relPath, !!global.ServerSettings.scannerParseSubtitle)
+  }
+
+  return {
+    mediaMetadata,
+    relPath,
+    path: fullPath
+  }
+}
+
+export = {
+  checkFilepathIsAudioFile,
+  groupFileItemsIntoLibraryItemDirs,
+  buildLibraryFile,
+  getBookDataFromDir,
+  getDataFromMediaDir
+}
