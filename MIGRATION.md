@@ -33,3 +33,11 @@ Already done in Phase 2: server/finders, server/providers, server/controllers/Se
 
 ## Log
 (none yet)
+
+## Extra rules
+9. If a file cannot be typed cleanly without changing behaviour, first use the smallest possible `as` with a one-line comment and a line in the Bugs section. If that still fails, leave the file as .js, list it under Skipped with the reason, and move on.
+10. You may add missing @types packages to devDependencies in package.json (for example express, passport, cookie-parser). Mention them in the Log.
+11. Add the types in the same edit as the rename: `git mv`, then edit the file before running the build, because a bare rename can crash incremental tsc.
+
+## Skipped files
+(none yet)
