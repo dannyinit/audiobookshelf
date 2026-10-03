@@ -16,9 +16,9 @@ Goal: convert every first-party .js file under server/ and index.js to TypeScrip
 | Batch | Directory | Files | Status |
 | --- | --- | --- | --- |
 | 1 | server/utils (all subfolders) | 46 | done |
-| 2 | server/objects (all subfolders) | 18 | todo |
+| 2 | server/objects (all subfolders) | 18 | done |
 | 3 | server/models | 25 | todo |
-| 4 | server/auth and server/routers | 6 | todo |
+| 4 | server/auth and server/routers | 6 | done |
 | 5 | server/managers | 18 | todo |
 | 6 | server/scanner | 13 | todo |
 | 7 | server/controllers (remaining 22) | 22 | todo |
@@ -38,6 +38,10 @@ Each has a `NOTE:` comment at the line.
 - server/utils/parsers/parseFullName.ts `fixParsedNameCase`: the suffix check indexes `namePartLabels[j]` (word index) instead of `namePartLabels[i]` (label index).
 - server/utils/comicBookExtractors.ts `CbzComicBookExtractor.open`: `getBuffer()` can return null, which is passed to `Archive.open` unchecked (the class is not used by `createComicBookExtractor` at the moment).
 - server/utils/migrations/dbMigration.ts `handleOldLibraries`: maps `oldDbIdMap.libraries[library.oldLibraryId]`, but the Library model has no `oldLibraryId` (it was just written to `extraData`), so the key is "undefined" and old library ids in users' `librariesAccessible` are mapped to undefined and dropped.
+- server/objects/files/LibraryFile.ts `setDataFromPath`: `getFileTimestampsWithIno` returns `false` when stat fails; the file is then created with `ino` undefined and no size/timestamps, and no error is reported.
+- server/auth/TokenManager.ts `rotateTokensForSession`: when the conditional update hits 0 rows and the session row has been deleted in the meantime, `findOne` returns null and `updatedSession.refreshToken` throws.
+- server/auth/OidcAuthStrategy.ts `verifyCallback`: when no user matches and auto-register is off, `user.isActive` is read on null and throws a TypeError, so the intended 'User not active or not found' error is never thrown (the login still fails, the log shows the TypeError).
+- server/routers/ApiRouter.ts `getUserListeningStatsHelpers`: reads `s.lastUpdate`, but PlaybackSession has no `lastUpdate` (it is `updatedAt`), so `items[id].lastUpdate` is always undefined.
 
 ## Log
 ### Batch 1: server/utils (46 files, all converted, none skipped)
@@ -58,6 +62,26 @@ Each has a `NOTE:` comment at the line.
 - Class fields declared without an initialiser in comicBookExtractors, utils/index (ValidationError, NotFoundError), rateLimiterFactory and longTimeout compiled to `field;` lines that created own properties set to undefined. They are now `declare` fields (rule 12) and compile to nothing, as in the JavaScript.
 - Tried `"useDefineForClassFields": false` in tsconfig.server.json first and reverted it: it changed the compiled output of 21 files, including about 10 JS files that are not converted yet (ApiCacheManager, Database, Logger, TokenManager, MigrationManager, BinaryManager, User, DeviceInfo, ServerSettings, BookScanner), where real field initialisers move into the constructor body after parameter defaults. ApiCacheManager's `new LRUCache(this.defaultCacheOptions)` default then reads undefined and throws (348 passing, 1 failing).
 
+### Batch 2 and 4: server/objects, server/auth, server/routers (24 files, all converted, none skipped)
+- New type files: `server/objects/types.ts` (`FileMetadataJSON`, `AudioChapter`, `TaskString`, and `DateAndTime`, a typed view of the minified vendored libs/dateAndTime used by objects and ApiRouter) and `server/auth/types.ts` (`declare global`: `Express.User` extends the User model so `req.user` is typed, and `var RouterBasePath`; `PassportDone`, `JwtPayload`).
+- devDependencies added (rule 10): `@types/passport` (passport.use/unuse and `req.user`), `@types/express-session` (`req.session` in OidcAuthStrategy).
+- No files outside the batch were changed (apart from package.json/package-lock.json and this file). No tests were changed.
+- Class fields: every field the JS assigned in the constructor or later (none were JS class fields) is a `declare` field (rule 12), so the classes compile to the same constructor bodies. The JS static field initialisers (`DeviceInfo.stringFields`, `ServerSettings.patchableSettingsKeys`, `TokenManager.TokenSecret`) stay normal static fields. `Task.failedAt` and `TrackProgressMonitor.currentTrackProgress`, set outside the constructor, are declared too.
+- Fields the JS JSDoc typed as non-null but initialised to null (`AudioFile.metadata`/`metaTags`, `LibraryFile.metadata`, `EBookFile.metadata`, `PodcastEpisodeDownload.rssPodcastEpisode`/`libraryItem`/`url`) keep the non-null type with a commented `null as unknown as T` in the constructor; other null-initialised fields are typed `T | null`.
+- Inputs of the constructors (stored JSON) are typed as the toJSON shape (`AudioFileData`, `LibraryFileData`, `NotificationData`, `PlaybackSessionData`, `ServerSettingsData` = `Partial<toJSON> & { storeCoverWithBook?, storeMetadataWithBook? }`, ...). `FileMetadata.toJSON` and `LibraryFile.toJSON` cast their result to the non-null shape the JS models expect (`LibraryFileObject` in models/LibraryItem).
+- `global.ServerSettings` (declared in utils/types.ts from `ServerSettings['toJSON']`) is now fully typed.
+- ApiRouter: the JS controllers type `req` as their own `RequestWithUser`, which express's `RequestHandler` does not accept, so `this.router` is typed `ApiRouterApp` (express app whose get/post/patch/delete take handlers with open parameters) with one commented cast at `express()`. The route lines are unchanged.
+- `TypedDatabase` casts (as in batch 1) in TokenManager and ApiRouter. TokenManager also types the session rows as `SessionRow` (the JS Session model does not declare `refreshToken`); ApiRouter adds `getPlaybackSessions(where): Promise<PlaybackSession[]>` to its Database view (it returns false only before Database.init).
+- Compared the compiled output of all 24 files with the JS compiled at 7f280c67 (comments stripped, printed with the TypeScript printer): AudioTrack and TrackProgressMonitor are identical, LocalAuthStrategy identical apart from quote style. All other differences are listed here:
+  - Module style: `const { a } = require('x')` / `require('x').a` became `import x = require('x')` plus `const { a } = x` / `const a = x.a` after the imports (still destructured at module load, now after the other requires of the file; none of the destructured modules is in a require cycle with the file that destructures it, so they are fully loaded either way). Typed views are `const fs = fsExtra`, `const date = dateAndTime`, `const Database = DatabaseModule` (same objects).
+  - OidcAuthStrategy: `const { Request, Response } = require('express')` (only used for JSDoc; both values were undefined) became `import type`, so this module no longer requires express at runtime. `axios` is a default import (`axios_1.default.get`, the same axios object; rule 5).
+  - Local aliases of the same object, so dynamic keys type check (`this[key]` / `payload[key]` read and written through `self` / `values` / `newValues` / `existingValues` / `jsonValues` / `other`): FileMetadata `update`, `setData`; AudioMetaTags `toJSON` (`for (const key in this)` became `for (const key in self)`), `updateData`, `isEqual`; AudioFile `updateFromScan`, `mimeType` (`AudioMimeType[format]` became `mimeTypes[format]`); DeviceInfo `construct`, `toJSON`, `update`; Notification `update`; EmailSettings `update`; ServerSettings `update`.
+  - OidcAuthStrategy: `req.query.x` became `query.x` with `const query = req.query` at the start of `generatePkce` and `getAuthorizationUrl` (before the try; `req.query` is a plain property); `req.session[sessionKey]` became `session[sessionKey]` with `const session = req.session`; `client.issuer.end_session_endpoint` (read twice) became `issuer.end_session_endpoint` with `const issuer = client.issuer`.
+  - ApiRouter `getUserListeningStatsHelpers`: `listeningSessions.forEach(...)` became `sessionsForStats.forEach(...)` with `const sessionsForStats = listeningSessions`.
+  - Casts on expressions (`(await findOne(...)) as SessionRow`, `(session.updatedAt || session.startedAt) as number | null`, `(this.timeListening as number) += ...`) only add parentheses in the output.
+- Non-null assertions (`!`, each with a comment): `FileMetadata.filenameNoExt`, OidcAuthStrategy `handleMobileRedirect` (`openIdAuthSession.get(state)!`, `has(state)` is checked just before).
+- Result: `npm run build:server` reports 0 `error TS`; `npm test` 356 passing, 0 failing.
+
 ## Extra rules
 9. If a file cannot be typed cleanly without changing behaviour, first use the smallest possible `as` with a one-line comment and a line in the Bugs section. If that still fails, leave the file as .js, list it under Skipped with the reason, and move on.
 10. You may add missing @types packages to devDependencies in package.json (for example express, passport, cookie-parser). Mention them in the Log.
@@ -68,4 +92,4 @@ Each has a `NOTE:` comment at the line.
 - The Phase 2 finders and providers (server/finders, server/providers) have the same class field issue: fields declared without an initialiser compile to `field;` lines (already present at 9c4185a0, for example `baseUrl;` in Audnexus and OpenLibrary). Mark them `declare` (rule 12).
 
 ## Skipped files
-(none yet; batch 1 skipped nothing)
+(none yet; batches 1, 2 and 4 skipped nothing)

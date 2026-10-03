@@ -1,17 +1,46 @@
-const Path = require('path')
-const uuidv4 = require('uuid').v4
-const { sanitizeFilename, filePathToPOSIX } = require('../utils/fileUtils')
-const globals = require('../utils/globals')
+import Path = require('path')
+import uuid = require('uuid')
+import fileUtils = require('../utils/fileUtils')
+import globals = require('../utils/globals')
+import type LibraryItem = require('../models/LibraryItem')
+const uuidv4 = uuid.v4
+const { sanitizeFilename, filePathToPOSIX } = fileUtils
+
+/**
+ * Episode parsed from an RSS feed (the RssPodcastEpisode type in utils/podcastUtils)
+ */
+type RssPodcastEpisode = NonNullable<ReturnType<typeof import('../utils/podcastUtils').findMatchingEpisodesInFeed>>[number]['episode']
 
 class PodcastEpisodeDownload {
+  declare id: string | null
+  declare rssPodcastEpisode: RssPodcastEpisode
+
+  declare url: string
+  declare libraryItem: LibraryItem
+  declare libraryId: string | null
+
+  declare isAutoDownload: boolean
+  declare isFinished: boolean
+  declare failed: boolean
+
+  declare appendRandomId: boolean
+
+  /** false when sanitizeFilename gets a non-string (never the case here) */
+  declare targetFilename: string | false | null
+
+  declare startedAt: number | null
+  declare createdAt: number | null
+  declare finishedAt: number | null
+
   constructor() {
     this.id = null
-    /** @type {import('../utils/podcastUtils').RssPodcastEpisode} */
-    this.rssPodcastEpisode = null
+    // Typed RssPodcastEpisode (as the JSDoc did); setData sets it before use
+    this.rssPodcastEpisode = null as unknown as RssPodcastEpisode
 
-    this.url = null
-    /** @type {import('../models/LibraryItem')} */
-    this.libraryItem = null
+    // Typed string; setData sets it before use
+    this.url = null as unknown as string
+    // Typed LibraryItem (as the JSDoc did); setData sets it before use
+    this.libraryItem = null as unknown as LibraryItem
     this.libraryId = null
 
     this.isAutoDownload = false
@@ -67,7 +96,8 @@ class PodcastEpisodeDownload {
     return this.rssPodcastEpisode.title
   }
   get targetPath() {
-    return filePathToPOSIX(Path.join(this.libraryItem.path, this.targetFilename))
+    // setData sets targetFilename to a string before the getters are used
+    return filePathToPOSIX(Path.join(this.libraryItem.path, this.targetFilename as string))
   }
   get targetRelPath() {
     return this.targetFilename
@@ -81,30 +111,30 @@ class PodcastEpisodeDownload {
   }
 
   /**
-   * @param {string} title
+   * @param title
    */
-  getSanitizedFilename(title) {
+  getSanitizedFilename(title: string) {
     const appendage = this.appendRandomId ? ` (${this.id})` : ''
     const filename = `${title.trim()}${appendage}.${this.fileExtension}`
     return sanitizeFilename(filename)
   }
 
   /**
-   * @param {boolean} appendRandomId
+   * @param appendRandomId
    */
-  setAppendRandomId(appendRandomId) {
+  setAppendRandomId(appendRandomId: boolean) {
     this.appendRandomId = appendRandomId
     this.targetFilename = this.getSanitizedFilename(this.rssPodcastEpisode.title || '')
   }
 
   /**
    *
-   * @param {import('../utils/podcastUtils').RssPodcastEpisode} rssPodcastEpisode - from rss feed
-   * @param {import('../models/LibraryItem')} libraryItem
-   * @param {*} isAutoDownload
-   * @param {*} libraryId
+   * @param rssPodcastEpisode - from rss feed
+   * @param libraryItem
+   * @param isAutoDownload
+   * @param libraryId
    */
-  setData(rssPodcastEpisode, libraryItem, isAutoDownload, libraryId) {
+  setData(rssPodcastEpisode: RssPodcastEpisode, libraryItem: LibraryItem, isAutoDownload: boolean, libraryId: string) {
     this.id = uuidv4()
     this.rssPodcastEpisode = rssPodcastEpisode
 
@@ -124,10 +154,10 @@ class PodcastEpisodeDownload {
     this.libraryId = libraryId
   }
 
-  setFinished(success) {
+  setFinished(success: boolean) {
     this.finishedAt = Date.now()
     this.isFinished = true
     this.failed = !success
   }
 }
-module.exports = PodcastEpisodeDownload
+export = PodcastEpisodeDownload

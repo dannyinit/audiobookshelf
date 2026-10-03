@@ -1,53 +1,65 @@
-const uuidv4 = require('uuid').v4
-
-/**
- * @typedef TaskString
- * @property {string} text
- * @property {string} key
- * @property {string[]} [subs]
- */
+import uuid = require('uuid')
+import type { TaskString } from './types'
+const uuidv4 = uuid.v4
 
 class Task {
+  declare id: string | null
+  declare action: string | null
+  /** custom data */
+  declare data: Record<string, unknown> | null
+
+  declare title: string | null
+  /** Used for translation */
+  declare titleKey: string | null
+  /** Used for translation */
+  declare titleSubs: string[] | null
+
+  declare description: string | null
+  /** Used for translation */
+  declare descriptionKey: string | null
+  /** Used for translation */
+  declare descriptionSubs: string[] | null
+
+  declare error: string | null
+  /** Used for translation */
+  declare errorKey: string | null
+  /** Used for translation */
+  declare errorSubs: string[] | null
+
+  /** client should keep the task visible after success */
+  declare showSuccess: boolean
+
+  declare isFailed: boolean
+  declare isFinished: boolean
+
+  declare startedAt: number | null
+  declare finishedAt: number | null
+  /** Set by setFailed (not in toJSON) */
+  declare failedAt: number
+
   constructor() {
-    /** @type {string} */
     this.id = null
-    /** @type {string} */
     this.action = null // e.g. embed-metadata, encode-m4b, etc
-    /** @type {Object} custom data */
     this.data = null // additional info for the action like libraryItemId
 
-    /** @type {string} */
     this.title = null
-    /** @type {string} - Used for translation */
     this.titleKey = null
-    /** @type {string[]} - Used for translation */
     this.titleSubs = null
 
-    /** @type {string} */
     this.description = null
-    /** @type {string} - Used for translation */
     this.descriptionKey = null
-    /** @type {string[]} - Used for translation */
     this.descriptionSubs = null
 
-    /** @type {string} */
     this.error = null
-    /** @type {string} - Used for translation */
     this.errorKey = null
-    /** @type {string[]} - Used for translation */
     this.errorSubs = null
 
-    /** @type {boolean} client should keep the task visible after success */
     this.showSuccess = false
 
-    /** @type {boolean} */
     this.isFailed = false
-    /** @type {boolean} */
     this.isFinished = false
 
-    /** @type {number} */
     this.startedAt = null
-    /** @type {number} */
     this.finishedAt = null
   }
 
@@ -76,13 +88,13 @@ class Task {
   /**
    * Set initial task data
    *
-   * @param {string} action
-   * @param {TaskString} titleString
-   * @param {TaskString|null} descriptionString
-   * @param {boolean} showSuccess
-   * @param {Object} [data]
+   * @param action
+   * @param titleString
+   * @param descriptionString
+   * @param showSuccess
+   * @param [data]
    */
-  setData(action, titleString, descriptionString, showSuccess, data = {}) {
+  setData(action: string, titleString: TaskString, descriptionString: TaskString | null, showSuccess: boolean, data: Record<string, unknown> = {}) {
     this.id = uuidv4()
     this.action = action
     this.data = { ...data }
@@ -99,9 +111,9 @@ class Task {
   /**
    * Set task as failed
    *
-   * @param {TaskString} messageString
+   * @param messageString
    */
-  setFailed(messageString) {
+  setFailed(messageString: TaskString) {
     this.error = messageString.text
     this.errorKey = messageString.key || null
     this.errorSubs = messageString.subs || null
@@ -113,10 +125,10 @@ class Task {
   /**
    * Set task as finished
    *
-   * @param {TaskString} [newDescriptionString] update description
-   * @param {boolean} [clearDescription] clear description
+   * @param [newDescriptionString] update description
+   * @param [clearDescription] clear description
    */
-  setFinished(newDescriptionString = null, clearDescription = false) {
+  setFinished(newDescriptionString: TaskString | null = null, clearDescription = false) {
     if (newDescriptionString) {
       this.description = newDescriptionString.text
       this.descriptionKey = newDescriptionString.key || null
@@ -130,4 +142,4 @@ class Task {
     this.finishedAt = Date.now()
   }
 }
-module.exports = Task
+export = Task

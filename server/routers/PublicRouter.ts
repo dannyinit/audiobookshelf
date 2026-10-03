@@ -1,10 +1,13 @@
-const express = require('express')
-const ShareController = require('../controllers/ShareController')
-const SessionController = require('../controllers/SessionController')
+import express = require('express')
+import ShareController = require('../controllers/ShareController')
+import SessionController = require('../controllers/SessionController')
+import type PlaybackSessionManager = require('../managers/PlaybackSessionManager')
 
 class PublicRouter {
-  constructor(playbackSessionManager) {
-    /** @type {import('../managers/PlaybackSessionManager')} */
+  declare playbackSessionManager: PlaybackSessionManager
+  declare router: express.Express
+
+  constructor(playbackSessionManager: PlaybackSessionManager) {
     this.playbackSessionManager = playbackSessionManager
 
     this.router = express()
@@ -21,4 +24,4 @@ class PublicRouter {
     this.router.get('/session/:id/track/:index', SessionController.getTrack.bind(this))
   }
 }
-module.exports = PublicRouter
+export = PublicRouter

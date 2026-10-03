@@ -1,15 +1,20 @@
-const passport = require('passport')
-const LocalStrategy = require('../libs/passportLocal')
-const Database = require('../Database')
-const Logger = require('../Logger')
+import passport = require('passport')
+import LocalStrategy = require('../libs/passportLocal')
+import Database = require('../Database')
+import Logger = require('../Logger')
 
-const bcrypt = require('../libs/bcryptjs')
-const requestIp = require('../libs/requestIp')
+import bcrypt = require('../libs/bcryptjs')
+import requestIp = require('../libs/requestIp')
+import type { Request } from 'express'
+import type User = require('../models/User')
 
 /**
  * Local authentication strategy using username/password
  */
 class LocalAuthStrategy {
+  declare name: string
+  declare strategy: LocalStrategy | null
+
   constructor() {
     this.name = 'local'
     this.strategy = null
@@ -17,7 +22,6 @@ class LocalAuthStrategy {
 
   /**
    * Get the passport strategy instance
-   * @returns {LocalStrategy}
    */
   getStrategy() {
     if (!this.strategy) {
@@ -43,12 +47,12 @@ class LocalAuthStrategy {
 
   /**
    * Verify user credentials
-   * @param {import('express').Request} req
-   * @param {string} username
-   * @param {string} password
-   * @param {Function} done - Passport callback
+   * @param req
+   * @param username
+   * @param password
+   * @param done - Passport callback
    */
-  async verifyCredentials(req, username, password, done) {
+  async verifyCredentials(req: Request, username: string, password: string, done: (err: null, user: User | null) => void) {
     // Load the user given it's username
     const user = await Database.userModel.getUserByUsername(username.toLowerCase())
 
@@ -98,23 +102,23 @@ class LocalAuthStrategy {
 
   /**
    * Log failed login attempts
-   * @param {import('express').Request} req
-   * @param {string} username
-   * @param {string} message
+   * @param req
+   * @param username
+   * @param message
    */
-  logFailedLoginAttempt(req, username, message) {
+  logFailedLoginAttempt(req: Request, username: string, message: string) {
     if (!req || !username || !message) return
     Logger.error(`[LocalAuth] Failed login attempt for username "${username}" from ip ${requestIp.getClientIp(req)} (${message})`)
   }
 
   /**
    * Hash a password with bcrypt
-   * @param {string} password
-   * @returns {Promise<string>} hash
+   * @param password
+   * @returns hash
    */
-  hashPassword(password) {
+  hashPassword(password: string): Promise<string | null> {
     return new Promise((resolve) => {
-      bcrypt.hash(password, 8, (err, hash) => {
+      bcrypt.hash(password, 8, (err: Error | null, hash: string) => {
         if (err) {
           resolve(null)
         } else {
@@ -126,23 +130,23 @@ class LocalAuthStrategy {
 
   /**
    * Compare password with user's hashed password
-   * @param {string} password
-   * @param {import('../models/User')} user
-   * @returns {Promise<boolean>}
+   * @param password
+   * @param user
    */
-  comparePassword(password, user) {
+  comparePassword(password: string, user: User): boolean | Promise<boolean> {
     if (user.type === 'root' && !password && !user.pash) return true
     if (!password || !user.pash) return false
-    return bcrypt.compare(password, user.pash)
+    // Without a callback compare returns a promise
+    return bcrypt.compare(password, user.pash) as Promise<boolean>
   }
 
   /**
    * Change user password
-   * @param {import('../models/User')} user
-   * @param {string} password
-   * @param {string} newPassword
+   * @param user
+   * @param password
+   * @param newPassword
    */
-  async changePassword(user, password, newPassword) {
+  async changePassword(user: User, password: string, newPassword: string) {
     // Only root can have an empty password
     if (user.type !== 'root' && !newPassword) {
       return {
@@ -158,7 +162,7 @@ class LocalAuthStrategy {
       }
     }
 
-    let pw = ''
+    let pw: string | null = ''
     if (newPassword) {
       pw = await this.hashPassword(newPassword)
       if (!pw) {
@@ -183,4 +187,4 @@ class LocalAuthStrategy {
   }
 }
 
-module.exports = LocalAuthStrategy
+export = LocalAuthStrategy

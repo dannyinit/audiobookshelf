@@ -1,62 +1,130 @@
-const express = require('express')
-const Path = require('path')
-const sequelize = require('sequelize')
+import express = require('express')
+import Path = require('path')
+import sequelize = require('sequelize')
 
-const Logger = require('../Logger')
-const Database = require('../Database')
-const SocketAuthority = require('../SocketAuthority')
+import Logger = require('../Logger')
+import DatabaseModule = require('../Database')
+import SocketAuthority = require('../SocketAuthority')
 
-const fs = require('../libs/fsExtra')
-const date = require('../libs/dateAndTime')
+import fsExtra = require('../libs/fsExtra')
+import dateAndTime = require('../libs/dateAndTime')
 
-const CacheManager = require('../managers/CacheManager')
-const RssFeedManager = require('../managers/RssFeedManager')
+import CacheManager = require('../managers/CacheManager')
+import RssFeedManager = require('../managers/RssFeedManager')
 
-const LibraryController = require('../controllers/LibraryController')
-const UserController = require('../controllers/UserController')
-const CollectionController = require('../controllers/CollectionController')
-const PlaylistController = require('../controllers/PlaylistController')
-const MeController = require('../controllers/MeController')
-const BackupController = require('../controllers/BackupController')
-const LibraryItemController = require('../controllers/LibraryItemController')
-const SeriesController = require('../controllers/SeriesController')
-const FileSystemController = require('../controllers/FileSystemController')
-const AuthorController = require('../controllers/AuthorController')
-const SessionController = require('../controllers/SessionController')
-const PodcastController = require('../controllers/PodcastController')
-const NotificationController = require('../controllers/NotificationController')
-const EmailController = require('../controllers/EmailController')
-const SearchController = require('../controllers/SearchController')
-const CacheController = require('../controllers/CacheController')
-const ToolsController = require('../controllers/ToolsController')
-const RSSFeedController = require('../controllers/RSSFeedController')
-const CustomMetadataProviderController = require('../controllers/CustomMetadataProviderController')
-const MiscController = require('../controllers/MiscController')
-const ShareController = require('../controllers/ShareController')
-const StatsController = require('../controllers/StatsController')
-const ApiKeyController = require('../controllers/ApiKeyController')
+import LibraryController = require('../controllers/LibraryController')
+import UserController = require('../controllers/UserController')
+import CollectionController = require('../controllers/CollectionController')
+import PlaylistController = require('../controllers/PlaylistController')
+import MeController = require('../controllers/MeController')
+import BackupController = require('../controllers/BackupController')
+import LibraryItemController = require('../controllers/LibraryItemController')
+import SeriesController = require('../controllers/SeriesController')
+import FileSystemController = require('../controllers/FileSystemController')
+import AuthorController = require('../controllers/AuthorController')
+import SessionController = require('../controllers/SessionController')
+import PodcastController = require('../controllers/PodcastController')
+import NotificationController = require('../controllers/NotificationController')
+import EmailController = require('../controllers/EmailController')
+import SearchController = require('../controllers/SearchController')
+import CacheController = require('../controllers/CacheController')
+import ToolsController = require('../controllers/ToolsController')
+import RSSFeedController = require('../controllers/RSSFeedController')
+import CustomMetadataProviderController = require('../controllers/CustomMetadataProviderController')
+import MiscController = require('../controllers/MiscController')
+import ShareController = require('../controllers/ShareController')
+import StatsController = require('../controllers/StatsController')
+import ApiKeyController = require('../controllers/ApiKeyController')
+
+import type { FindOptions } from 'sequelize'
+import type Server = require('../Server')
+import type { DateAndTime } from '../objects/types'
+import type { FsExtra, TypedDatabase } from '../utils/types'
+// Typed views of the untyped vendored fs-extra and date-and-time
+const fs = fsExtra as unknown as FsExtra
+const date = dateAndTime as unknown as DateAndTime
+
+type OldPlaybackSession = import('../objects/PlaybackSession')
+
+/**
+ * Database typed for the queries here: sequelize static query methods on the models, and getPlaybackSessions
+ * (Database.init has run before routes are served, so it returns the sessions and never false)
+ */
+type ApiDatabase = TypedDatabase & { getPlaybackSessions(where: object): Promise<OldPlaybackSession[]> }
+// Same object; typed for the queries here
+const Database = DatabaseModule as unknown as ApiDatabase
+
+/**
+ * Route handler as the routes register them. The JS controllers type req as their own RequestWithUser, which
+ * express's RequestHandler does not accept, so the handler parameters are left open.
+ */
+type RouteHandler = (req: never, res: never, next: never) => unknown
+
+/**
+ * Route method (get, post, ...) that takes a path and the handlers
+ */
+type RouteMethod = (path: string | RegExp, ...handlers: RouteHandler[]) => unknown
+
+/**
+ * express app with the route methods typed as RouteMethod
+ */
+type ApiRouterApp = Omit<express.Express, 'get' | 'post' | 'patch' | 'delete'> & {
+  get: RouteMethod
+  post: RouteMethod
+  patch: RouteMethod
+  delete: RouteMethod
+}
+
+/**
+ * Playback session as read by getUserListeningStatsHelpers (timeListening can be a numeric string, a null
+ * libraryItemId is used as the key "null", lastUpdate is not a PlaybackSession field, see the NOTE there)
+ */
+interface ListeningStatsSession {
+  timeListening: number | string
+  dayOfWeek: string | null
+  date: string | null
+  libraryItemId: string
+  mediaMetadata: unknown
+  lastUpdate?: unknown
+}
+
+/**
+ * Listening stats returned by getUserListeningStatsHelpers
+ */
+interface ListeningStats {
+  totalTime: number
+  items: Record<string, { id: string; timeListening: number; mediaMetadata: unknown; lastUpdate: unknown }>
+  days: Record<string, number>
+  dayOfWeek: Record<string, number>
+  today: number
+  recentSessions: unknown[]
+}
 
 class ApiRouter {
-  constructor(Server) {
-    /** @type {import('../Auth')} */
+  declare auth: import('../Auth')
+  declare playbackSessionManager: import('../managers/PlaybackSessionManager')
+  declare abMergeManager: import('../managers/AbMergeManager')
+  declare backupManager: import('../managers/BackupManager')
+  declare podcastManager: import('../managers/PodcastManager')
+  declare audioMetadataManager: import('../managers/AudioMetadataManager')
+  declare cronManager: import('../managers/CronManager')
+  declare emailManager: import('../managers/EmailManager')
+  declare apiCacheManager: Server['apiCacheManager']
+  declare router: ApiRouterApp
+
+  constructor(Server: Server) {
     this.auth = Server.auth
-    /** @type {import('../managers/PlaybackSessionManager')} */
     this.playbackSessionManager = Server.playbackSessionManager
-    /** @type {import('../managers/AbMergeManager')} */
     this.abMergeManager = Server.abMergeManager
-    /** @type {import('../managers/BackupManager')} */
     this.backupManager = Server.backupManager
-    /** @type {import('../managers/PodcastManager')} */
     this.podcastManager = Server.podcastManager
-    /** @type {import('../managers/AudioMetadataManager')} */
     this.audioMetadataManager = Server.audioMetadataManager
-    /** @type {import('../managers/CronManager')} */
     this.cronManager = Server.cronManager
-    /** @type {import('../managers/EmailManager')} */
     this.emailManager = Server.emailManager
     this.apiCacheManager = Server.apiCacheManager
 
-    this.router = express()
+    // Same app; typed so the routes accept the JS controller handlers
+    this.router = express() as unknown as ApiRouterApp
     this.router.disable('x-powered-by')
     this.init()
   }
@@ -366,11 +434,11 @@ class ApiRouter {
   //
   /**
    * Remove library item and associated entities
-   * @param {string} libraryItemId
-   * @param {string[]} mediaItemIds array of bookId or podcastEpisodeId
-   * @param {string} libraryId
+   * @param libraryItemId
+   * @param mediaItemIds array of bookId or podcastEpisodeId
+   * @param libraryId
    */
-  async handleDeleteLibraryItem(libraryItemId, mediaItemIds, libraryId) {
+  async handleDeleteLibraryItem(libraryItemId: string, mediaItemIds: string[], libraryId: string) {
     const numProgressRemoved = await Database.mediaProgressModel.destroy({
       where: {
         mediaItemId: mediaItemIds
@@ -409,9 +477,9 @@ class ApiRouter {
   /**
    * After deleting book(s), remove empty series
    *
-   * @param {string[]} seriesIds
+   * @param seriesIds
    */
-  async checkRemoveEmptySeries(seriesIds) {
+  async checkRemoveEmptySeries(seriesIds: string[]) {
     if (!seriesIds?.length) return
 
     const transaction = await Database.sequelize.transaction()
@@ -431,7 +499,8 @@ class ApiRouter {
             required: false // Ensure it includes series even if no books exist
           },
           transaction
-        })
+          // Sequelize accepts an array of where conditions at runtime; its types do not
+        } as unknown as FindOptions)
       ).map((s) => ({ id: s.id, name: s.name, libraryId: s.libraryId }))
 
       if (seriesToRemove.length) {
@@ -458,7 +527,8 @@ class ApiRouter {
       }
     } catch (error) {
       await transaction.rollback()
-      Logger.error(`[ApiRouter] Error removing empty series: ${error.message}`)
+      // The queries throw Error objects
+      Logger.error(`[ApiRouter] Error removing empty series: ${(error as Error).message}`)
     }
   }
 
@@ -466,10 +536,9 @@ class ApiRouter {
    * Remove authors with no books and unset asin, description and imagePath
    * Note: Other implementation is in BookScanner.checkAuthorsRemovedFromBooks (can be merged)
    *
-   * @param {string[]} authorIds
-   * @returns {Promise<void>}
+   * @param authorIds
    */
-  async checkRemoveAuthorsWithNoBooks(authorIds) {
+  async checkRemoveAuthorsWithNoBooks(authorIds: string[]): Promise<void> {
     if (!authorIds?.length) return
 
     const transaction = await Database.sequelize.transaction()
@@ -495,7 +564,8 @@ class ApiRouter {
           attributes: ['id', 'name', 'libraryId'],
           raw: true,
           transaction
-        })
+          // Sequelize accepts an array of where conditions at runtime; its types do not
+        } as unknown as FindOptions)
       ).map((au) => ({ id: au.id, name: au.name, libraryId: au.libraryId }))
 
       if (bookAuthorsToRemove.length) {
@@ -518,25 +588,28 @@ class ApiRouter {
       })
     } catch (error) {
       await transaction.rollback()
-      Logger.error(`[ApiRouter] Error removing authors: ${error.message}`)
+      // The queries throw Error objects
+      Logger.error(`[ApiRouter] Error removing authors: ${(error as Error).message}`)
     }
   }
 
-  async getUserListeningSessionsHelper(userId) {
+  async getUserListeningSessionsHelper(userId: string) {
     const userSessions = await Database.getPlaybackSessions({ userId })
-    return userSessions.sort((a, b) => b.updatedAt - a.updatedAt)
+    // Stored sessions always have updatedAt
+    return userSessions.sort((a, b) => (b.updatedAt as number) - (a.updatedAt as number))
   }
 
-  async getUserItemListeningSessionsHelper(userId, mediaItemId) {
+  async getUserItemListeningSessionsHelper(userId: string, mediaItemId: string) {
     const userSessions = await Database.getPlaybackSessions({ userId, mediaItemId })
-    return userSessions.sort((a, b) => b.updatedAt - a.updatedAt)
+    // Stored sessions always have updatedAt
+    return userSessions.sort((a, b) => (b.updatedAt as number) - (a.updatedAt as number))
   }
 
-  async getUserListeningStatsHelpers(userId) {
+  async getUserListeningStatsHelpers(userId: string) {
     const today = date.format(new Date(), 'YYYY-MM-DD')
 
     const listeningSessions = await this.getUserListeningSessionsHelper(userId)
-    const listeningStats = {
+    const listeningStats: ListeningStats = {
       totalTime: 0,
       items: {},
       days: {},
@@ -544,7 +617,9 @@ class ApiRouter {
       today: 0,
       recentSessions: listeningSessions.slice(0, 10)
     }
-    listeningSessions.forEach((s) => {
+    // Same array; typed as the stats read the sessions (see ListeningStatsSession)
+    const sessionsForStats = listeningSessions as unknown as ListeningStatsSession[]
+    sessionsForStats.forEach((s) => {
       let sessionTimeListening = s.timeListening
       if (typeof sessionTimeListening == 'string') {
         sessionTimeListening = Number(sessionTimeListening)
@@ -567,6 +642,7 @@ class ApiRouter {
           id: s.libraryItemId,
           timeListening: sessionTimeListening,
           mediaMetadata: s.mediaMetadata,
+          // NOTE: PlaybackSession has no lastUpdate field (it is updatedAt), so lastUpdate is always undefined
           lastUpdate: s.lastUpdate
         }
       } else {
@@ -578,4 +654,4 @@ class ApiRouter {
     return listeningStats
   }
 }
-module.exports = ApiRouter
+export = ApiRouter

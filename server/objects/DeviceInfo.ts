@@ -1,11 +1,53 @@
-const uuidv4 = require('uuid').v4
-const { stripAllTags } = require('../utils/htmlSanitizer')
+import uuid = require('uuid')
+import htmlSanitizer = require('../utils/htmlSanitizer')
+const uuidv4 = uuid.v4
+const { stripAllTags } = htmlSanitizer
+
+/**
+ * Parsed user agent from ua-parser-js (only the fields used)
+ */
+interface ParsedUserAgent {
+  browser: { name?: string; version?: string }
+  os: { name?: string; version?: string }
+  device: { type?: string }
+}
+
+/**
+ * Device info sent by the client
+ */
+interface ClientDeviceInfo {
+  deviceId?: string
+  clientVersion?: string
+  manufacturer?: string
+  model?: string
+  sdkVersion?: string | number
+  clientName?: string
+}
 
 class DeviceInfo {
-  /** @type {string[]} Fields to sanitize when loading from stored data */
-  static stringFields = ['deviceId', 'clientVersion', 'manufacturer', 'model', 'sdkVersion', 'clientName', 'deviceName']
+  /** Fields to sanitize when loading from stored data */
+  static stringFields: string[] = ['deviceId', 'clientVersion', 'manufacturer', 'model', 'sdkVersion', 'clientName', 'deviceName']
 
-  constructor(deviceInfo = null) {
+  declare id: string | null
+  declare userId: string | null
+  declare deviceId: string | null
+  declare ipAddress: string | null
+
+  declare browserName: string | null
+  declare browserVersion: string | null
+  declare osName: string | null
+  declare osVersion: string | null
+  declare deviceType: string | null
+
+  declare clientVersion: string | null
+  declare manufacturer: string | null
+  declare model: string | null
+  declare sdkVersion: string | null
+
+  declare clientName: string | null
+  declare deviceName: string | null
+
+  constructor(deviceInfo: object | null = null) {
     this.id = null
     this.userId = null
     this.deviceId = null
@@ -32,16 +74,19 @@ class DeviceInfo {
     }
   }
 
-  construct(deviceInfo) {
-    for (const key in deviceInfo) {
-      if (deviceInfo[key] !== undefined && this[key] !== undefined) {
-        this[key] = DeviceInfo.stringFields.includes(key) ? stripAllTags(deviceInfo[key]) : deviceInfo[key]
+  construct(deviceInfo: object) {
+    // Index this object and the stored data by key
+    const self = this as unknown as Record<string, unknown>
+    const values = deviceInfo as Record<string, unknown>
+    for (const key in values) {
+      if (values[key] !== undefined && self[key] !== undefined) {
+        self[key] = DeviceInfo.stringFields.includes(key) ? stripAllTags(values[key]) : values[key]
       }
     }
   }
 
   toJSON() {
-    const obj = {
+    const obj: Partial<Record<'id' | 'userId' | 'deviceId' | 'ipAddress' | 'browserName' | 'browserVersion' | 'osName' | 'osVersion' | 'deviceType' | 'clientVersion' | 'manufacturer' | 'model' | 'sdkVersion' | 'clientName' | 'deviceName', string | null>> = {
       id: this.id,
       userId: this.userId,
       deviceId: this.deviceId,
@@ -58,9 +103,11 @@ class DeviceInfo {
       clientName: this.clientName,
       deviceName: this.deviceName
     }
+    // Index the JSON object by key
+    const values = obj as Record<string, string | null | undefined>
     for (const key in obj) {
-      if (obj[key] === null || obj[key] === undefined) {
-        delete obj[key]
+      if (values[key] === null || values[key] === undefined) {
+        delete values[key]
       }
     }
     return obj
@@ -81,7 +128,7 @@ class DeviceInfo {
     return 'temp-' + Buffer.from(keys.join('-'), 'utf-8').toString('base64')
   }
 
-  setData(ip, ua, clientDeviceInfo, serverVersion, userId) {
+  setData(ip: string | null | undefined, ua: ParsedUserAgent | null | undefined, clientDeviceInfo: ClientDeviceInfo | null | undefined, serverVersion: string, userId: string) {
     this.id = uuidv4()
     this.userId = userId
     this.deviceId = clientDeviceInfo?.deviceId || this.id
@@ -122,16 +169,20 @@ class DeviceInfo {
     }
   }
 
-  update(deviceInfo) {
+  update(deviceInfo: { toJSON?(): object }) {
     const deviceInfoJson = deviceInfo.toJSON ? deviceInfo.toJSON() : deviceInfo
     const existingDeviceInfoJson = this.toJSON()
 
+    // Index this object and both JSON objects by key
+    const self = this as unknown as Record<string, unknown>
+    const newValues = deviceInfoJson as Record<string, unknown>
+    const existingValues = existingDeviceInfoJson as Record<string, unknown>
     let hasUpdates = false
     for (const key in deviceInfoJson) {
       if (['id', 'deviceId'].includes(key)) continue
 
-      if (deviceInfoJson[key] !== existingDeviceInfoJson[key]) {
-        this[key] = deviceInfoJson[key]
+      if (newValues[key] !== existingValues[key]) {
+        self[key] = newValues[key]
         hasUpdates = true
       }
     }
@@ -139,8 +190,8 @@ class DeviceInfo {
     for (const key in existingDeviceInfoJson) {
       if (['id', 'deviceId'].includes(key)) continue
 
-      if (existingDeviceInfoJson[key] && !deviceInfoJson[key]) {
-        this[key] = null
+      if (existingValues[key] && !newValues[key]) {
+        self[key] = null
         hasUpdates = true
       }
     }
@@ -148,4 +199,4 @@ class DeviceInfo {
     return hasUpdates
   }
 }
-module.exports = DeviceInfo
+export = DeviceInfo

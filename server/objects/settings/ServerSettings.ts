@@ -1,9 +1,11 @@
-const Path = require('path')
-const packageJson = require('../../../package.json')
-const { BookshelfView } = require('../../utils/constants')
-const Logger = require('../../Logger')
-const User = require('../../models/User')
-const { sanitize } = require('../../utils/htmlSanitizer')
+import Path = require('path')
+import packageJson = require('../../../package.json')
+import constants = require('../../utils/constants')
+import Logger = require('../../Logger')
+import User = require('../../models/User')
+import htmlSanitizer = require('../../utils/htmlSanitizer')
+const { BookshelfView } = constants
+const { sanitize } = htmlSanitizer
 
 const PATCHABLE_SETTINGS_KEYS = new Set([
   'scannerParseSubtitle',
@@ -28,11 +30,75 @@ const PATCHABLE_SETTINGS_KEYS = new Set([
   'sortingIgnorePrefix'
 ])
 
+/**
+ * Stored server settings (see toJSON), the input of the constructor. Older versions stored some other keys.
+ */
+type ServerSettingsData = Partial<ServerSettingsJSON> & {
+  /** Renamed to storeCoverWithItem in 2.0.0 */
+  storeCoverWithBook?: boolean
+  /** Renamed to storeMetadataWithItem in 2.0.0 */
+  storeMetadataWithBook?: boolean
+}
+
+type ServerSettingsJSON = ReturnType<ServerSettings['toJSON']>
+
 class ServerSettings {
   static patchableSettingsKeys = PATCHABLE_SETTINGS_KEYS
-  constructor(settings) {
+  declare id: string
+  /** JWT secret key ONLY used when JWT_SECRET_KEY is not set in ENV */
+  declare tokenSecret: string | null
+  declare scannerParseSubtitle: boolean
+  declare scannerFindCovers: boolean
+  declare scannerCoverProvider: string
+  declare scannerPreferMatchedMetadata: boolean
+  declare scannerDisableWatcher: boolean
+  declare storeCoverWithItem: boolean
+  declare storeMetadataWithItem: boolean
+  declare metadataFileFormat: string
+  declare rateLimitLoginRequests: number
+  declare rateLimitLoginWindow: number
+  declare allowIframe: boolean
+  declare backupPath: string
+  declare backupSchedule: string | false
+  declare backupsToKeep: number
+  declare maxBackupSize: number
+  declare loggerDailyLogsToKeep: number
+  declare loggerScannerLogsToKeep: number
+  declare homeBookshelfView: number
+  declare bookshelfView: number
+  declare podcastEpisodeSchedule: string
+  declare sortingIgnorePrefix: boolean
+  declare sortingPrefixes: string[]
+  declare chromecastEnabled: boolean
+  declare dateFormat: string
+  declare timeFormat: string
+  declare language: string
+  declare allowedOrigins: string[]
+  declare logLevel: number
+  declare version: string | null
+  declare buildNumber: number
+  declare authLoginCustomMessage: string | null
+  declare authActiveAuthMethods: string[]
+  declare authOpenIDIssuerURL: string | null
+  declare authOpenIDAuthorizationURL: string | null
+  declare authOpenIDTokenURL: string | null
+  declare authOpenIDUserInfoURL: string | null
+  declare authOpenIDJwksURL: string | null
+  declare authOpenIDLogoutURL: string | null
+  declare authOpenIDClientID: string | null
+  declare authOpenIDClientSecret: string | null
+  declare authOpenIDTokenSigningAlgorithm: string
+  declare authOpenIDButtonText: string
+  declare authOpenIDAutoLaunch: boolean
+  declare authOpenIDAutoRegister: boolean
+  declare authOpenIDMatchExistingBy: string | null
+  declare authOpenIDMobileRedirectURIs: string[]
+  declare authOpenIDGroupClaim: string
+  declare authOpenIDAdvancedPermsClaim: string
+  declare authOpenIDSubfolderForRedirectURLs: string | undefined
+
+  constructor(settings?: ServerSettingsData | null) {
     this.id = 'server-settings'
-    /** @type {string} JWT secret key ONLY used when JWT_SECRET_KEY is not set in ENV */
     this.tokenSecret = null
 
     // Scanner
@@ -113,11 +179,13 @@ class ServerSettings {
     }
   }
 
-  construct(settings) {
-    this.tokenSecret = settings.tokenSecret
+  construct(settings: ServerSettingsData) {
+    // Copied as given (possibly undefined), like the JS
+    this.tokenSecret = settings.tokenSecret as string | null
     this.scannerFindCovers = !!settings.scannerFindCovers
     this.scannerCoverProvider = settings.scannerCoverProvider || 'google'
-    this.scannerParseSubtitle = settings.scannerParseSubtitle
+    // Copied as given (possibly undefined), like the JS
+    this.scannerParseSubtitle = settings.scannerParseSubtitle as boolean
     this.scannerPreferMatchedMetadata = !!settings.scannerPreferMatchedMetadata
     this.scannerDisableWatcher = !!settings.scannerDisableWatcher
 
@@ -125,8 +193,10 @@ class ServerSettings {
     this.storeMetadataWithItem = !!settings.storeMetadataWithItem
     this.metadataFileFormat = settings.metadataFileFormat || 'json'
 
-    this.rateLimitLoginRequests = !isNaN(settings.rateLimitLoginRequests) ? Number(settings.rateLimitLoginRequests) : 10
-    this.rateLimitLoginWindow = !isNaN(settings.rateLimitLoginWindow) ? Number(settings.rateLimitLoginWindow) : 10 * 60 * 1000 // 10 Minutes
+    // isNaN coerces its argument (undefined is NaN)
+    this.rateLimitLoginRequests = !isNaN(settings.rateLimitLoginRequests as number) ? Number(settings.rateLimitLoginRequests) : 10
+    // isNaN coerces its argument (undefined is NaN)
+    this.rateLimitLoginWindow = !isNaN(settings.rateLimitLoginWindow as number) ? Number(settings.rateLimitLoginWindow) : 10 * 60 * 1000 // 10 Minutes
     this.allowIframe = !!settings.allowIframe
 
     this.backupPath = settings.backupPath || Path.join(global.MetadataPath, 'backups')
@@ -198,7 +268,8 @@ class ServerSettings {
     }
     if (settings.homeBookshelfView == undefined) {
       // homeBookshelfView was added in 2.1.3
-      this.homeBookshelfView = settings.bookshelfView
+      // Copied as given (possibly undefined), like the JS
+      this.homeBookshelfView = settings.bookshelfView as number
     }
     if (settings.metadataFileFormat == undefined) {
       // metadataFileFormat was added in 2.2.21
@@ -286,7 +357,7 @@ class ServerSettings {
 
   /**
    * Host timezone used by cron schedulers (not persisted in settings)
-   * @returns {string} IANA timezone name, e.g. "America/New_York"
+   * @returns IANA timezone name, e.g. "America/New_York"
    */
   static getHostTimeZone() {
     try {
@@ -297,7 +368,7 @@ class ServerSettings {
   }
 
   toJSONForBrowser() {
-    const json = this.toJSON()
+    const json: Partial<ServerSettingsJSON> & { timeZone?: string } = this.toJSON()
     delete json.tokenSecret
     delete json.authOpenIDClientID
     delete json.authOpenIDClientSecret
@@ -346,7 +417,7 @@ class ServerSettings {
   }
 
   get authFormData() {
-    const clientFormData = {
+    const clientFormData: { authLoginCustomMessage: string; authOpenIDButtonText?: string; authOpenIDAutoLaunch?: boolean } = {
       authLoginCustomMessage: sanitize(this.authLoginCustomMessage)
     }
     if (this.authActiveAuthMethods.includes('openid')) {
@@ -359,23 +430,25 @@ class ServerSettings {
   /**
    * Update server settings
    *
-   * @param {Object} payload
-   * @returns {boolean} true if updates were made
+   * @param payload
+   * @returns true if updates were made
    */
-  update(payload) {
+  update(payload: Record<string, unknown>) {
+    // Index this object by key
+    const self = this as unknown as Record<string, unknown>
     let hasUpdates = false
     for (const key in payload) {
       if (!PATCHABLE_SETTINGS_KEYS.has(key)) continue
 
-      if (this[key] !== payload[key]) {
+      if (self[key] !== payload[key]) {
         if (key === 'logLevel') {
           Logger.setLogLevel(payload[key])
         }
-        this[key] = payload[key]
+        self[key] = payload[key]
         hasUpdates = true
       }
     }
     return hasUpdates
   }
 }
-module.exports = ServerSettings
+export = ServerSettings

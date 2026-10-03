@@ -1,17 +1,56 @@
-const Logger = require('../../Logger')
-const { areEquivalent, copyValue, isNullOrNaN } = require('../../utils')
+import Logger = require('../../Logger')
+import utils = require('../../utils')
+import type User = require('../../models/User')
+const { areEquivalent, copyValue, isNullOrNaN } = utils
+
+interface EreaderDeviceObject {
+  name: string
+  email: string
+  availabilityOption: string
+  users: string[]
+}
 
 /**
- * @typedef EreaderDeviceObject
- * @property {string} name
- * @property {string} email
- * @property {string} availabilityOption
- * @property {string[]} users
+ * Stored email settings (see toJSON), the input of the constructor
  */
+interface EmailSettingsData {
+  host: string | null
+  port: number
+  secure?: boolean
+  rejectUnauthorized?: boolean
+  user: string | null
+  pass: string | null
+  testAddress: string | null
+  fromAddress: string | null
+  ereaderDevices?: EreaderDeviceObject[]
+}
+
+/**
+ * Nodemailer SMTP transport options built by getTransportObject
+ */
+interface TransportObject {
+  host: string | null
+  secure: boolean
+  port?: number
+  auth?: { user: string; pass: string | null }
+  tls?: { rejectUnauthorized: boolean }
+}
 
 // REF: https://nodemailer.com/smtp/
 class EmailSettings {
-  constructor(settings = null) {
+  declare id: string
+  declare host: string | null
+  declare port: number
+  declare secure: boolean
+  declare rejectUnauthorized: boolean
+  declare user: string | null
+  declare pass: string | null
+  declare testAddress: string | null
+  declare fromAddress: string | null
+
+  declare ereaderDevices: EreaderDeviceObject[]
+
+  constructor(settings: EmailSettingsData | null = null) {
     this.id = 'email-settings'
     this.host = null
     this.port = 465
@@ -22,7 +61,6 @@ class EmailSettings {
     this.testAddress = null
     this.fromAddress = null
 
-    /** @type {EreaderDeviceObject[]} */
     this.ereaderDevices = []
 
     if (settings) {
@@ -30,7 +68,7 @@ class EmailSettings {
     }
   }
 
-  construct(settings) {
+  construct(settings: EmailSettingsData) {
     this.host = settings.host
     this.port = settings.port
     this.secure = !!settings.secure
@@ -62,7 +100,7 @@ class EmailSettings {
     }
   }
 
-  update(payload) {
+  update(payload: Record<string, unknown> & { port?: unknown; secure?: unknown; rejectUnauthorized?: unknown; ereaderDevices?: Partial<EreaderDeviceObject>[] } | null | undefined) {
     if (!payload) return false
 
     if (payload.port !== undefined) {
@@ -76,6 +114,7 @@ class EmailSettings {
 
     if (payload.ereaderDevices?.length) {
       // Validate ereader devices
+      // filter removes the null (invalid) devices
       payload.ereaderDevices = payload.ereaderDevices
         .map((device) => {
           if (!device.name || !device.email) {
@@ -93,17 +132,20 @@ class EmailSettings {
           }
           return device
         })
-        .filter((d) => d)
+        .filter((d) => d) as Partial<EreaderDeviceObject>[]
     }
 
     let hasUpdates = false
 
     const json = this.toJSON()
+    // Index this object and the JSON by key
+    const self = this as unknown as Record<string, unknown>
+    const jsonValues = json as Record<string, unknown>
     for (const key in json) {
       if (key === 'id') continue
 
-      if (payload[key] !== undefined && !areEquivalent(payload[key], json[key])) {
-        this[key] = copyValue(payload[key])
+      if (payload[key] !== undefined && !areEquivalent(payload[key], jsonValues[key])) {
+        self[key] = copyValue(payload[key])
         hasUpdates = true
       }
     }
@@ -112,7 +154,7 @@ class EmailSettings {
   }
 
   getTransportObject() {
-    const payload = {
+    const payload: TransportObject = {
       host: this.host,
       secure: this.secure
     }
@@ -139,11 +181,10 @@ class EmailSettings {
 
   /**
    *
-   * @param {EreaderDeviceObject} device
-   * @param {import('../../models/User')} user
-   * @returns {boolean}
+   * @param device
+   * @param user
    */
-  checkUserCanAccessDevice(device, user) {
+  checkUserCanAccessDevice(device: EreaderDeviceObject, user: User): boolean {
     let deviceAvailability = device.availabilityOption || 'adminOrUp'
     if (deviceAvailability === 'adminOrUp' && user.isAdminOrUp) return true
     if (deviceAvailability === 'userOrUp' && (user.isAdminOrUp || user.isUser)) return true
@@ -158,21 +199,19 @@ class EmailSettings {
   /**
    * Get ereader devices accessible to user
    *
-   * @param {import('../../models/User')} user
-   * @returns {EreaderDeviceObject[]}
+   * @param user
    */
-  getEReaderDevices(user) {
+  getEReaderDevices(user: User): EreaderDeviceObject[] {
     return this.ereaderDevices.filter((device) => this.checkUserCanAccessDevice(device, user))
   }
 
   /**
    * Get ereader device by name
    *
-   * @param {string} deviceName
-   * @returns {EreaderDeviceObject}
+   * @param deviceName
    */
-  getEReaderDevice(deviceName) {
+  getEReaderDevice(deviceName: string) {
     return this.ereaderDevices.find((d) => d.name === deviceName)
   }
 }
-module.exports = EmailSettings
+export = EmailSettings

@@ -1,32 +1,60 @@
-const { Op } = require('sequelize')
-const uuid = require('uuid')
+import sequelize = require('sequelize')
+import uuid = require('uuid')
 
-const Database = require('../Database')
-const Logger = require('../Logger')
+import DatabaseModule = require('../Database')
+import Logger = require('../Logger')
 
-const requestIp = require('../libs/requestIp')
-const jwt = require('../libs/jsonwebtoken')
-const { isRequestSecure } = require('../utils/requestUtils')
+import requestIp = require('../libs/requestIp')
+import jwt = require('../libs/jsonwebtoken')
+import requestUtils = require('../utils/requestUtils')
+import type { Request, Response } from 'express'
+import type Session = require('../models/Session')
+import type User = require('../models/User')
+import type { TypedDatabase } from '../utils/types'
+import type { JwtPayload, PassportDone } from './types'
+const { Op } = sequelize
+const { isRequestSecure } = requestUtils
+// Same object; typed so the sequelize static query methods on the models are accepted
+const Database = DatabaseModule as unknown as TypedDatabase
+
+/**
+ * Session row with the refresh token columns (the JS Session model does not declare refreshToken)
+ */
+type SessionRow = Omit<Session, 'lastRefreshToken' | 'lastRefreshTokenExpiresAt'> & {
+  refreshToken: string | null
+  lastRefreshToken: string | null
+  lastRefreshTokenExpiresAt: Date | null
+}
+
+/**
+ * User with the temporary isOldToken flag set by jwtAuthCheck
+ */
+type UserWithOldTokenFlag = User & { isOldToken?: boolean }
 
 class TokenManager {
-  /** @type {string} JWT secret key */
-  static TokenSecret = null
+  /** JWT secret key */
+  static TokenSecret: string | null = null
+
+  /** Refresh token expiry in seconds */
+  declare RefreshTokenExpiry: number
+  /** Access token expiry in seconds */
+  declare AccessTokenExpiry: number
+  /** Grace period in seconds during which a rotated (old) refresh token is still accepted */
+  declare RefreshTokenGracePeriod: number
 
   constructor() {
-    /** @type {number} Refresh token expiry in seconds */
-    this.RefreshTokenExpiry = parseInt(process.env.REFRESH_TOKEN_EXPIRY) || 30 * 24 * 60 * 60 // 30 days
-    /** @type {number} Access token expiry in seconds */
-    this.AccessTokenExpiry = parseInt(process.env.ACCESS_TOKEN_EXPIRY) || 1 * 60 * 60 // 1 hour
-    /** @type {number} Grace period in seconds during which a rotated (old) refresh token is still accepted */
-    this.RefreshTokenGracePeriod = parseInt(process.env.REFRESH_TOKEN_GRACE_PERIOD) || 10 * 60 // 10 minutes
+    // Each `as string` below: parseInt(undefined) is NaN, like the JS
+    this.RefreshTokenExpiry = parseInt(process.env.REFRESH_TOKEN_EXPIRY as string) || 30 * 24 * 60 * 60 // 30 days
+    this.AccessTokenExpiry = parseInt(process.env.ACCESS_TOKEN_EXPIRY as string) || 1 * 60 * 60 // 1 hour
+    this.RefreshTokenGracePeriod = parseInt(process.env.REFRESH_TOKEN_GRACE_PERIOD as string) || 10 * 60 // 10 minutes
 
-    if (parseInt(process.env.REFRESH_TOKEN_EXPIRY) > 0) {
+    if (parseInt(process.env.REFRESH_TOKEN_EXPIRY as string) > 0) { // parseInt(undefined) is NaN
       Logger.info(`[TokenManager] Refresh token expiry set from ENV variable to ${this.RefreshTokenExpiry} seconds`)
     }
-    if (parseInt(process.env.ACCESS_TOKEN_EXPIRY) > 0) {
+    if (parseInt(process.env.ACCESS_TOKEN_EXPIRY as string) > 0) { // parseInt(undefined) is NaN
       Logger.info(`[TokenManager] Access token expiry set from ENV variable to ${this.AccessTokenExpiry} seconds`)
     }
-    if (parseInt(process.env.REFRESH_TOKEN_GRACE_PERIOD) > 0) {
+    if (parseInt(process.env.REFRESH_TOKEN_GRACE_PERIOD as string) > 0) { // parseInt(undefined) is NaN
       Logger.info(`[TokenManager] Refresh token grace period set from ENV variable to ${this.RefreshTokenGracePeriod} seconds`)
     }
   }
@@ -47,7 +75,8 @@ class TokenManager {
     } else if (!Database.serverSettings.tokenSecret) {
       // Generate new token secret and store it on server settings
       Logger.info('[TokenManager] JWT secret key not found, generating one')
-      TokenManager.TokenSecret = require('crypto').randomBytes(256).toString('base64')
+      // Required here like the JS; typed as the node crypto module
+      TokenManager.TokenSecret = (require('crypto') as typeof import('crypto')).randomBytes(256).toString('base64')
       Database.serverSettings.tokenSecret = TokenManager.TokenSecret
       await Database.updateServerSettings()
     } else {
@@ -58,11 +87,11 @@ class TokenManager {
 
   /**
    * Sets the refresh token cookie
-   * @param {import('express').Request} req
-   * @param {import('express').Response} res
-   * @param {string} refreshToken
+   * @param req
+   * @param res
+   * @param refreshToken
    */
-  setRefreshTokenCookie(req, res, refreshToken) {
+  setRefreshTokenCookie(req: Request, res: Response, refreshToken: string | null) {
     res.cookie('refresh_token', refreshToken, {
       httpOnly: true,
       secure: isRequestSecure(req),
@@ -75,10 +104,9 @@ class TokenManager {
   /**
    * Whether a decoded JWT payload may authenticate API/socket requests (not refresh-only credentials).
    *
-   * @param {Object} decoded
-   * @returns {boolean}
+   * @param decoded
    */
-  static isBearerAccessTokenPayload(decoded) {
+  static isBearerAccessTokenPayload(decoded: JwtPayload | null | undefined): boolean {
     if (!decoded?.userId) return false
     if (decoded.type === 'refresh') return false
     return true
@@ -88,10 +116,10 @@ class TokenManager {
    * Function to validate a jwt token for a given user
    * Used to authenticate socket connections
    *
-   * @param {string} token
-   * @returns {Object} tokens data
+   * @param token
+   * @returns tokens data
    */
-  static validateAccessToken(token) {
+  static validateAccessToken(token: string): JwtPayload | null {
     try {
       // Expiration is handled by the caller so expired API keys can be deactivated
       return jwt.verify(token, TokenManager.TokenSecret, { ignoreExpiration: true })
@@ -105,10 +133,9 @@ class TokenManager {
    * TODO: Old method with no expiration
    * @deprecated
    *
-   * @param {{ id:string, username:string }} user
-   * @returns {string}
+   * @param user
    */
-  static generateAccessToken(user) {
+  static generateAccessToken(user: { id: string; username: string }): string {
     return jwt.sign({ userId: user.id, username: user.username }, TokenManager.TokenSecret)
   }
 
@@ -117,20 +144,18 @@ class TokenManager {
    * TODO: Old method with no expiration
    * @deprecated
    *
-   * @param {{ id:string, username:string }} user
-   * @returns {string}
+   * @param user
    */
-  generateAccessToken(user) {
+  generateAccessToken(user: { id: string; username: string }): string {
     return TokenManager.generateAccessToken(user)
   }
 
   /**
    * Generate access token for a given user
    *
-   * @param {{ id:string, username:string }} user
-   * @returns {string}
+   * @param user
    */
-  generateTempAccessToken(user) {
+  generateTempAccessToken(user: { id: string; username: string }): string | null {
     const payload = {
       userId: user.id,
       username: user.username,
@@ -151,10 +176,9 @@ class TokenManager {
   /**
    * Generate refresh token for a given user
    *
-   * @param {{ id:string, username:string }} user
-   * @returns {string}
+   * @param user
    */
-  generateRefreshToken(user) {
+  generateRefreshToken(user: { id: string; username: string }): string | null {
     const payload = {
       userId: user.id,
       username: user.username,
@@ -175,11 +199,10 @@ class TokenManager {
   /**
    * Create tokens and session for a given user
    *
-   * @param {{ id:string, username:string }} user
-   * @param {import('express').Request} req
-   * @returns {Promise<{ accessToken:string, refreshToken:string, session:import('../models/Session') }>}
+   * @param user
+   * @param req
    */
-  async createTokensAndSession(user, req) {
+  async createTokensAndSession(user: { id: string; username: string }, req: Request) {
     const ipAddress = requestIp.getClientIp(req)
     const userAgent = req.headers['user-agent']
     const accessToken = this.generateTempAccessToken(user)
@@ -200,21 +223,20 @@ class TokenManager {
   /**
    * Rotate tokens for a given session
    *
-   * @param {import('../models/Session')} session
-   * @param {import('../models/User')} user
-   * @param {import('express').Request} req
-   * @param {import('express').Response} res
-   * @param {boolean} gracePeriod - whether to use the grace period
-   * @returns {Promise<{ accessToken:string, refreshToken:string }>}
+   * @param session
+   * @param user
+   * @param req
+   * @param res
+   * @param gracePeriod - whether to use the grace period
    */
-  async rotateTokensForSession(session, user, req, res, gracePeriod = true) {
+  async rotateTokensForSession(session: SessionRow, user: User, req: Request, res: Response, gracePeriod = true) {
     const previousRefreshToken = session.refreshToken
     const newAccessToken = this.generateTempAccessToken(user)
     let newRefreshToken = this.generateRefreshToken(user)
     const newExpiresAt = new Date(Date.now() + this.RefreshTokenExpiry * 1000)
 
-    let lastRefreshToken = null
-    let lastRefreshTokenExpiresAt = null
+    let lastRefreshToken: string | null = null
+    let lastRefreshTokenExpiresAt: Date | null = null
     if (gracePeriod) {
       // Set grace period of old refresh token in case of race condition in token rotation.
       // During this window a retry with the old refresh token returns the already-rotated
@@ -245,7 +267,8 @@ class TokenManager {
     if (numUpdated === 0) {
       Logger.debug(`[TokenManager] Race condition in rotateTokensForSession for user ${user.id}, getting new token`)
 
-      const updatedSession = await Database.sessionModel.findOne({ where: { id: session.id } })
+      // NOTE: if the session row was deleted in the meantime findOne returns null and the reads below throw
+      const updatedSession = (await Database.sessionModel.findOne({ where: { id: session.id } })) as SessionRow
 
       newRefreshToken = updatedSession.refreshToken
       session.refreshToken = updatedSession.refreshToken
@@ -271,13 +294,14 @@ class TokenManager {
   /**
    * Check if the jwt is valid
    *
-   * @param {Object} jwt_payload
-   * @param {Function} done - passportjs callback
+   * @param jwt_payload
+   * @param done - passportjs callback
    */
-  async jwtAuthCheck(jwt_payload, done) {
+  async jwtAuthCheck(jwt_payload: JwtPayload, done: PassportDone) {
     if (jwt_payload.type === 'api') {
       // Api key based authentication
-      const apiKey = await Database.apiKeyModel.getById(jwt_payload.keyId)
+      // API key tokens are signed with a keyId
+      const apiKey = await Database.apiKeyModel.getById(jwt_payload.keyId as string)
 
       if (!apiKey?.isActive) {
         done(null, null)
@@ -317,7 +341,8 @@ class TokenManager {
       }
 
       // load user by id from the jwt token
-      const user = await Database.userModel.getUserByIdOrOldId(jwt_payload.userId)
+      // isBearerAccessTokenPayload checked that userId is set
+      const user: UserWithOldTokenFlag | null = await Database.userModel.getUserByIdOrOldId(jwt_payload.userId as string)
 
       if (!user?.isActive) {
         // deny login
@@ -342,12 +367,11 @@ class TokenManager {
   /**
    * Handle refresh token
    *
-   * @param {string} refreshToken
-   * @param {import('express').Request} req
-   * @param {import('express').Response} res
-   * @returns {Promise<{ accessToken?:string, refreshToken?:string, user?:import('../models/User'), error?:string }>}
+   * @param refreshToken
+   * @param req
+   * @param res
    */
-  async handleRefreshToken(refreshToken, req, res) {
+  async handleRefreshToken(refreshToken: string, req: Request, res: Response): Promise<{ accessToken?: string | null; refreshToken?: string | null; user?: User; error?: string }> {
     try {
       // Verify the refresh token
       const decoded = jwt.verify(refreshToken, TokenManager.TokenSecret)
@@ -359,11 +383,12 @@ class TokenManager {
         }
       }
 
-      let session = await Database.sessionModel.findOne({
+      // Typed with the refresh token columns
+      let session = (await Database.sessionModel.findOne({
         where: {
           [Op.or]: [{ refreshToken: refreshToken }, { lastRefreshToken: refreshToken }]
         }
-      })
+      })) as SessionRow | null
 
       if (!session) {
         Logger.error(`[TokenManager] Failed to refresh token. Session not found`)
@@ -425,7 +450,8 @@ class TokenManager {
         user
       }
     } catch (error) {
-      if (error.name === 'TokenExpiredError') {
+      // jwt.verify and the queries throw Error objects
+      if ((error as Error).name === 'TokenExpiredError') {
         Logger.info(`[TokenManager] Refresh token expired, cleaning up session`)
 
         // Clean up the expired session from database
@@ -435,19 +461,22 @@ class TokenManager {
           })
           Logger.info(`[TokenManager] Expired session cleaned up`)
         } catch (cleanupError) {
-          Logger.error(`[TokenManager] Error cleaning up expired session: ${cleanupError.message}`)
+          // The query throws Error objects
+          Logger.error(`[TokenManager] Error cleaning up expired session: ${(cleanupError as Error).message}`)
         }
 
         return {
           error: 'Refresh token expired'
         }
-      } else if (error.name === 'JsonWebTokenError') {
-        Logger.error(`[TokenManager] Invalid refresh token format: ${error.message}`)
+      } else if ((error as Error).name === 'JsonWebTokenError') { // Error object (see above)
+        // Error object (see above)
+        Logger.error(`[TokenManager] Invalid refresh token format: ${(error as Error).message}`)
         return {
           error: 'Invalid refresh token'
         }
       } else {
-        Logger.error(`[TokenManager] Refresh token error: ${error.message}`)
+        // Error object (see above)
+        Logger.error(`[TokenManager] Refresh token error: ${(error as Error).message}`)
         return {
           error: 'Invalid refresh token'
         }
@@ -459,22 +488,24 @@ class TokenManager {
    * Invalidate all JWT sessions for a given user
    * If user is current user and refresh token is valid, rotate tokens for the current session
    *
-   * @param {import('../models/User')} user
-   * @param {import('express').Request} req
-   * @param {import('express').Response} res
-   * @returns {Promise<{ accessToken:string, refreshToken:string }|null>} new tokens for the current session if kept alive
+   * @param user
+   * @param req
+   * @param res
+   * @returns new tokens for the current session if kept alive
    */
-  async invalidateJwtSessionsForUser(user, req, res) {
+  async invalidateJwtSessionsForUser(user: User, req: Request, res: Response) {
     const currentRefreshToken = req.cookies.refresh_token || req.headers['x-refresh-token']
-    if (req.user.id === user.id && currentRefreshToken) {
+    // Only called from authenticated routes, so req.user is set
+    if ((req.user as User).id === user.id && currentRefreshToken) {
       // Current user is the same as the user to invalidate sessions for
       // So rotate token for current session
-      const currentSession = await Database.sessionModel.findOne({
+      // Typed with the refresh token columns
+      const currentSession = (await Database.sessionModel.findOne({
         where: {
           userId: user.id,
           [Op.or]: [{ refreshToken: currentRefreshToken }, { lastRefreshToken: currentRefreshToken }]
         }
-      })
+      })) as SessionRow | null
       if (currentSession) {
         const newTokens = await this.rotateTokensForSession(currentSession, user, req, res, false)
 
@@ -506,9 +537,9 @@ class TokenManager {
   /**
    * Destroy all JWT sessions for the user that owns this refresh token
    *
-   * @param {string} refreshToken
+   * @param refreshToken
    */
-  async invalidateAllSessionsForRefreshToken(refreshToken) {
+  async invalidateAllSessionsForRefreshToken(refreshToken: string) {
     if (!refreshToken) return
 
     const session = await Database.sessionModel.findOne({
@@ -525,10 +556,9 @@ class TokenManager {
   /**
    * Invalidate a refresh token - used for logout
    *
-   * @param {string} refreshToken
-   * @returns {Promise<boolean>}
+   * @param refreshToken
    */
-  async invalidateRefreshToken(refreshToken) {
+  async invalidateRefreshToken(refreshToken: string): Promise<boolean> {
     if (!refreshToken) {
       Logger.error(`[TokenManager] No refresh token provided to invalidate`)
       return false
@@ -539,10 +569,11 @@ class TokenManager {
       Logger.info(`[TokenManager] Refresh token invalidated, ${numDeleted} sessions deleted`)
       return true
     } catch (error) {
-      Logger.error(`[TokenManager] Error invalidating refresh token: ${error.message}`)
+      // The query throws Error objects
+      Logger.error(`[TokenManager] Error invalidating refresh token: ${(error as Error).message}`)
       return false
     }
   }
 }
 
-module.exports = TokenManager
+export = TokenManager

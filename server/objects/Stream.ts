@@ -1,24 +1,55 @@
-const EventEmitter = require('events')
-const Path = require('path')
-const Logger = require('../Logger')
-const SocketAuthority = require('../SocketAuthority')
+import EventEmitter = require('events')
+import Path = require('path')
+import Logger = require('../Logger')
+import SocketAuthority = require('../SocketAuthority')
 
-const fs = require('../libs/fsExtra')
-const Ffmpeg = require('../libs/fluentFfmpeg')
+import fsExtra = require('../libs/fsExtra')
+import Ffmpeg = require('../libs/fluentFfmpeg')
 
-const { secondsToTimestamp } = require('../utils/index')
-const { writeConcatFile } = require('../utils/ffmpegHelpers')
-const { AudioMimeType } = require('../utils/constants')
-const hlsPlaylistGenerator = require('../utils/generators/hlsPlaylistGenerator')
-const AudioTrack = require('./files/AudioTrack')
+import utils = require('../utils/index')
+import ffmpegHelpers = require('../utils/ffmpegHelpers')
+import constants = require('../utils/constants')
+import hlsPlaylistGenerator = require('../utils/generators/hlsPlaylistGenerator')
+import AudioTrack = require('./files/AudioTrack')
+import type LibraryItem = require('../models/LibraryItem')
+import type Podcast = require('../models/Podcast')
+import type User = require('../models/User')
+import type { FsExtra } from '../utils/types'
+// Typed view of the untyped vendored fs-extra
+const fs = fsExtra as unknown as FsExtra
+const { secondsToTimestamp } = utils
+const { writeConcatFile } = ffmpegHelpers
+const { AudioMimeType } = constants
 
 class Stream extends EventEmitter {
-  constructor(sessionId, streamPath, user, libraryItem, episodeId, startTime, transcodeOptions = {}) {
+  declare id: string
+  declare user: User
+  declare libraryItem: LibraryItem
+  declare episodeId: string | null
+
+  declare transcodeOptions: { forceAAC?: boolean }
+
+  declare segmentLength: number
+  declare maxSeekBackTime: number
+  declare streamPath: string
+  declare concatFilesPath: string
+  declare playlistPath: string
+  declare finalPlaylistPath: string
+  declare startTime: number
+
+  declare ffmpeg: Ffmpeg.FfmpegCommand | null
+  declare loop: NodeJS.Timeout | null
+  declare isResetting: boolean
+  declare isClientInitialized: boolean
+  declare isTranscodeComplete: boolean
+  declare segmentsCreated: Set<number>
+  declare furthestSegmentCreated: number
+
+  constructor(sessionId: string, streamPath: string, user: User, libraryItem: LibraryItem, episodeId: string | null, startTime: number, transcodeOptions: { forceAAC?: boolean } = {}) {
     super()
 
     this.id = sessionId
     this.user = user
-    /** @type {import('../models/LibraryItem')} */
     this.libraryItem = libraryItem
     this.episodeId = episodeId
 
@@ -41,12 +72,10 @@ class Stream extends EventEmitter {
     this.furthestSegmentCreated = 0
   }
 
-  /**
-   * @returns {import('../models/PodcastEpisode') | null}
-   */
   get episode() {
     if (!this.libraryItem.isPodcast) return null
-    return this.libraryItem.media.podcastEpisodes.find((ep) => ep.id === this.episodeId)
+    // Media of a podcast library item is a Podcast
+    return (this.libraryItem.media as Podcast).podcastEpisodes.find((ep) => ep.id === this.episodeId)
   }
   get mediaTitle() {
     return this.libraryItem.media.getPlaybackTitle(this.episodeId)
@@ -55,7 +84,8 @@ class Stream extends EventEmitter {
     return this.libraryItem.media.getPlaybackDuration(this.episodeId)
   }
   get tracks() {
-    return this.libraryItem.getTrackList(this.episodeId)
+    // getTrackList only reads the episode id for podcasts (null for books)
+    return this.libraryItem.getTrackList(this.episodeId as string)
   }
   get tracksAudioFileType() {
     if (!this.tracks.length) return null
@@ -101,7 +131,8 @@ class Stream extends EventEmitter {
     return `/hls/${this.id}/output.m3u8`
   }
   get isAACEncodable() {
-    return ['mp4', 'm4a', 'm4b'].includes(this.tracksAudioFileType)
+    // includes(null) is false
+    return ['mp4', 'm4a', 'm4b'].includes(this.tracksAudioFileType as string)
   }
   get transcodeForceAAC() {
     return !!this.transcodeOptions.forceAAC
@@ -122,7 +153,7 @@ class Stream extends EventEmitter {
     }
   }
 
-  async checkSegmentNumberRequest(segNum) {
+  async checkSegmentNumberRequest(segNum: number) {
     const segStartTime = segNum * this.segmentLength
     if (this.segmentStartNumber > segNum) {
       Logger.warn(`[STREAM] Segment #${segNum} Request is before starting segment number #${this.segmentStartNumber} - Reset Transcode`)
@@ -174,8 +205,8 @@ class Stream extends EventEmitter {
         this.clientEmit('stream_open', this.toJSON())
       }
 
-      var chunks = []
-      var current_chunk = []
+      var chunks: Array<number | string> = []
+      var current_chunk: number[] = []
       var last_seg_in_chunk = -1
 
       var segments = Array.from(this.segmentsCreated).sort((a, b) => a - b)
@@ -218,7 +249,7 @@ class Stream extends EventEmitter {
   startLoop() {
     this.clientEmit('stream_progress', { stream: this.id, chunks: [], numSegments: 0, percent: '0%' })
 
-    clearInterval(this.loop)
+    clearInterval(this.loop as NodeJS.Timeout) // clearInterval ignores null
     var intervalId = setInterval(() => {
       if (!this.isTranscodeComplete) {
         this.checkFiles()
@@ -234,7 +265,6 @@ class Stream extends EventEmitter {
   async start() {
     Logger.info(`[STREAM] START STREAM - Num Segments: ${this.numSegments}`)
 
-    /** @type {import('../libs/fluentFfmpeg/index').FfmpegCommand} */
     this.ffmpeg = Ffmpeg()
     this.furthestSegmentCreated = 0
 
@@ -268,14 +298,16 @@ class Stream extends EventEmitter {
     const logLevel = process.env.NODE_ENV === 'production' ? 'error' : 'warning'
 
     let audioCodec = 'copy'
-    if (this.transcodeForceAAC || this.mimeTypesToForceAAC.includes(this.tracksMimeType) || this.codecsToForceAAC.includes(this.tracksCodec)) {
+    // includes(null) is false
+    if (this.transcodeForceAAC || this.mimeTypesToForceAAC.includes(this.tracksMimeType as string) || this.codecsToForceAAC.includes(this.tracksCodec as string)) {
       Logger.debug(`[Stream] Forcing AAC for tracks with mime type ${this.tracksMimeType} and codec ${this.tracksCodec}`)
       audioCodec = 'aac'
     }
 
     const codecOptions = [`-loglevel ${logLevel}`, '-map 0:a']
 
-    if (['ac3', 'eac3'].includes(this.tracksCodec) && this.tracks.length > 0 && this.tracks[0].bitRate && this.tracks[0].channels) {
+    // includes(null) is false
+    if (['ac3', 'eac3'].includes(this.tracksCodec as string) && this.tracks.length > 0 && this.tracks[0].bitRate && this.tracks[0].channels) {
       // In case for ac3/eac3 it needs to be passed the bitrate and channels to avoid ffmpeg errors
       codecOptions.push(`-c:a ${audioCodec}`, `-b:a ${this.tracks[0].bitRate}`, `-ac ${this.tracks[0].channels}`)
     } else {
@@ -320,7 +352,7 @@ class Stream extends EventEmitter {
         // This is an intentional SIGKILL
         Logger.info('[FFMPEG] Transcode Killed')
         this.ffmpeg = null
-        clearInterval(this.loop)
+        clearInterval(this.loop as NodeJS.Timeout) // clearInterval ignores null
       } else {
         Logger.error('Ffmpeg Err', '"' + err.message + '"')
 
@@ -349,14 +381,14 @@ class Stream extends EventEmitter {
       }
       this.isTranscodeComplete = true
       this.ffmpeg = null
-      clearInterval(this.loop)
+      clearInterval(this.loop as NodeJS.Timeout) // clearInterval ignores null
     })
 
     this.ffmpeg.run()
   }
 
-  async close(errorMessage = null) {
-    clearInterval(this.loop)
+  async close(errorMessage: string | null = null) {
+    clearInterval(this.loop as NodeJS.Timeout) // clearInterval ignores null
 
     Logger.info('Closing Stream', this.id)
     if (this.ffmpeg) {
@@ -379,7 +411,7 @@ class Stream extends EventEmitter {
   }
 
   cancelTranscode() {
-    clearInterval(this.loop)
+    clearInterval(this.loop as NodeJS.Timeout) // clearInterval ignores null
     if (this.ffmpeg) {
       this.ffmpeg.kill('SIGKILL')
     }
@@ -394,7 +426,7 @@ class Stream extends EventEmitter {
     return false
   }
 
-  async reset(time) {
+  async reset(time: number) {
     if (this.isResetting) {
       return Logger.info(`[STREAM] Stream ${this.id} already resetting`)
     }
@@ -413,7 +445,7 @@ class Stream extends EventEmitter {
     this.start()
   }
 
-  clientEmit(evtName, data) {
+  clientEmit(evtName: string, data?: unknown) {
     SocketAuthority.clientEmitter(this.user.id, evtName, data)
   }
 
@@ -423,4 +455,4 @@ class Stream extends EventEmitter {
     return newAudioTrack
   }
 }
-module.exports = Stream
+export = Stream

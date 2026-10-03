@@ -1,10 +1,87 @@
-const date = require('../libs/dateAndTime')
-const uuidv4 = require('uuid').v4
-const serverVersion = require('../../package.json').version
-const DeviceInfo = require('./DeviceInfo')
+import dateAndTime = require('../libs/dateAndTime')
+import uuid = require('uuid')
+import packageJson = require('../../package.json')
+import DeviceInfo = require('./DeviceInfo')
+import type LibraryItem = require('../models/LibraryItem')
+import type AudioTrack = require('./files/AudioTrack')
+import type Stream = require('./Stream')
+import type { AudioChapter, DateAndTime } from './types'
+// Typed view of the untyped vendored date-and-time
+const date = dateAndTime as unknown as DateAndTime
+const uuidv4 = uuid.v4
+const serverVersion = packageJson.version
+
+/**
+ * PlaybackSession as stored in JSON (see toJSON); the input of the constructor
+ */
+interface PlaybackSessionData {
+  id: string
+  userId: string
+  libraryId?: string | null
+  libraryItemId: string | null
+  bookId?: string | null
+  episodeId: string | null
+  mediaType: string
+  mediaMetadata: object | null
+  chapters?: AudioChapter[] | null
+  displayTitle?: string | null
+  displayAuthor?: string | null
+  coverPath: string | null
+  duration: number | null
+  playMethod: number | null
+  mediaPlayer?: string | null
+  deviceInfo?: DeviceInfo | object | null
+  serverVersion: string | null
+  date: string | null
+  dayOfWeek: string | null
+  timeListening?: number | null
+  startTime?: number | null
+  currentTime?: number | null
+  startedAt: number | null
+  updatedAt?: number | null
+}
 
 class PlaybackSession {
-  constructor(session) {
+  declare id: string | null
+  declare userId: string | null
+  declare libraryId: string | null
+  declare libraryItemId: string | null
+  declare bookId: string | null
+  declare episodeId: string | null
+
+  declare mediaType: string | null
+  declare mediaMetadata: object | null
+  declare chapters: AudioChapter[] | null
+  declare displayTitle: string | null
+  declare displayAuthor: string | null
+  declare coverPath: string | null
+  declare duration: number | null
+
+  declare playMethod: number | null
+  declare mediaPlayer: string | null
+  declare deviceInfo: DeviceInfo | null
+  declare serverVersion: string | null
+
+  declare date: string | null
+  declare dayOfWeek: string | null
+
+  declare timeListening: number | null
+  declare startTime: number | null
+  declare currentTime: number
+
+  declare startedAt: number | null
+  declare updatedAt: number | null
+
+  // Not saved in DB
+  declare lastSave: number
+  declare audioTracks: AudioTrack[]
+  declare stream: Stream | null
+  // Used for share sessions
+  declare shareSessionId: string | null
+  declare mediaItemShareId: string | null
+  declare coverAspectRatio: number | null
+
+  constructor(session?: PlaybackSessionData | null) {
     this.id = null
     this.userId = null
     this.libraryId = null
@@ -80,10 +157,10 @@ class PlaybackSession {
 
   /**
    * Session data to send to clients
-   * @param {import('../models/LibraryItem')} [libraryItem]
+   * @param [libraryItem]
    * @returns
    */
-  toJSONForClient(libraryItem) {
+  toJSONForClient(libraryItem?: LibraryItem) {
     return {
       id: this.id,
       userId: this.userId,
@@ -115,7 +192,7 @@ class PlaybackSession {
     }
   }
 
-  construct(session) {
+  construct(session: PlaybackSessionData) {
     this.id = session.id
     this.userId = session.userId
     this.libraryId = session.libraryId || null
@@ -159,7 +236,8 @@ class PlaybackSession {
     this.currentTime = session.currentTime || 0
 
     this.startedAt = session.startedAt
-    this.updatedAt = session.updatedAt || session.startedAt
+    // Copied as given (possibly undefined), like the JS
+    this.updatedAt = (session.updatedAt || session.startedAt) as number | null
 
     // Local playback sessions dont set this date field so set using updatedAt
     if (!this.date && session.updatedAt) {
@@ -199,14 +277,14 @@ class PlaybackSession {
 
   /**
    *
-   * @param {import('../models/LibraryItem')} libraryItem
-   * @param {*} userId
-   * @param {*} mediaPlayer
-   * @param {*} deviceInfo
-   * @param {*} startTime
-   * @param {*} episodeId
+   * @param libraryItem
+   * @param userId
+   * @param mediaPlayer
+   * @param deviceInfo
+   * @param startTime
+   * @param episodeId
    */
-  setData(libraryItem, userId, mediaPlayer, deviceInfo, startTime, episodeId = null) {
+  setData(libraryItem: LibraryItem, userId: string, mediaPlayer: string, deviceInfo: DeviceInfo | null, startTime: number, episodeId: string | null = null) {
     this.id = uuidv4()
     this.userId = userId
     this.libraryId = libraryItem.libraryId
@@ -215,7 +293,8 @@ class PlaybackSession {
     this.episodeId = episodeId
     this.mediaType = libraryItem.mediaType
     this.mediaMetadata = libraryItem.media.oldMetadataToJSON()
-    this.chapters = libraryItem.media.getChapters(episodeId)
+    // Book media ignores the episode id; podcast sessions always pass one
+    this.chapters = libraryItem.media.getChapters(episodeId as string)
     this.displayTitle = libraryItem.media.getPlaybackTitle(episodeId)
     this.displayAuthor = libraryItem.media.getPlaybackAuthor()
     this.coverPath = libraryItem.media.coverPath
@@ -235,8 +314,9 @@ class PlaybackSession {
     this.updatedAt = Date.now()
   }
 
-  addListeningTime(timeListened) {
-    if (!timeListened || isNaN(timeListened)) return
+  addListeningTime(timeListened: number | string) {
+    // isNaN coerces its argument
+    if (!timeListened || isNaN(timeListened as number)) return
 
     if (!this.date) {
       // Set date info on first listening update
@@ -244,8 +324,9 @@ class PlaybackSession {
       this.dayOfWeek = date.format(new Date(), 'dddd')
     }
 
-    this.timeListening += Number.parseFloat(timeListened)
+    // timeListening is null before the first update (null + n is n); parseFloat coerces numbers to strings
+    (this.timeListening as number) += Number.parseFloat(timeListened as string)
     this.updatedAt = Date.now()
   }
 }
-module.exports = PlaybackSession
+export = PlaybackSession

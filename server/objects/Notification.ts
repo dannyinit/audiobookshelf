@@ -1,7 +1,65 @@
-const uuidv4 = require("uuid").v4
+import uuid = require("uuid")
+const uuidv4 = uuid.v4
+
+/**
+ * Notification as stored in JSON (see toJSON); the input of the constructor
+ */
+interface NotificationData {
+  id: string
+  libraryId?: string | null
+  eventName: string
+  urls?: string[]
+  titleTemplate?: string
+  bodyTemplate?: string
+  type?: string | null
+  enabled?: boolean
+  lastFiredAt?: number | null
+  lastAttemptFailed?: boolean
+  numConsecutiveFailedAttempts?: number
+  numTimesFired?: number
+  createdAt: number
+}
+
+/**
+ * Payload to create or update a notification (from the API)
+ */
+interface NotificationPayload {
+  libraryId?: string | null
+  eventName?: string
+  urls?: string[]
+  titleTemplate?: string
+  bodyTemplate?: string
+  enabled?: boolean
+  type?: string | null
+}
+
+/**
+ * Payload to create a notification (see NotificationSettings.createNotification)
+ */
+interface NotificationCreatePayload extends NotificationPayload {
+  eventName: string
+  urls: string[]
+  titleTemplate: string
+  bodyTemplate: string
+}
 
 class Notification {
-  constructor(notification = null) {
+  declare id: string | null
+  declare libraryId: string | null
+  declare eventName: string
+  declare urls: string[]
+  declare titleTemplate: string
+  declare bodyTemplate: string
+  declare type: string | null
+  declare enabled: boolean
+
+  declare lastFiredAt: number | null
+  declare lastAttemptFailed: boolean
+  declare numConsecutiveFailedAttempts: number
+  declare numTimesFired: number
+  declare createdAt: number | null
+
+  constructor(notification: NotificationData | null = null) {
     this.id = null
     this.libraryId = null
     this.eventName = ''
@@ -22,7 +80,7 @@ class Notification {
     }
   }
 
-  construct(notification) {
+  construct(notification: NotificationData) {
     this.id = notification.id
     this.libraryId = notification.libraryId || null
     this.eventName = notification.eventName
@@ -56,7 +114,7 @@ class Notification {
     }
   }
 
-  setData(payload) {
+  setData(payload: NotificationCreatePayload) {
     this.id = uuidv4()
     this.libraryId = payload.libraryId || null
     this.eventName = payload.eventName
@@ -68,7 +126,7 @@ class Notification {
     this.createdAt = Date.now()
   }
 
-  update(payload) {
+  update(payload: NotificationPayload) {
     if (!this.enabled && payload.enabled) {
       // Reset
       this.lastFiredAt = null
@@ -76,7 +134,9 @@ class Notification {
       this.numConsecutiveFailedAttempts = 0
     }
 
-    const keysToUpdate = ['libraryId', 'eventName', 'urls', 'titleTemplate', 'bodyTemplate', 'enabled', 'type']
+    const keysToUpdate = ['libraryId', 'eventName', 'urls', 'titleTemplate', 'bodyTemplate', 'enabled', 'type'] as const
+    // Index this object by key
+    const self = this as unknown as Record<string, unknown>
     var hasUpdated = false
     for (const key of keysToUpdate) {
       if (payload[key] !== undefined) {
@@ -86,7 +146,7 @@ class Notification {
             hasUpdated = true
           }
         } else if (payload[key] !== this[key]) {
-          this[key] = payload[key]
+          self[key] = payload[key]
           hasUpdated = true
         }
       }
@@ -94,35 +154,36 @@ class Notification {
     return hasUpdated
   }
 
-  updateNotificationFired(success) {
+  updateNotificationFired(success: boolean) {
     this.lastFiredAt = Date.now()
     this.lastAttemptFailed = !success
     this.numConsecutiveFailedAttempts = success ? 0 : this.numConsecutiveFailedAttempts + 1
     this.numTimesFired++
   }
 
-  replaceVariablesInTemplate(templateText, data) {
+  replaceVariablesInTemplate(templateText: string, data: Record<string, unknown>) {
     const ptrn = /{{ ?([a-zA-Z]+) ?}}/mg
 
     var match
     var updatedTemplate = templateText
     while ((match = ptrn.exec(templateText)) != null) {
       if (data[match[1]]) {
-        updatedTemplate = updatedTemplate.replace(match[0], data[match[1]])
+        // Event data values are not all strings; replace coerces the replacement to a string, like the JS
+        updatedTemplate = updatedTemplate.replace(match[0], data[match[1]] as string)
       }
     }
     return updatedTemplate
   }
 
-  parseTitleTemplate(data) {
+  parseTitleTemplate(data: Record<string, unknown>) {
     return this.replaceVariablesInTemplate(this.titleTemplate, data)
   }
 
-  parseBodyTemplate(data) {
+  parseBodyTemplate(data: Record<string, unknown>) {
     return this.replaceVariablesInTemplate(this.bodyTemplate, data)
   }
 
-  getApprisePayload(data) {
+  getApprisePayload(data: Record<string, unknown>) {
     return {
       urls: this.urls,
       title: this.parseTitleTemplate(data),
@@ -130,4 +191,4 @@ class Notification {
     }
   }
 }
-module.exports = Notification
+export = Notification

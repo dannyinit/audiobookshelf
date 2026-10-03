@@ -1,12 +1,44 @@
-const Path = require('path')
-const { getFileTimestampsWithIno, filePathToPOSIX } = require('../../utils/fileUtils')
-const globals = require('../../utils/globals')
-const FileMetadata = require('../metadata/FileMetadata')
+import Path = require('path')
+import fileUtils = require('../../utils/fileUtils')
+import globals = require('../../utils/globals')
+import FileMetadata = require('../metadata/FileMetadata')
+import type { FileMetadataJSON } from '../types'
+const { getFileTimestampsWithIno, filePathToPOSIX } = fileUtils
+
+/**
+ * LibraryFile as stored in JSON (see toJSON); the input of the constructor (older JSON may lack fields, which are then copied as undefined)
+ */
+interface LibraryFileData {
+  ino: string | null
+  metadata?: Partial<FileMetadataJSON> | null
+  isSupplementary?: boolean | null
+  addedAt: number | null
+  updatedAt: number | null
+}
+
+/**
+ * LibraryFile JSON as typed by the LibraryItem model (LibraryFileObject in models/LibraryItem)
+ */
+interface LibraryFileJSON {
+  ino: string
+  metadata: FileMetadataJSON
+  isSupplementary: boolean
+  addedAt: number
+  updatedAt: number
+  fileType: string
+}
 
 class LibraryFile {
-  constructor(file) {
+  declare ino: string | null
+  declare metadata: FileMetadata
+  declare isSupplementary: boolean | null
+  declare addedAt: number | null
+  declare updatedAt: number | null
+
+  constructor(file?: LibraryFileData | null) {
     this.ino = null
-    this.metadata = null
+    // Typed FileMetadata; construct or setDataFromPath sets it before use
+    this.metadata = null as unknown as FileMetadata
     this.isSupplementary = null
     this.addedAt = null
     this.updatedAt = null
@@ -16,7 +48,7 @@ class LibraryFile {
     }
   }
 
-  construct(file) {
+  construct(file: LibraryFileData) {
     this.ino = file.ino
     this.metadata = new FileMetadata(file.metadata)
     this.isSupplementary = file.isSupplementary === undefined ? null : file.isSupplementary
@@ -25,6 +57,7 @@ class LibraryFile {
   }
 
   toJSON() {
+    // Typed as set: toJSON is only called on files that construct or setDataFromPath filled in (isSupplementary may still be null)
     return {
       ino: this.ino,
       metadata: this.metadata.toJSON(),
@@ -32,7 +65,7 @@ class LibraryFile {
       addedAt: this.addedAt,
       updatedAt: this.updatedAt,
       fileType: this.fileType
-    }
+    } as LibraryFileJSON
   }
 
   clone() {
@@ -60,8 +93,9 @@ class LibraryFile {
     return this.metadata.ext === '.opf'
   }
 
-  async setDataFromPath(path, relPath) {
-    var fileTsData = await getFileTimestampsWithIno(path)
+  async setDataFromPath(path: string, relPath: string) {
+    // NOTE: getFileTimestampsWithIno returns false when stat fails; then ino is undefined and no timestamps are set
+    var fileTsData = (await getFileTimestampsWithIno(path)) as Exclude<Awaited<ReturnType<typeof getFileTimestampsWithIno>>, false>
     var fileMetadata = new FileMetadata()
     fileMetadata.setData(fileTsData)
     fileMetadata.filename = Path.basename(relPath)
@@ -74,4 +108,4 @@ class LibraryFile {
     this.updatedAt = Date.now()
   }
 }
-module.exports = LibraryFile
+export = LibraryFile

@@ -1,13 +1,76 @@
-const { AudioMimeType } = require('../../utils/constants')
-const AudioMetaTags = require('../metadata/AudioMetaTags')
-const FileMetadata = require('../metadata/FileMetadata')
+import constants = require('../../utils/constants')
+import AudioMetaTags = require('../metadata/AudioMetaTags')
+import FileMetadata = require('../metadata/FileMetadata')
+import type MediaProbeData = require('../../scanner/MediaProbeData')
+import type { AudioChapter, FileMetadataJSON } from '../types'
+const { AudioMimeType } = constants
+
+/**
+ * AudioFile as stored in JSON (see toJSON); the input of the constructor (older JSON may lack fields, which are then copied as undefined)
+ */
+interface AudioFileData {
+  index: number | null
+  ino: string | null
+  metadata?: Partial<FileMetadataJSON> | null
+  addedAt: number | null
+  updatedAt: number | null
+  trackNumFromMeta: number | null
+  discNumFromMeta: number | null
+  trackNumFromFilename: number | null
+  /** Old name of discNumFromFilename */
+  cdNumFromFilename?: number | null
+  discNumFromFilename: number | null
+  manuallyVerified?: boolean
+  exclude?: boolean
+  error?: string | null
+  format: string | null
+  duration: number | null
+  bitRate: number | null
+  language: string | null
+  codec?: string | null
+  timeBase: string | null
+  channels: number | null
+  channelLayout: string | null
+  chapters: AudioChapter[]
+  embeddedCoverArt?: string | null
+  metaTags?: ConstructorParameters<typeof AudioMetaTags>[0]
+}
 
 class AudioFile {
-  constructor(data) {
+  declare index: number | null
+  declare ino: string | null
+  declare metadata: FileMetadata
+  declare addedAt: number | null
+  declare updatedAt: number | null
+
+  declare trackNumFromMeta: number | null
+  declare discNumFromMeta: number | null
+  declare trackNumFromFilename: number | null
+  declare discNumFromFilename: number | null
+
+  declare format: string | null
+  declare duration: number | null
+  declare bitRate: number | null
+  declare language: string | null
+  declare codec: string | null
+  declare timeBase: string | null
+  declare channels: number | null
+  declare channelLayout: string | null
+  declare chapters: AudioChapter[]
+  declare embeddedCoverArt: string | null
+
+  // Tags scraped from the audio file
+  declare metaTags: AudioMetaTags
+
+  declare manuallyVerified: boolean
+  declare exclude: boolean
+  declare error: string | null
+
+  constructor(data?: AudioFileData | null) {
     this.index = null
     this.ino = null
-    /** @type {FileMetadata} */
-    this.metadata = null
+    // Typed FileMetadata (as the JSDoc did); construct or setDataFromProbe sets it before use
+    this.metadata = null as unknown as FileMetadata
     this.addedAt = null
     this.updatedAt = null
 
@@ -28,8 +91,8 @@ class AudioFile {
     this.embeddedCoverArt = null
 
     // Tags scraped from the audio file
-    /** @type {AudioMetaTags} */
-    this.metaTags = null
+    // Typed AudioMetaTags (as the JSDoc did); construct or setDataFromProbe sets it before use
+    this.metaTags = null as unknown as AudioMetaTags
 
     this.manuallyVerified = false
     this.exclude = false
@@ -69,7 +132,7 @@ class AudioFile {
     }
   }
 
-  construct(data) {
+  construct(data: AudioFileData) {
     this.index = data.index
     this.ino = data.ino
     this.metadata = new FileMetadata(data.metadata || {})
@@ -101,16 +164,18 @@ class AudioFile {
   }
 
   get mimeType() {
+    // Index the mime type map by any format string; unknown formats read undefined, like the JS
+    const mimeTypes = AudioMimeType as Record<string, string | undefined>
     const format = this.metadata.format.toUpperCase()
-    if (AudioMimeType[format]) {
-      return AudioMimeType[format]
+    if (mimeTypes[format]) {
+      return mimeTypes[format]
     } else {
       return AudioMimeType.MP3
     }
   }
 
   // New scanner creates AudioFile from AudioFileScanner
-  setDataFromProbe(libraryFile, probeData) {
+  setDataFromProbe(libraryFile: { ino?: string | null; metadata: FileMetadata | Partial<FileMetadataJSON> }, probeData: MediaProbeData) {
     this.ino = libraryFile.ino || null
 
     if (libraryFile.metadata instanceof FileMetadata) {
@@ -131,11 +196,12 @@ class AudioFile {
     this.channels = probeData.channels
     this.channelLayout = probeData.channelLayout
     this.chapters = probeData.chapters || []
-    this.metaTags = probeData.audioMetaTags
+    // Probe data from prober.probe always has audioMetaTags (MediaProbeData.setData)
+    this.metaTags = probeData.audioMetaTags as AudioMetaTags
     this.embeddedCoverArt = probeData.embeddedCoverArt
   }
 
-  syncChapters(updatedChapters) {
+  syncChapters(updatedChapters: AudioChapter[]) {
     if (this.chapters.length !== updatedChapters.length) {
       this.chapters = updatedChapters.map(ch => ({ ...ch }))
       return true
@@ -164,16 +230,19 @@ class AudioFile {
   }
 
   /**
-   * 
-   * @param {AudioFile} scannedAudioFile 
-   * @returns {boolean} true if updates were made
+   *
+   * @param scannedAudioFile
+   * @returns true if updates were made
    */
-  updateFromScan(scannedAudioFile) {
+  updateFromScan(scannedAudioFile: AudioFile) {
     let hasUpdated = false
 
     const newjson = scannedAudioFile.toJSON()
     const ignoreKeys = ['manuallyVerified', 'ctimeMs', 'addedAt', 'updatedAt']
 
+    // Index this object and the new JSON by key
+    const self = this as unknown as Record<string, unknown>
+    const newValues = newjson as Record<string, unknown>
     for (const key in newjson) {
       if (key === 'metadata') {
         if (this.metadata.update(newjson[key])) {
@@ -188,12 +257,12 @@ class AudioFile {
         if (this.syncChapters(newjson.chapters || [])) {
           hasUpdated = true
         }
-      } else if (!ignoreKeys.includes(key) && this[key] !== newjson[key]) {
-        this[key] = newjson[key]
+      } else if (!ignoreKeys.includes(key) && self[key] !== newValues[key]) {
+        self[key] = newValues[key]
         hasUpdated = true
       }
     }
     return hasUpdated
   }
 }
-module.exports = AudioFile
+export = AudioFile
