@@ -93,3 +93,42 @@ Each has a `NOTE:` comment at the line.
 
 ## Skipped files
 (none yet; batches 1, 2 and 4 skipped nothing)
+
+## Rules added after the type quality audit (2026-10-09)
+
+These rules apply from batch 3 onward. Where they conflict with rule 4 or rule 9, these rules win. Phase 2 and batches 1 to 4 were done under the earlier rules.
+
+13. Batch 3 is split in two.
+    - Batch 3a converts server/models. The models must declare their JSON columns (permissions, extraData, mediaMetadata, libraryFiles) and their associations (for example book.libraryItem, series.bookSeries), and must type size, mtime and ctime as they really are at runtime. Commit: `phase3 batch 3a: models`.
+    - Batch 3b starts only after 3a is green and committed. It removes TypedDatabase, ApiDatabase, PatchModels, QueryFindOptions and every `as unknown as LibraryItem['media']` cast, using the real Sequelize types instead. This means editing files converted in earlier batches, with no behaviour change. Batch 3b is done only when `grep -rn "TypedDatabase" server` and `grep -rn "QueryFindOptions" server` find nothing. Commit: `phase3 batch 3b: remove model workarounds`.
+
+14. Tag every new cast with its reason. Write `// cast(a): <why>` directly above the cast, where the letter is one of:
+    - a: untyped or vendored library
+    - b: Sequelize or Express typing limitation
+    - c: a real mismatch in the original JavaScript. A cast tagged c must also have a NOTE comment and an entry under Bugs.
+    - d: other
+    This replaces the plain one-line comment for new casts. Existing casts are not retagged now.
+
+15. Banned shortcuts. Do not use:
+    - index signatures on domain types (allowed only for real dictionaries)
+    - function types with `never` parameters
+    - `null as unknown as T`. If the JavaScript assigns null or checks for null, declare the field `T | null` and handle null where it is used, without changing behaviour. If the JavaScript never initialised the field, use `declare x: T` (rule 12).
+    - casting req.query or req.body to all-string shapes. Use `string | string[] | undefined`, or a small narrowing helper that keeps the same behaviour.
+    If a file cannot be done without one of these, leave it as .js and list it under Skipped files with the reason.
+
+16. Narrow with type guards, not with `as`. A parameter type must not be wider than the JSDoc it replaces (for example, no `unknown` where the JSDoc said `boolean`).
+
+17. In every batch Log entry, report the count of `as`, `as unknown as` and non-null `!`, and the number of casts per tag (a, b, c, d). If any single kind of cast appears more than 10 times in a batch, stop and report it, because a shared type is probably missing.
+
+18. For batch 7 (controllers): once controllers are TypeScript, type the request with its user as an extension of the Express Request and remove ApiRouterApp, so that the router can be a normal express.Router.
+
+### Added to "Known deviations to clean up at the end" (from the audit)
+
+- The 8 uses of `null as unknown as T` in batches 1 to 4 (find them with `grep -rn "null as unknown as" server --include=*.ts`), including OidcAuthStrategy.ts verifyCallback, where the cast hides the user.isActive bug listed under Bugs.
+- ApiRouter.ts: RouteHandler is typed with `never` parameters, so handler signatures are not checked against what Express passes.
+- FilteredLibraryItem has an index signature `[key: string]: unknown`.
+- Casts of req.query to all-string shapes.
+- About 450 casts in Phase 2 and batches 1 to 4 have no reason tag.
+
+### Log
+- 2026-10-09: Type quality audit finished (a4-context/phase3-evidence/audit/4-type-audit.md). Rules 13 to 18 added.
