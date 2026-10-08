@@ -1,38 +1,40 @@
-const { DataTypes, Model, Sequelize } = require('sequelize')
+import sequelizeModule = require('sequelize')
+import type { Attributes, BelongsToManyGetAssociationsMixin, CreationOptional, HasManyGetAssociationsMixin, Includeable, InferAttributes, InferCreationAttributes, InitOptions, ModelAttributes, ModelStatic, NonAttribute, WhereOptions } from 'sequelize'
+import type Book = require('./Book')
+import type Feed = require('./Feed')
+import type LibraryItem = require('./LibraryItem')
+import type User = require('./User')
+import type { ModelsSequelize } from './types'
+const { DataTypes, Model, Sequelize } = sequelizeModule
 
-class Collection extends Model {
-  constructor(values, options) {
-    super(values, options)
+class Collection extends Model<InferAttributes<Collection>, InferCreationAttributes<Collection>> {
+  declare id: CreationOptional<string>
+  declare name: string
+  declare description: string | null
+  declare libraryId: string
+  declare updatedAt: CreationOptional<Date>
+  declare createdAt: CreationOptional<Date>
 
-    /** @type {UUIDV4} */
-    this.id
-    /** @type {string} */
-    this.name
-    /** @type {string} */
-    this.description
-    /** @type {UUIDV4} */
-    this.libraryId
-    /** @type {Date} */
-    this.updatedAt
-    /** @type {Date} */
-    this.createdAt
+  declare sequelize: ModelsSequelize
+  declare static readonly sequelize: ModelsSequelize
 
-    // Expanded properties
+  // Expanded properties
 
-    /** @type {import('./Book').BookExpandedWithLibraryItem[]} - only set when expanded */
-    this.books
-  }
+  /** only set when expanded (books with their libraryItem, authors and series) */
+  declare books: NonAttribute<Book.BookExpandedWithLibraryItem[]>
+
+  // Associations, only set when included
+
+  declare feeds?: NonAttribute<Feed[]>
+
+  declare getBooks: BelongsToManyGetAssociationsMixin<Book>
+  declare getFeeds: HasManyGetAssociationsMixin<Feed>
 
   /**
    * Get all toOldJSONExpanded, items filtered for user permissions
-   *
-   * @param {import('./User')} user
-   * @param {string} [libraryId]
-   * @param {string[]} [include]
-   * @async
    */
-  static async getOldCollectionsJsonExpanded(user, libraryId, include) {
-    let collectionWhere = null
+  static async getOldCollectionsJsonExpanded(user: User, libraryId?: string, include?: string[]) {
+    let collectionWhere: WhereOptions<Collection> | null = null
     if (libraryId) {
       collectionWhere = {
         libraryId
@@ -40,7 +42,7 @@ class Collection extends Model {
     }
 
     // Optionally include rssfeed for collection
-    const collectionIncludes = []
+    const collectionIncludes: Includeable[] = []
     if (include?.includes('rssfeed')) {
       collectionIncludes.push({
         model: this.sequelize.models.feed
@@ -48,7 +50,8 @@ class Collection extends Model {
     }
 
     const collections = await this.findAll({
-      where: collectionWhere,
+      // cast(b): sequelize accepts a null where (no condition), its types do not
+      where: collectionWhere as WhereOptions<Collection>,
       include: [
         {
           model: this.sequelize.models.book,
@@ -96,9 +99,12 @@ class Collection extends Model {
           return null
         }
 
-        this.books = books
+        // NOTE: this is the Collection class (static method), not c, so c.toOldJSONExpanded() below uses the unfiltered books
+        // cast(c): the JS sets books on the class; see the NOTE above
+        (this as typeof Collection & { books?: Book.BookExpandedWithLibraryItem[] }).books = books
 
-        const collectionExpanded = c.toOldJSONExpanded()
+        // Typed with rssFeed, which is added below
+        const collectionExpanded: ReturnType<Collection['toOldJSONExpanded']> & { rssFeed?: ReturnType<Feed['toOldJSON']> } = c.toOldJSONExpanded()
 
         // Map feed if found
         if (c.feeds?.length) {
@@ -110,12 +116,7 @@ class Collection extends Model {
       .filter((c) => c)
   }
 
-  /**
-   *
-   * @param {string} collectionId
-   * @returns {Promise<Collection>}
-   */
-  static async getExpandedById(collectionId) {
+  static async getExpandedById(collectionId: string): Promise<Collection | null> {
     return this.findByPk(collectionId, {
       include: [
         {
@@ -145,10 +146,9 @@ class Collection extends Model {
 
   /**
    * Remove all collections belonging to library
-   * @param {string} libraryId
-   * @returns {Promise<number>} number of collections destroyed
+   * @returns number of collections destroyed
    */
-  static async removeAllForLibrary(libraryId) {
+  static async removeAllForLibrary(libraryId: string): Promise<number> {
     if (!libraryId) return 0
     return this.destroy({
       where: {
@@ -159,9 +159,11 @@ class Collection extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: ModelsSequelize): void
+  // Model.init signature, only declared so the class stays assignable to Model (Database calls init(sequelize))
+  static init<MS extends ModelStatic<sequelizeModule.Model>, M extends InstanceType<MS>>(this: MS, attributes: ModelAttributes<M, Attributes<M>> | ModelsSequelize, options?: InitOptions<M>): MS
+  static init(sequelize: ModelsSequelize) {
     super.init(
       {
         id: {
@@ -186,10 +188,8 @@ class Collection extends Model {
 
   /**
    * Get all books in collection expanded with library item
-   *
-   * @returns {Promise<import('./Book').BookExpandedWithLibraryItem[]>}
    */
-  getBooksExpandedWithLibraryItem() {
+  getBooksExpandedWithLibraryItem(): Promise<Book.BookExpandedWithLibraryItem[]> {
     return this.getBooks({
       include: [
         {
@@ -209,17 +209,14 @@ class Collection extends Model {
         }
       ],
       order: [Sequelize.literal('`collectionBook.order` ASC')]
-    })
+      // cast(b): the libraryItem is included, which getBooks does not type
+    }) as Promise<Book.BookExpandedWithLibraryItem[]>
   }
 
   /**
    * Get toOldJSONExpanded, items filtered for user permissions
-   *
-   * @param {import('./User')|null} user
-   * @param {string[]} [include]
-   * @async
    */
-  async getOldJsonExpanded(user, include) {
+  async getOldJsonExpanded(user: User | null, include?: string[]) {
     this.books = await this.getBooksExpandedWithLibraryItem()
 
     // Filter books using user permissions
@@ -243,7 +240,8 @@ class Collection extends Model {
       this.books = books
     }
 
-    const collectionExpanded = this.toOldJSONExpanded()
+    // Typed with rssFeed, which is added below
+    const collectionExpanded: ReturnType<Collection['toOldJSONExpanded']> & { rssFeed?: ReturnType<Feed['toOldJSON']> } = this.toOldJSONExpanded()
 
     if (include?.includes('rssfeed')) {
       const feeds = await this.getFeeds()
@@ -256,11 +254,9 @@ class Collection extends Model {
   }
 
   /**
-   *
-   * @param {string[]} [libraryItemIds=[]]
-   * @returns
+   * @param [libraryItemIds=[]]
    */
-  toOldJSON(libraryItemIds = []) {
+  toOldJSON(libraryItemIds: string[] = []) {
     return {
       id: this.id,
       libraryId: this.libraryId,
@@ -277,10 +273,13 @@ class Collection extends Model {
       throw new Error('Books are required to expand Collection')
     }
 
-    const json = this.toOldJSON()
+    // Typed with expanded books, which replace the library item ids below
+    const json: Omit<ReturnType<Collection['toOldJSON']>, 'books'> & { books: string[] | ReturnType<LibraryItem['toOldJSONExpanded']>[] } = this.toOldJSON()
     json.books = this.books.map((book) => {
       const libraryItem = book.libraryItem
-      delete book.libraryItem
+      // Same object as book, typed with the association optional so it can be deleted
+      const bookAssociations: { libraryItem?: LibraryItem } = book
+      delete bookAssociations.libraryItem
       libraryItem.media = book
       return libraryItem.toOldJSONExpanded()
     })
@@ -289,4 +288,4 @@ class Collection extends Model {
   }
 }
 
-module.exports = Collection
+export = Collection

@@ -1,44 +1,72 @@
-const { DataTypes, Model } = require('sequelize')
-const Logger = require('../Logger')
-const { isNullOrNaN } = require('../utils')
+import Sequelize = require('sequelize')
+import type { Attributes, BelongsToGetAssociationMixin, CreationOptional, FindOptions, InferAttributes, InferCreationAttributes, InitOptions, ModelAttributes, ModelStatic, NonAttribute } from 'sequelize'
+import Logger = require('../Logger')
+import utils = require('../utils')
+import type Book = require('./Book')
+import type PodcastEpisode = require('./PodcastEpisode')
+import type User = require('./User')
+import type { MediaProgressExtraData, ModelsSequelize } from './types'
+const { DataTypes, Model } = Sequelize
+const { isNullOrNaN } = utils
 
-class MediaProgress extends Model {
-  constructor(values, options) {
-    super(values, options)
+/**
+ * Attributes accepted by create: finishedAt may be a date string or epoch ms (the DATE column converts it to a Date)
+ */
+type MediaProgressCreationAttributes = InferCreationAttributes<MediaProgress, { omit: 'finishedAt' | 'createdAt' }> & {
+  finishedAt: Date | number | string | null
+  createdAt?: Date | number | string
+}
 
-    /** @type {UUIDV4} */
-    this.id
-    /** @type {UUIDV4} */
-    this.mediaItemId
-    /** @type {string} */
-    this.mediaItemType
-    /** @type {number} */
-    this.duration
-    /** @type {number} */
-    this.currentTime
-    /** @type {boolean} */
-    this.isFinished
-    /** @type {boolean} */
-    this.hideFromContinueListening
-    /** @type {string} */
-    this.ebookLocation
-    /** @type {number} */
-    this.ebookProgress
-    /** @type {Date} */
-    this.finishedAt
-    /** @type {Object} */
-    this.extraData
-    /** @type {UUIDV4} */
-    this.userId
-    /** @type {Date} */
-    this.updatedAt
-    /** @type {Date} */
-    this.createdAt
-    /** @type {UUIDV4} */
-    this.podcastId
-  }
+/**
+ * dataValues of a loaded media progress with the included media item (moved to mediaItem by the afterFind hook)
+ */
+type MediaProgressDataValues = InferAttributes<MediaProgress> & {
+  book?: Book
+  podcastEpisode?: PodcastEpisode
+  mediaItem?: Book | PodcastEpisode
+}
 
-  static removeById(mediaProgressId) {
+/**
+ * finishedAt is read as a Date (or null); it is also set to epoch ms or a date string, which the DATE column converts to a Date
+ */
+interface MediaProgress {
+  get finishedAt(): Date | null
+  set finishedAt(value: Date | number | string | null)
+}
+
+class MediaProgress extends Model<InferAttributes<MediaProgress>, MediaProgressCreationAttributes> {
+  declare id: CreationOptional<string>
+  declare mediaItemId: string
+  declare mediaItemType: string
+  declare duration: number
+  declare currentTime: number
+  declare isFinished: boolean
+  declare hideFromContinueListening: boolean
+  declare ebookLocation: string | null
+  declare ebookProgress: number | null
+  declare extraData: MediaProgressExtraData | null
+  declare userId: string
+  declare updatedAt: CreationOptional<Date>
+  declare createdAt: CreationOptional<Date>
+  declare podcastId: string | null
+
+  declare sequelize: ModelsSequelize
+
+  // Expanded properties
+
+  /** Set by the afterFind hook when the book or podcast episode is included */
+  declare mediaItem?: NonAttribute<Book | PodcastEpisode>
+
+  // Associations, only set when included (the afterFind hook moves book or podcastEpisode to mediaItem and deletes them)
+
+  declare book?: NonAttribute<Book>
+  declare podcastEpisode?: NonAttribute<PodcastEpisode>
+  declare user?: NonAttribute<User>
+
+  declare getBook: BelongsToGetAssociationMixin<Book>
+  declare getPodcastEpisode: BelongsToGetAssociationMixin<PodcastEpisode>
+
+  static removeById(mediaProgressId: string) {
     return this.destroy({
       where: {
         id: mediaProgressId
@@ -51,10 +79,11 @@ class MediaProgress extends Model {
    *
    * Polymorphic association: Book has many MediaProgress. PodcastEpisode has many MediaProgress.
    * @see https://sequelize.org/docs/v6/advanced-association-concepts/polymorphic-associations/
-   *
-   * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: ModelsSequelize): void
+  // Model.init signature, only declared so the class stays assignable to Model (Database calls init(sequelize))
+  static init<MS extends ModelStatic<Sequelize.Model>, M extends InstanceType<MS>>(this: MS, attributes: ModelAttributes<M, Attributes<M>> | ModelsSequelize, options?: InitOptions<M>): MS
+  static init(sequelize: ModelsSequelize) {
     super.init(
       {
         id: {
@@ -109,24 +138,26 @@ class MediaProgress extends Model {
     })
     MediaProgress.belongsTo(podcastEpisode, { foreignKey: 'mediaItemId', constraints: false })
 
-    MediaProgress.addHook('afterFind', (findResult) => {
+    MediaProgress.addHook('afterFind', (findResult: MediaProgress[] | MediaProgress | null) => {
       if (!findResult) return
 
       if (!Array.isArray(findResult)) findResult = [findResult]
 
       for (const instance of findResult) {
+        // Same object as instance.dataValues, typed with the included rows
+        const dataValues: MediaProgressDataValues = instance.dataValues
         if (instance.mediaItemType === 'book' && instance.book !== undefined) {
           instance.mediaItem = instance.book
-          instance.dataValues.mediaItem = instance.dataValues.book
+          dataValues.mediaItem = dataValues.book
         } else if (instance.mediaItemType === 'podcastEpisode' && instance.podcastEpisode !== undefined) {
           instance.mediaItem = instance.podcastEpisode
-          instance.dataValues.mediaItem = instance.dataValues.podcastEpisode
+          dataValues.mediaItem = dataValues.podcastEpisode
         }
         // To prevent mistakes:
         delete instance.book
-        delete instance.dataValues.book
+        delete dataValues.book
         delete instance.podcastEpisode
-        delete instance.dataValues.podcastEpisode
+        delete dataValues.podcastEpisode
       }
     })
 
@@ -136,7 +167,7 @@ class MediaProgress extends Model {
     })
 
     // update the potentially cached user after destroying the media progress
-    MediaProgress.addHook('afterDestroy', (instance) => {
+    MediaProgress.addHook('afterDestroy', (instance: MediaProgress) => {
       user.mediaProgressRemoved(instance)
     })
 
@@ -146,10 +177,11 @@ class MediaProgress extends Model {
     MediaProgress.belongsTo(user)
   }
 
-  getMediaItem(options) {
+  getMediaItem(options?: FindOptions): Promise<Book | PodcastEpisode | null> {
     if (!this.mediaItemType) return Promise.resolve(null)
     const mixinMethodName = `get${this.sequelize.uppercaseFirst(this.mediaItemType)}`
-    return this[mixinMethodName](options)
+    // cast(d): mediaItemType is "book" or "podcastEpisode", so the name is one of the association getters
+    return this[mixinMethodName as 'getBook' | 'getPodcastEpisode'](options)
   }
 
   getOldMediaProgress() {
@@ -175,7 +207,7 @@ class MediaProgress extends Model {
     }
   }
 
-  get progress() {
+  get progress(): NonAttribute<number> {
     // Value between 0 and 1
     if (!this.duration) return 0
     return Math.max(0, Math.min(this.currentTime / this.duration, 1))
@@ -183,11 +215,8 @@ class MediaProgress extends Model {
 
   /**
    * Apply update to media progress
-   *
-   * @param {import('./User').ProgressUpdatePayload} progressPayload
-   * @returns {Promise<MediaProgress>}
    */
-  async applyProgressUpdate(progressPayload) {
+  async applyProgressUpdate(progressPayload: User.ProgressUpdatePayload): Promise<MediaProgress> {
     if (!this.extraData) this.extraData = {}
     if (progressPayload.isFinished !== undefined) {
       if (progressPayload.isFinished && !this.isFinished) {
@@ -203,13 +232,16 @@ class MediaProgress extends Model {
         delete progressPayload.finishedAt
         delete progressPayload.currentTime
       }
-    } else if (!isNaN(progressPayload.progress) && progressPayload.progress !== this.progress) {
+      // cast(d): isNaN coerces undefined to NaN, as in the JS
+    } else if (!isNaN(progressPayload.progress as number) && progressPayload.progress !== this.progress) {
       // Old model stored progress on object
-      this.extraData.progress = Math.min(1, Math.max(0, progressPayload.progress))
+      // cast(d): progress is a number here (the isNaN check above)
+      this.extraData.progress = Math.min(1, Math.max(0, progressPayload.progress as number))
       this.changed('extraData', true)
     }
 
-    this.set(progressPayload)
+    // cast(b): the payload has the attribute keys plus keys set ignores; finishedAt may be a date string, which the DATE column converts
+    this.set(progressPayload as Partial<InferAttributes<MediaProgress>>)
 
     // Reset hideFromContinueListening if the progress has changed
     if (this.changed('currentTime') && !progressPayload.hideFromContinueListening) {
@@ -222,7 +254,8 @@ class MediaProgress extends Model {
     //   - If markAsFinishedPercentComplete is provided, use that otherwise use markAsFinishedTimeRemaining (default 10 seconds)
     let shouldMarkAsFinished = false
     if (this.duration) {
-      if (!isNullOrNaN(progressPayload.markAsFinishedPercentComplete) && progressPayload.markAsFinishedPercentComplete > 0) {
+      // cast(d): isNullOrNaN is false, so markAsFinishedPercentComplete is a number
+      if (!isNullOrNaN(progressPayload.markAsFinishedPercentComplete) && (progressPayload.markAsFinishedPercentComplete as number) > 0) {
         const markAsFinishedPercentComplete = Number(progressPayload.markAsFinishedPercentComplete) / 100
         shouldMarkAsFinished = markAsFinishedPercentComplete < this.progress
         if (shouldMarkAsFinished) {
@@ -251,7 +284,8 @@ class MediaProgress extends Model {
 
     // For local sync
     if (progressPayload.lastUpdate) {
-      if (isNaN(new Date(progressPayload.lastUpdate))) {
+      // cast(d): isNaN coerces the Date to its timestamp, as in the JS
+      if (isNaN(new Date(progressPayload.lastUpdate) as unknown as number)) {
         Logger.warn(`[MediaProgress] Invalid date provided for lastUpdate: ${progressPayload.lastUpdate} (media item ${this.mediaItemId})`)
       } else {
         const escapedDate = this.sequelize.escape(new Date(progressPayload.lastUpdate))
@@ -267,4 +301,4 @@ class MediaProgress extends Model {
   }
 }
 
-module.exports = MediaProgress
+export = MediaProgress

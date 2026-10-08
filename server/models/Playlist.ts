@@ -1,43 +1,41 @@
-const { DataTypes, Model, Op } = require('sequelize')
-const Logger = require('../Logger')
-const SocketAuthority = require('../SocketAuthority')
+import Sequelize = require('sequelize')
+import type { Attributes, CreationOptional, HasManyGetAssociationsMixin, Includeable, InferAttributes, InferCreationAttributes, InitOptions, ModelAttributes, ModelStatic, NonAttribute } from 'sequelize'
+import Logger = require('../Logger')
+import SocketAuthority = require('../SocketAuthority')
+import type Book = require('./Book')
+import type LibraryItem = require('./LibraryItem')
+import type PlaylistMediaItem = require('./PlaylistMediaItem')
+import type Podcast = require('./Podcast')
+import type PodcastEpisode = require('./PodcastEpisode')
+import type { ModelsSequelize } from './types'
+const { DataTypes, Model, Op } = Sequelize
 
-class Playlist extends Model {
-  constructor(values, options) {
-    super(values, options)
+class Playlist extends Model<InferAttributes<Playlist>, InferCreationAttributes<Playlist>> {
+  declare id: CreationOptional<string>
+  declare name: string
+  declare description: string | null
+  declare libraryId: string
+  declare userId: string
+  declare createdAt: CreationOptional<Date>
+  declare updatedAt: CreationOptional<Date>
 
-    /** @type {UUIDV4} */
-    this.id
-    /** @type {string} */
-    this.name
-    /** @type {string} */
-    this.description
-    /** @type {UUIDV4} */
-    this.libraryId
-    /** @type {UUIDV4} */
-    this.userId
-    /** @type {Date} */
-    this.createdAt
-    /** @type {Date} */
-    this.updatedAt
+  declare sequelize: ModelsSequelize
+  declare static readonly sequelize: ModelsSequelize
 
-    // Expanded properties
+  // Expanded properties
 
-    /** @type {import('./PlaylistMediaItem')[]} - only set when expanded */
-    this.playlistMediaItems
-  }
+  /** only set when expanded */
+  declare playlistMediaItems: NonAttribute<PlaylistMediaItem[]>
+
+  declare getPlaylistMediaItems: HasManyGetAssociationsMixin<PlaylistMediaItem>
 
   /**
    * Get old playlists for user and library
-   *
-   * @param {string} userId
-   * @param {string} libraryId
-   * @async
    */
-  static async getOldPlaylistsForUserAndLibrary(userId, libraryId) {
+  static async getOldPlaylistsForUserAndLibrary(userId: string, libraryId: string) {
     if (!userId && !libraryId) return []
 
-    const whereQuery = {}
+    const whereQuery: { userId?: string; libraryId?: string } = {}
     if (userId) {
       whereQuery.userId = userId
     }
@@ -77,7 +75,8 @@ class Playlist extends Model {
             }
           }
         ]
-      },
+        // cast(b): sequelize accepts a single model or include object as a nested include, its types only allow an array
+      } as unknown as Includeable,
       order: [['playlistMediaItems', 'order', 'ASC']]
     })
 
@@ -89,11 +88,8 @@ class Playlist extends Model {
 
   /**
    * Get number of playlists for a user and library
-   * @param {string} userId
-   * @param {string} libraryId
-   * @returns
    */
-  static async getNumPlaylistsForUserAndLibrary(userId, libraryId) {
+  static async getNumPlaylistsForUserAndLibrary(userId: string, libraryId: string) {
     return this.count({
       where: {
         userId,
@@ -104,10 +100,8 @@ class Playlist extends Model {
 
   /**
    * Get all playlists for mediaItemIds
-   * @param {string[]} mediaItemIds
-   * @returns {Promise<Playlist[]>}
    */
-  static async getPlaylistsForMediaItemIds(mediaItemIds) {
+  static async getPlaylistsForMediaItemIds(mediaItemIds: string[]): Promise<Playlist[]> {
     if (!mediaItemIds?.length) return []
 
     const playlistMediaItemsExpanded = await this.sequelize.models.playlistMediaItem.findAll({
@@ -136,27 +130,30 @@ class Playlist extends Model {
             ]
           }
         }
-      ],
+        // cast(b): sequelize accepts a single model or include object as a nested include, its types only allow an array
+      ] as unknown as Includeable[],
       order: [['playlist', 'playlistMediaItems', 'order', 'ASC']]
     })
 
-    const playlists = []
+    const playlists: Playlist[] = []
     for (const playlistMediaItem of playlistMediaItemsExpanded) {
       const playlist = playlistMediaItem.playlist
       if (playlists.some((p) => p.id === playlist.id)) continue
 
       playlist.playlistMediaItems = playlist.playlistMediaItems.map((pmi) => {
+        // Same object as pmi.dataValues, typed with the included rows
+        const dataValues: PlaylistMediaItem.DataValues = pmi.dataValues
         if (pmi.mediaItemType === 'book' && pmi.book !== undefined) {
           pmi.mediaItem = pmi.book
-          pmi.dataValues.mediaItem = pmi.dataValues.book
+          dataValues.mediaItem = dataValues.book
         } else if (pmi.mediaItemType === 'podcastEpisode' && pmi.podcastEpisode !== undefined) {
           pmi.mediaItem = pmi.podcastEpisode
-          pmi.dataValues.mediaItem = pmi.dataValues.podcastEpisode
+          dataValues.mediaItem = dataValues.podcastEpisode
         }
         delete pmi.book
-        delete pmi.dataValues.book
+        delete dataValues.book
         delete pmi.podcastEpisode
-        delete pmi.dataValues.podcastEpisode
+        delete dataValues.podcastEpisode
         return pmi
       })
       playlists.push(playlist)
@@ -166,10 +163,8 @@ class Playlist extends Model {
 
   /**
    * Removes media items and re-orders playlists
-   *
-   * @param {string[]} mediaItemIds
    */
-  static async removeMediaItemsFromPlaylists(mediaItemIds) {
+  static async removeMediaItemsFromPlaylists(mediaItemIds: string[]) {
     if (!mediaItemIds?.length) return
 
     const playlistsWithItem = await this.getPlaylistsForMediaItemIds(mediaItemIds)
@@ -209,9 +204,11 @@ class Playlist extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: ModelsSequelize): void
+  // Model.init signature, only declared so the class stays assignable to Model (Database calls init(sequelize))
+  static init<MS extends ModelStatic<Sequelize.Model>, M extends InstanceType<MS>>(this: MS, attributes: ModelAttributes<M, Attributes<M>> | ModelsSequelize, options?: InitOptions<M>): MS
+  static init(sequelize: ModelsSequelize) {
     super.init(
       {
         id: {
@@ -237,7 +234,7 @@ class Playlist extends Model {
     })
     Playlist.belongsTo(user)
 
-    Playlist.addHook('afterFind', (findResult) => {
+    Playlist.addHook('afterFind', (findResult: Playlist[] | Playlist | null) => {
       if (!findResult) return
 
       if (!Array.isArray(findResult)) findResult = [findResult]
@@ -245,18 +242,20 @@ class Playlist extends Model {
       for (const instance of findResult) {
         if (instance.playlistMediaItems?.length) {
           instance.playlistMediaItems = instance.playlistMediaItems.map((pmi) => {
+            // Same object as pmi.dataValues, typed with the included rows
+            const dataValues: PlaylistMediaItem.DataValues = pmi.dataValues
             if (pmi.mediaItemType === 'book' && pmi.book !== undefined) {
               pmi.mediaItem = pmi.book
-              pmi.dataValues.mediaItem = pmi.dataValues.book
+              dataValues.mediaItem = dataValues.book
             } else if (pmi.mediaItemType === 'podcastEpisode' && pmi.podcastEpisode !== undefined) {
               pmi.mediaItem = pmi.podcastEpisode
-              pmi.dataValues.mediaItem = pmi.dataValues.podcastEpisode
+              dataValues.mediaItem = dataValues.podcastEpisode
             }
             // To prevent mistakes:
             delete pmi.book
-            delete pmi.dataValues.book
+            delete dataValues.book
             delete pmi.podcastEpisode
-            delete pmi.dataValues.podcastEpisode
+            delete dataValues.podcastEpisode
             return pmi
           })
         }
@@ -266,10 +265,8 @@ class Playlist extends Model {
 
   /**
    * Get all media items in playlist expanded with library item
-   *
-   * @returns {Promise<import('./PlaylistMediaItem')[]>}
    */
-  getMediaItemsExpandedWithLibraryItem() {
+  getMediaItemsExpandedWithLibraryItem(): Promise<PlaylistMediaItem[]> {
     return this.getPlaylistMediaItems({
       include: [
         {
@@ -301,15 +298,14 @@ class Playlist extends Model {
             }
           ]
         }
-      ],
+        // cast(b): sequelize accepts a single model or include object as a nested include, its types only allow an array
+      ] as unknown as Includeable[],
       order: [['order', 'ASC']]
     })
   }
 
   /**
    * Get playlists toOldJSONExpanded
-   *
-   * @async
    */
   async getOldJsonExpanded() {
     this.playlistMediaItems = await this.getMediaItemsExpandedWithLibraryItem()
@@ -319,17 +315,18 @@ class Playlist extends Model {
   /**
    * Old model used libraryItemId instead of bookId
    *
-   * @param {string} libraryItemId
-   * @param {string} [episodeId]
+   * @param [episodeId]
    */
-  checkHasMediaItem(libraryItemId, episodeId) {
+  checkHasMediaItem(libraryItemId: string, episodeId?: string) {
     if (!this.playlistMediaItems) {
       throw new Error('playlistMediaItems are required to check Playlist')
     }
     if (episodeId) {
       return this.playlistMediaItems.some((pmi) => pmi.mediaItemId === episodeId)
     }
-    return this.playlistMediaItems.some((pmi) => pmi.mediaItem.libraryItem.id === libraryItemId)
+    // NOTE: a podcast episode media item has no libraryItem (it is on episode.podcast), so this throws a TypeError for playlists with episodes
+    // cast(c): the JS reads libraryItem on every media item; see the NOTE above
+    return this.playlistMediaItems.some((pmi) => (pmi.mediaItem as Book.BookExpandedWithLibraryItem).libraryItem.id === libraryItemId)
   }
 
   toOldJSON() {
@@ -349,24 +346,35 @@ class Playlist extends Model {
       throw new Error('playlistMediaItems are required to expand Playlist')
     }
 
-    const json = this.toOldJSON()
+    // Typed with items, which is added below
+    const json: ReturnType<Playlist['toOldJSON']> & {
+      items?: ({ libraryItemId: string; libraryItem: ReturnType<LibraryItem['toOldJSONExpanded']> } | { episodeId: string; episode: ReturnType<PodcastEpisode['toOldJSONExpanded']>; libraryItemId: string; libraryItem: ReturnType<LibraryItem['toOldJSONMinified']> })[]
+    } = this.toOldJSON()
     json.items = this.playlistMediaItems.map((pmi) => {
       if (pmi.mediaItemType === 'book') {
-        const libraryItem = pmi.mediaItem.libraryItem
-        delete pmi.mediaItem.libraryItem
-        libraryItem.media = pmi.mediaItem
+        // cast(d): mediaItem is a Book (with its libraryItem) when mediaItemType is "book"
+        const book = pmi.mediaItem as Book.BookExpandedWithLibraryItem
+        const libraryItem = book.libraryItem
+        // Same object as the book, typed with the association optional so it can be deleted
+        const bookAssociations: { libraryItem?: LibraryItem } = book
+        delete bookAssociations.libraryItem
+        libraryItem.media = book
         return {
           libraryItemId: libraryItem.id,
           libraryItem: libraryItem.toOldJSONExpanded()
         }
       }
 
-      const libraryItem = pmi.mediaItem.podcast.libraryItem
-      delete pmi.mediaItem.podcast.libraryItem
-      libraryItem.media = pmi.mediaItem.podcast
+      // cast(d): mediaItem is a PodcastEpisode (with its podcast and its libraryItem) when mediaItemType is "podcastEpisode"
+      const episode = pmi.mediaItem as PodcastEpisode & { podcast: Podcast.PodcastExpandedWithLibraryItem }
+      const libraryItem = episode.podcast.libraryItem
+      // Same object as the podcast, typed with the association optional so it can be deleted
+      const podcastAssociations: { libraryItem?: LibraryItem } = episode.podcast
+      delete podcastAssociations.libraryItem
+      libraryItem.media = episode.podcast
       return {
         episodeId: pmi.mediaItemId,
-        episode: pmi.mediaItem.toOldJSONExpanded(libraryItem.id),
+        episode: episode.toOldJSONExpanded(libraryItem.id),
         libraryItemId: libraryItem.id,
         libraryItem: libraryItem.toOldJSONMinified()
       }
@@ -376,4 +384,4 @@ class Playlist extends Model {
   }
 }
 
-module.exports = Playlist
+export = Playlist

@@ -72,7 +72,8 @@ export = {
     })
     const authorMatches = []
     for (const author of authors) {
-      const oldAuthor = author.toOldJSONExpanded(author.dataValues.numBooks)
+      // cast(b): numBooks is the attribute the query adds, which dataValues does not type
+      const oldAuthor = author.toOldJSONExpanded((author.dataValues as Author['dataValues'] & { numBooks: number }).numBooks)
       authorMatches.push(oldAuthor)
     }
     return authorMatches

@@ -1,59 +1,32 @@
-const { DataTypes, Model } = require('sequelize')
-const Logger = require('../Logger')
+import Sequelize = require('sequelize')
+import type { Attributes, CreationOptional, InferAttributes, InferCreationAttributes, InitOptions, ModelAttributes, ModelStatic, NonAttribute } from 'sequelize'
+import Logger = require('../Logger')
+import type LibraryFolder = require('./LibraryFolder')
+import type { LibraryExtraData, LibrarySettingsObject, ModelsSequelize } from './types'
+import type * as ModelTypes from './types'
+const { DataTypes, Model } = Sequelize
 
-/**
- * @typedef LibrarySettingsObject
- * @property {number} coverAspectRatio BookCoverAspectRatio
- * @property {boolean} disableWatcher
- * @property {boolean} skipMatchingMediaWithAsin
- * @property {boolean} skipMatchingMediaWithIsbn
- * @property {string} autoScanCronExpression
- * @property {boolean} audiobooksOnly
- * @property {boolean} hideSingleBookSeries Do not show series that only have 1 book
- * @property {boolean} onlyShowLaterBooksInContinueSeries Skip showing books that are earlier than the max sequence read
- * @property {string[]} metadataPrecedence
- * @property {number} markAsFinishedTimeRemaining Time remaining in seconds to mark as finished. (defaults to 10s)
- * @property {number} markAsFinishedPercentComplete Percent complete to mark as finished (0-100). If this is set it will be used over markAsFinishedTimeRemaining.
- */
+class Library extends Model<InferAttributes<Library>, InferCreationAttributes<Library>> {
+  declare id: CreationOptional<string>
+  declare name: string
+  declare displayOrder: number
+  declare icon: string
+  declare mediaType: string
+  declare provider: string
+  declare lastScan: Date | null
+  declare lastScanVersion: string | null
+  declare settings: LibrarySettingsObject
+  declare extraData: LibraryExtraData | null
+  declare createdAt: CreationOptional<Date>
+  declare updatedAt: CreationOptional<Date>
 
-class Library extends Model {
-  constructor(values, options) {
-    super(values, options)
+  declare static readonly sequelize: ModelsSequelize
 
-    /** @type {UUIDV4} */
-    this.id
-    /** @type {string} */
-    this.name
-    /** @type {number} */
-    this.displayOrder
-    /** @type {string} */
-    this.icon
-    /** @type {string} */
-    this.mediaType
-    /** @type {string} */
-    this.provider
-    /** @type {Date} */
-    this.lastScan
-    /** @type {string} */
-    this.lastScanVersion
-    /** @type {LibrarySettingsObject} */
-    this.settings
-    /** @type {Object} */
-    this.extraData
-    /** @type {Date} */
-    this.createdAt
-    /** @type {Date} */
-    this.updatedAt
-    /** @type {import('./LibraryFolder')[]|undefined} */
-    this.libraryFolders
-  }
+  // Associations, only set when included
 
-  /**
-   *
-   * @param {string} mediaType
-   * @returns
-   */
-  static getDefaultLibrarySettingsForMediaType(mediaType) {
+  declare libraryFolders?: NonAttribute<LibraryFolder[]>
+
+  static getDefaultLibrarySettingsForMediaType(mediaType: string): LibrarySettingsObject {
     if (mediaType === 'podcast') {
       return {
         coverAspectRatio: 1, // Square
@@ -85,23 +58,14 @@ class Library extends Model {
     return ['folderStructure', 'audioMetatags', 'nfoFile', 'txtFiles', 'opfFile', 'absMetadata']
   }
 
-  /**
-   *
-   * @returns {Promise<Library[]>}
-   */
-  static getAllWithFolders() {
+  static getAllWithFolders(): Promise<Library[]> {
     return this.findAll({
       include: this.sequelize.models.libraryFolder,
       order: [['displayOrder', 'ASC']]
     })
   }
 
-  /**
-   *
-   * @param {string} libraryId
-   * @returns {Promise<Library>}
-   */
-  static findByIdWithFolders(libraryId) {
+  static findByIdWithFolders(libraryId: string): Promise<Library | null> {
     return this.findByPk(libraryId, {
       include: this.sequelize.models.libraryFolder
     })
@@ -109,9 +73,9 @@ class Library extends Model {
 
   /**
    * Get all library ids
-   * @returns {Promise<string[]>} array of library ids
+   * @returns array of library ids
    */
-  static async getAllLibraryIds() {
+  static async getAllLibraryIds(): Promise<string[]> {
     const libraries = await this.findAll({
       attributes: ['id', 'displayOrder'],
       order: [['displayOrder', 'ASC']]
@@ -122,9 +86,9 @@ class Library extends Model {
   /**
    * Get the largest value in the displayOrder column
    * Used for setting a new libraries display order
-   * @returns {Promise<number>}
    */
   static getMaxDisplayOrder() {
+    // NOTE: `|| 0` applies to the promise (always truthy), not to the result, so an empty table resolves to null instead of 0
     return this.max('displayOrder') || 0
   }
 
@@ -149,9 +113,11 @@ class Library extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: ModelsSequelize): void
+  // Model.init signature, only declared so the class stays assignable to Model (Database calls init(sequelize))
+  static init<MS extends ModelStatic<Sequelize.Model>, M extends InstanceType<MS>>(this: MS, attributes: ModelAttributes<M, Attributes<M>> | ModelsSequelize, options?: InitOptions<M>): MS
+  static init(sequelize: ModelsSequelize) {
     super.init(
       {
         id: {
@@ -176,23 +142,17 @@ class Library extends Model {
     )
   }
 
-  get isPodcast() {
+  get isPodcast(): NonAttribute<boolean> {
     return this.mediaType === 'podcast'
   }
-  get isBook() {
+  get isBook(): NonAttribute<boolean> {
     return this.mediaType === 'book'
   }
-  /**
-   * @returns {string[]}
-   */
-  get lastScanMetadataPrecedence() {
+  get lastScanMetadataPrecedence(): NonAttribute<string[]> {
     return this.extraData?.lastScanMetadataPrecedence || []
   }
 
-  /**
-   * @returns {LibrarySettingsObject}
-   */
-  get librarySettings() {
+  get librarySettings(): NonAttribute<LibrarySettingsObject> {
     return this.settings || Library.getDefaultLibrarySettingsForMediaType(this.mediaType)
   }
 
@@ -219,4 +179,8 @@ class Library extends Model {
   }
 }
 
-module.exports = Library
+namespace Library {
+  export type LibrarySettingsObject = ModelTypes.LibrarySettingsObject
+}
+
+export = Library

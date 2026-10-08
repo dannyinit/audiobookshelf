@@ -21,7 +21,7 @@ const countCache = new Map<string, number>()
 /**
  * Podcast loaded with its libraryItem (and optionally the episodes)
  */
-type PodcastWithLibraryItem = Podcast & { libraryItem: FilteredLibraryItem; podcastEpisodes?: PodcastEpisode[] }
+type PodcastWithLibraryItem = Podcast & { libraryItem: FilteredLibraryItem; podcastEpisodes?: PodcastEpisode[]; dataValues: Podcast['dataValues'] & { duration: number } }
 
 /**
  * Podcast episode loaded with its podcast and the podcast libraryItem
@@ -620,7 +620,7 @@ export = {
   /**
    * Get longest podcasts in library
    */
-  async getLongestPodcasts(libraryId: string, limit: number): Promise<{ id: string; title: string; duration: number }[]> {
+  async getLongestPodcasts(libraryId: string, limit: number): Promise<{ id: string; title: string | null; duration: number }[]> {
     const podcasts = await Database.podcastModel.findAll({
       attributes: ['id', 'title', [Sequelize.literal(`(SELECT SUM(json_extract(pe.audioFile, '$.duration')) FROM podcastEpisodes pe WHERE pe.podcastId = podcast.id)`), 'duration']],
       include: {

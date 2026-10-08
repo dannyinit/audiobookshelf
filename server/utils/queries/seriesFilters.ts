@@ -21,6 +21,8 @@ const Database = DatabaseModule as TypedDatabase
 type SeriesWithBooks = Series & {
   bookSeries: (BookSeries & { book: Book & { libraryItem?: FilteredLibraryItem } })[]
   feeds?: Feed[]
+  /** With the totalDuration attribute the query selects */
+  dataValues: Series['dataValues'] & { totalDuration?: number }
 }
 
 export = {

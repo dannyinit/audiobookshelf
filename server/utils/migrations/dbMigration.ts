@@ -5,7 +5,7 @@ import Logger = require('../../Logger')
 import fsExtra = require('../../libs/fsExtra')
 import oldDbFiles = require('./oldDbFiles')
 import parseNameString = require('../parsers/parseNameString')
-import type { Model, ModelStatic, QueryInterface } from 'sequelize'
+import type { CreationAttributes, Model, ModelStatic, QueryInterface } from 'sequelize'
 import type { FsExtra, TypedDatabase } from '../types'
 const { DataTypes } = sequelize
 const uuidv4 = uuid.v4
@@ -1564,13 +1564,15 @@ async function handleOldLibraryItems(ctx: TypedDatabase) {
   }
 
   if (bulkUpdateEpisodes.length) {
-    await models.podcastEpisode.bulkCreate(bulkUpdateEpisodes, {
+    // cast(b): bulkCreate with updateOnDuplicate only writes the listed columns of existing rows; its types expect complete new rows
+    await models.podcastEpisode.bulkCreate(bulkUpdateEpisodes as unknown as CreationAttributes<InstanceType<PatchModels['podcastEpisode']>>[], {
       updateOnDuplicate: ['extraData']
     })
   }
 
   if (bulkUpdateItems.length) {
-    await models.libraryItem.bulkCreate(bulkUpdateItems, {
+    // cast(b): bulkCreate with updateOnDuplicate only writes the listed columns of existing rows; its types expect complete new rows
+    await models.libraryItem.bulkCreate(bulkUpdateItems as unknown as CreationAttributes<InstanceType<PatchModels['libraryItem']>>[], {
       updateOnDuplicate: ['extraData']
     })
   }
@@ -1764,7 +1766,8 @@ async function migrationPatch2LibraryItems(ctx: TypedDatabase, offset = 0): Prom
 
   if (bulkUpdateItems.length) {
     Logger.info(`[dbMigration] Migration patch 2.3.3+ - patching ${bulkUpdateItems.length} library items`)
-    await models.libraryItem.bulkCreate(bulkUpdateItems, {
+    // cast(b): bulkCreate with updateOnDuplicate only writes the listed columns of existing rows; its types expect complete new rows
+    await models.libraryItem.bulkCreate(bulkUpdateItems as unknown as CreationAttributes<InstanceType<PatchModels['libraryItem']>>[], {
       updateOnDuplicate: ['size']
     })
   }
@@ -1803,14 +1806,16 @@ async function migrationPatch2Books(ctx: TypedDatabase, offset = 0): Promise<voi
 
     bulkUpdateItems.push({
       id: book.id,
-      titleIgnorePrefix: getTitleIgnorePrefix(book.title),
+      // cast(d): getTitleIgnorePrefix returns a null title as is (its title?.trim() check), as in the JS
+      titleIgnorePrefix: getTitleIgnorePrefix(book.title as string),
       duration
     })
   }
 
   if (bulkUpdateItems.length) {
     Logger.info(`[dbMigration] Migration patch 2.3.3+ - patching ${bulkUpdateItems.length} books`)
-    await models.book.bulkCreate(bulkUpdateItems, {
+    // cast(b): bulkCreate with updateOnDuplicate only writes the listed columns of existing rows; its types expect complete new rows
+    await models.book.bulkCreate(bulkUpdateItems as unknown as CreationAttributes<InstanceType<PatchModels['book']>>[], {
       updateOnDuplicate: ['duration', 'titleIgnorePrefix']
     })
   }
@@ -1838,13 +1843,15 @@ async function migrationPatch2Podcasts(ctx: TypedDatabase, offset = 0): Promise<
   for (const podcast of podcasts) {
     bulkUpdateItems.push({
       id: podcast.id,
-      titleIgnorePrefix: getTitleIgnorePrefix(podcast.title)
+      // cast(d): getTitleIgnorePrefix returns a null title as is (its title?.trim() check), as in the JS
+      titleIgnorePrefix: getTitleIgnorePrefix(podcast.title as string)
     })
   }
 
   if (bulkUpdateItems.length) {
     Logger.info(`[dbMigration] Migration patch 2.3.3+ - patching ${bulkUpdateItems.length} podcasts`)
-    await models.podcast.bulkCreate(bulkUpdateItems, {
+    // cast(b): bulkCreate with updateOnDuplicate only writes the listed columns of existing rows; its types expect complete new rows
+    await models.podcast.bulkCreate(bulkUpdateItems as unknown as CreationAttributes<InstanceType<PatchModels['podcast']>>[], {
       updateOnDuplicate: ['titleIgnorePrefix']
     })
   }
@@ -1878,7 +1885,8 @@ async function migrationPatch2Series(ctx: TypedDatabase, offset = 0): Promise<vo
 
   if (bulkUpdateItems.length) {
     Logger.info(`[dbMigration] Migration patch 2.3.3+ - patching ${bulkUpdateItems.length} series`)
-    await models.series.bulkCreate(bulkUpdateItems, {
+    // cast(b): bulkCreate with updateOnDuplicate only writes the listed columns of existing rows; its types expect complete new rows
+    await models.series.bulkCreate(bulkUpdateItems as unknown as CreationAttributes<InstanceType<PatchModels['series']>>[], {
       updateOnDuplicate: ['nameIgnorePrefix']
     })
   }
@@ -1914,7 +1922,8 @@ async function migrationPatch2Authors(ctx: TypedDatabase, offset = 0): Promise<v
 
   if (bulkUpdateItems.length) {
     Logger.info(`[dbMigration] Migration patch 2.3.3+ - patching ${bulkUpdateItems.length} authors`)
-    await models.author.bulkCreate(bulkUpdateItems, {
+    // cast(b): bulkCreate with updateOnDuplicate only writes the listed columns of existing rows; its types expect complete new rows
+    await models.author.bulkCreate(bulkUpdateItems as unknown as CreationAttributes<InstanceType<PatchModels['author']>>[], {
       updateOnDuplicate: ['lastFirst']
     })
   }

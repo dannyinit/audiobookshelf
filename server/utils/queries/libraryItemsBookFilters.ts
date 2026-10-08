@@ -56,7 +56,11 @@ type BookAuthorRow = BookAuthor & { author: Author }
 /**
  * Series with its book_series join rows (each with the included book)
  */
-type SeriesWithBookSeries = Series & { bookSeries: BookSeriesRow[] }
+type SeriesWithBookSeries = Series & {
+  bookSeries: BookSeriesRow[]
+  /** With the maxSequence attribute the query selects */
+  dataValues: Series['dataValues'] & { maxSequence: number }
+}
 
 type BookExpanded = import('../../models/Book').BookExpanded
 
@@ -65,6 +69,8 @@ type BookExpanded = import('../../models/Book').BookExpanded
  */
 type CollapseSeriesRow = Series & {
   books: (Book & { bookSeries: BookSeries; libraryItem: LibraryItem })[]
+  /** With the numBooks attribute the query selects */
+  dataValues: Series['dataValues'] & { numBooks: number }
 }
 
 interface CollapseSeriesBookSeries {
@@ -889,7 +895,8 @@ export = {
         // if the library setting is toggled, only show later entries in series, otherwise skip
         if (library.settings.onlyShowLaterBooksInContinueSeries) {
           bookIndex = s.bookSeries.findIndex(function (b) {
-            return parseFloat(b.dataValues.sequence) > s.dataValues.maxSequence
+            // cast(d): parseFloat(null) is NaN, as in the JS
+            return parseFloat(b.dataValues.sequence as string) > s.dataValues.maxSequence
           })
           if (bookIndex === -1) {
             // no later books than maxSequence
@@ -1428,7 +1435,7 @@ export = {
   /**
    * Get longest books in library
    */
-  async getLongestBooks(libraryId: string, limit: number): Promise<{ id: string; title: string; duration: number }[]> {
+  async getLongestBooks(libraryId: string, limit: number): Promise<{ id: string; title: string | null; duration: number }[]> {
     const books = await Database.bookModel.findAll({
       attributes: ['id', 'title', 'duration'],
       include: {

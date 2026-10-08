@@ -55,8 +55,7 @@ async function writeMetadataFileForItem(libraryItem: LibraryItem): Promise<boole
     libraryItem.ctime = libraryItemDirTimestamps.ctimeMs as unknown as Date
     let size = 0
     libraryItem.libraryFiles.forEach((lf) => size += (!isNaN(lf.metadata.size) ? Number(lf.metadata.size) : 0))
-    // The BIGINT column is a number in sqlite (the model JSDoc says BigInt)
-    libraryItem.size = size as unknown as bigint
+    libraryItem.size = size
   }
 
   libraryItem.changed('libraryFiles', true)

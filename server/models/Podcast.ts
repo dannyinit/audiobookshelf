@@ -1,82 +1,94 @@
-const { DataTypes, Model } = require('sequelize')
-const { getTitlePrefixAtEnd, getTitleIgnorePrefix } = require('../utils')
-const Logger = require('../Logger')
-const libraryItemsPodcastFilters = require('../utils/queries/libraryItemsPodcastFilters')
-const htmlSanitizer = require('../utils/htmlSanitizer')
+import Sequelize = require('sequelize')
+import type { Attributes, CreationOptional, InferAttributes, InferCreationAttributes, InitOptions, ModelAttributes, ModelStatic, NonAttribute, Transaction } from 'sequelize'
+import utils = require('../utils')
+import Logger = require('../Logger')
+import libraryItemsPodcastFilters = require('../utils/queries/libraryItemsPodcastFilters')
+import htmlSanitizer = require('../utils/htmlSanitizer')
+import type LibraryItem = require('./LibraryItem')
+import type PodcastEpisode = require('./PodcastEpisode')
+import type { AudioTrack, ChapterObject, ModelsSequelize, RssPodcastEpisode } from './types'
+const { DataTypes, Model } = Sequelize
+const { getTitlePrefixAtEnd, getTitleIgnorePrefix } = utils
 
 /**
- * @typedef PodcastExpandedProperties
- * @property {import('./PodcastEpisode')[]} podcastEpisodes
- *
- * @typedef {Podcast & PodcastExpandedProperties} PodcastExpanded
+ * Podcast metadata in a request payload (old podcast metadata keys), not validated yet.
+ * A type alias (not an interface) so it can be read and written by key through a Record alias.
  */
+type PodcastMetadataPayload = {
+  title?: unknown
+  author?: unknown
+  description?: unknown
+  releaseDate?: unknown
+  genres?: unknown
+  feedUrl?: unknown
+  imageUrl?: unknown
+  itunesPageUrl?: unknown
+  itunesId?: unknown
+  itunesArtistId?: unknown
+  explicit?: unknown
+  language?: unknown
+  type?: unknown
+}
 
-class Podcast extends Model {
-  constructor(values, options) {
-    super(values, options)
+/**
+ * Old podcast object in a request payload (/api/podcasts POST, library item media PATCH), not validated yet
+ */
+type PodcastRequestPayload = {
+  metadata?: PodcastMetadataPayload
+  tags?: unknown
+  autoDownloadEpisodes?: unknown
+  autoDownloadSchedule?: unknown
+  lastEpisodeCheck?: unknown
+  maxEpisodesToKeep?: unknown
+  maxNewEpisodesToDownload?: unknown
+}
 
-    /** @type {string} */
-    this.id
-    /** @type {string} */
-    this.title
-    /** @type {string} */
-    this.titleIgnorePrefix
-    /** @type {string} */
-    this.author
-    /** @type {string} */
-    this.releaseDate
-    /** @type {string} */
-    this.feedURL
-    /** @type {string} */
-    this.imageURL
-    /** @type {string} */
-    this.description
-    /** @type {string} */
-    this.itunesPageURL
-    /** @type {string} */
-    this.itunesId
-    /** @type {string} */
-    this.itunesArtistId
-    /** @type {string} */
-    this.language
-    /** @type {string} */
-    this.podcastType
-    /** @type {boolean} */
-    this.explicit
-    /** @type {boolean} */
-    this.autoDownloadEpisodes
-    /** @type {string} */
-    this.autoDownloadSchedule
-    /** @type {Date} */
-    this.lastEpisodeCheck
-    /** @type {number} */
-    this.maxEpisodesToKeep
-    /** @type {number} */
-    this.maxNewEpisodesToDownload
-    /** @type {string} */
-    this.coverPath
-    /** @type {string[]} */
-    this.tags
-    /** @type {string[]} */
-    this.genres
-    /** @type {Date} */
-    this.createdAt
-    /** @type {Date} */
-    this.updatedAt
-    /** @type {number} */
-    this.numEpisodes
+/**
+ * lastEpisodeCheck is read as a Date (or null); it is also set to epoch ms, which the DATE column converts to a Date
+ */
+interface Podcast {
+  get lastEpisodeCheck(): Date | null
+  set lastEpisodeCheck(value: Date | number | null)
+}
 
-    /** @type {import('./PodcastEpisode')[]} */
-    this.podcastEpisodes
-  }
+class Podcast extends Model<InferAttributes<Podcast>, InferCreationAttributes<Podcast>> {
+  declare id: CreationOptional<string>
+  declare title: string | null
+  declare titleIgnorePrefix: string | null
+  declare author: string | null
+  declare releaseDate: string | null
+  declare feedURL: string | null
+  declare imageURL: string | null
+  declare description: string | null
+  declare itunesPageURL: string | null
+  declare itunesId: string | null
+  declare itunesArtistId: string | null
+  declare language: string | null
+  declare podcastType: string | null
+  declare explicit: boolean
+  declare autoDownloadEpisodes: boolean
+  declare autoDownloadSchedule: string | null
+  declare maxEpisodesToKeep: number
+  declare maxNewEpisodesToDownload: number
+  declare coverPath: CreationOptional<string | null>
+  declare tags: string[]
+  declare genres: string[]
+  declare createdAt: CreationOptional<Date>
+  declare updatedAt: CreationOptional<Date>
+  declare numEpisodes: CreationOptional<number>
+
+  // Expanded properties
+
+  declare podcastEpisodes: NonAttribute<PodcastEpisode[]>
+
+  // Associations, only set when included
+
+  declare libraryItem?: NonAttribute<LibraryItem>
 
   /**
    * Payload from the /api/podcasts POST endpoint
-   *
-   * @param {Object} payload
-   * @param {import('sequelize').Transaction} transaction
    */
-  static async createFromRequest(payload, transaction) {
+  static async createFromRequest(payload: PodcastRequestPayload & { metadata: PodcastMetadataPayload }, transaction: Transaction) {
     const title = typeof payload.metadata.title === 'string' ? payload.metadata.title : null
     // cron expression validated in controller
     const autoDownloadSchedule = typeof payload.autoDownloadSchedule === 'string' ? payload.autoDownloadSchedule : null
@@ -84,9 +96,11 @@ class Podcast extends Model {
     const tags = Array.isArray(payload.tags) && payload.tags.every((t) => typeof t === 'string' && t.length) ? payload.tags : []
 
     const stringKeys = ['title', 'author', 'releaseDate', 'feedUrl', 'imageUrl', 'description', 'itunesPageUrl', 'itunesId', 'itunesArtistId', 'language', 'type']
+    // Same object as payload.metadata, read and written by key
+    const metadataValues: Record<string, unknown> = payload.metadata
     stringKeys.forEach((key) => {
-      if (typeof payload.metadata[key] === 'number') {
-        payload.metadata[key] = String(payload.metadata[key])
+      if (typeof metadataValues[key] === 'number') {
+        metadataValues[key] = String(metadataValues[key])
       }
     })
 
@@ -122,9 +136,11 @@ class Podcast extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: ModelsSequelize): void
+  // Model.init signature, only declared so the class stays assignable to Model (Database calls init(sequelize))
+  static init<MS extends ModelStatic<Sequelize.Model>, M extends InstanceType<MS>>(this: MS, attributes: ModelAttributes<M, Attributes<M>> | ModelsSequelize, options?: InitOptions<M>): MS
+  static init(sequelize: ModelsSequelize) {
     super.init(
       {
         id: {
@@ -171,15 +187,15 @@ class Podcast extends Model {
     })
   }
 
-  get hasMediaFiles() {
+  get hasMediaFiles(): NonAttribute<boolean> {
     return !!this.podcastEpisodes?.length
   }
 
-  get hasAudioTracks() {
+  get hasAudioTracks(): NonAttribute<boolean> {
     return this.hasMediaFiles
   }
 
-  get size() {
+  get size(): NonAttribute<number> {
     if (!this.podcastEpisodes?.length) return 0
     return this.podcastEpisodes.reduce((total, episode) => total + episode.size, 0)
   }
@@ -204,21 +220,23 @@ class Podcast extends Model {
   }
 
   /**
-   *
-   * @param {Object} payload - Old podcast object
-   * @returns {Promise<boolean>}
+   * @param payload - Old podcast object
    */
-  async updateFromRequest(payload) {
+  async updateFromRequest(payload: PodcastRequestPayload): Promise<boolean> {
     if (!payload) return false
 
     let hasUpdates = false
 
     if (payload.metadata) {
       const stringKeys = ['title', 'author', 'releaseDate', 'feedUrl', 'imageUrl', 'description', 'itunesPageUrl', 'itunesId', 'itunesArtistId', 'language', 'type']
+      // Same objects as payload.metadata and this, read and written by key (the setters of this still run)
+      const metadataValues: Record<string, unknown> = payload.metadata
+      // cast(d): a model instance has no index signature; newKey below is always a string attribute of the podcast
+      const self = this as unknown as Record<string, unknown>
       stringKeys.forEach((key) => {
         // Convert numbers to strings
-        if (typeof payload.metadata[key] === 'number') {
-          payload.metadata[key] = String(payload.metadata[key])
+        if (typeof metadataValues[key] === 'number') {
+          metadataValues[key] = String(metadataValues[key])
         }
 
         let newKey = key
@@ -231,17 +249,17 @@ class Podcast extends Model {
         } else if (key === 'itunesPageUrl') {
           newKey = 'itunesPageURL'
         }
-        if ((typeof payload.metadata[key] === 'string' || payload.metadata[key] === null) && payload.metadata[key] !== this[newKey]) {
+        if ((typeof metadataValues[key] === 'string' || metadataValues[key] === null) && metadataValues[key] !== self[newKey]) {
           // Sanitize description HTML
-          if (key === 'description' && payload.metadata[key]) {
-            const sanitizedDescription = htmlSanitizer.sanitize(payload.metadata[key])
-            if (sanitizedDescription !== payload.metadata[key]) {
-              Logger.debug(`[Podcast] "${this.title}" Sanitized description from "${payload.metadata[key]}" to "${sanitizedDescription}"`)
-              payload.metadata[key] = sanitizedDescription
+          if (key === 'description' && metadataValues[key]) {
+            const sanitizedDescription = htmlSanitizer.sanitize(metadataValues[key])
+            if (sanitizedDescription !== metadataValues[key]) {
+              Logger.debug(`[Podcast] "${this.title}" Sanitized description from "${metadataValues[key]}" to "${sanitizedDescription}"`)
+              metadataValues[key] = sanitizedDescription
             }
           }
 
-          this[newKey] = payload.metadata[key] || null
+          self[newKey] = metadataValues[key] || null
 
           if (key === 'title') {
             this.titleIgnorePrefix = getTitleIgnorePrefix(this.title)
@@ -283,7 +301,7 @@ class Podcast extends Model {
       hasUpdates = true
     }
 
-    const numberKeys = ['maxEpisodesToKeep', 'maxNewEpisodesToDownload']
+    const numberKeys: ('maxEpisodesToKeep' | 'maxNewEpisodesToDownload')[] = ['maxEpisodesToKeep', 'maxNewEpisodesToDownload']
     numberKeys.forEach((key) => {
       if (typeof payload[key] === 'number' && payload[key] !== this[key]) {
         this[key] = payload[key]
@@ -299,7 +317,7 @@ class Podcast extends Model {
     return hasUpdates
   }
 
-  checkCanDirectPlay(supportedMimeTypes, episodeId) {
+  checkCanDirectPlay(supportedMimeTypes: string[], episodeId: string): boolean {
     if (!Array.isArray(supportedMimeTypes)) {
       Logger.error(`[Podcast] checkCanDirectPlay: supportedMimeTypes is not an array`, supportedMimeTypes)
       return false
@@ -316,12 +334,8 @@ class Podcast extends Model {
    * Get the track list to be used in client audio players
    * AudioTrack is the AudioFile with startOffset and contentUrl
    * Podcast episodes only have one track
-   *
-   * @param {string} libraryItemId
-   * @param {string} episodeId
-   * @returns {import('./Book').AudioTrack[]}
    */
-  getTracklist(libraryItemId, episodeId) {
+  getTracklist(libraryItemId: string, episodeId: string): AudioTrack[] {
     const episode = this.podcastEpisodes.find((ep) => ep.id === episodeId)
     if (!episode) {
       Logger.error(`[Podcast] getTracklist: episode not found`, episodeId)
@@ -332,12 +346,7 @@ class Podcast extends Model {
     return [audioTrack]
   }
 
-  /**
-   *
-   * @param {string} episodeId
-   * @returns {import('./PodcastEpisode').ChapterObject[]}
-   */
-  getChapters(episodeId) {
+  getChapters(episodeId: string): ChapterObject[] {
     const episode = this.podcastEpisodes.find((ep) => ep.id === episodeId)
     if (!episode) {
       Logger.error(`[Podcast] getChapters: episode not found`, episodeId)
@@ -347,7 +356,7 @@ class Podcast extends Model {
     return structuredClone(episode.chapters) || []
   }
 
-  getPlaybackTitle(episodeId) {
+  getPlaybackTitle(episodeId: string | null) {
     const episode = this.podcastEpisodes.find((ep) => ep.id === episodeId)
     if (!episode) {
       Logger.error(`[Podcast] getPlaybackTitle: episode not found`, episodeId)
@@ -361,7 +370,7 @@ class Podcast extends Model {
     return this.author
   }
 
-  getPlaybackDuration(episodeId) {
+  getPlaybackDuration(episodeId: string | null) {
     const episode = this.podcastEpisodes.find((ep) => ep.id === episodeId)
     if (!episode) {
       Logger.error(`[Podcast] getPlaybackDuration: episode not found`, episodeId)
@@ -372,13 +381,14 @@ class Podcast extends Model {
   }
 
   /**
-   *
-   * @returns {number} - Unix timestamp
+   * @returns Unix timestamp
    */
-  getLatestEpisodePublishedAt() {
+  getLatestEpisodePublishedAt(): number {
     return this.podcastEpisodes.reduce((latest, episode) => {
-      if (episode.publishedAt?.valueOf() > latest) {
-        return episode.publishedAt.valueOf()
+      // cast(d): undefined > latest is false, as in the JS
+      if ((episode.publishedAt?.valueOf() as number) > latest) {
+        // publishedAt is set (the comparison above is false for null)
+        return episode.publishedAt!.valueOf()
       }
       return latest
     }, 0)
@@ -387,10 +397,9 @@ class Podcast extends Model {
   /**
    * Used for checking if an rss feed episode is already in the podcast
    *
-   * @param {import('../utils/podcastUtils').RssPodcastEpisode} feedEpisode - object from rss feed
-   * @returns {boolean}
+   * @param feedEpisode - object from rss feed
    */
-  checkHasEpisodeByFeedEpisode(feedEpisode) {
+  checkHasEpisodeByFeedEpisode(feedEpisode: RssPodcastEpisode): boolean {
     const guid = feedEpisode.guid
     const url = feedEpisode.enclosure.url
     return this.podcastEpisodes.some((ep) => ep.checkMatchesGuidOrEnclosureUrl(guid, url))
@@ -418,17 +427,16 @@ class Podcast extends Model {
   }
 
   oldMetadataToJSONExpanded() {
-    const oldMetadataJSON = this.oldMetadataToJSON()
+    // Typed with titleIgnorePrefix, which is added below
+    const oldMetadataJSON: ReturnType<Podcast['oldMetadataToJSON']> & { titleIgnorePrefix?: string | null } = this.oldMetadataToJSON()
     oldMetadataJSON.titleIgnorePrefix = getTitlePrefixAtEnd(this.title)
     return oldMetadataJSON
   }
 
   /**
    * The old model stored episodes with the podcast object
-   *
-   * @param {string} libraryItemId
    */
-  toOldJSON(libraryItemId) {
+  toOldJSON(libraryItemId: string) {
     if (!libraryItemId) {
       throw new Error(`[Podcast] Cannot convert to old JSON because libraryItemId is not provided`)
     }
@@ -476,10 +484,8 @@ class Podcast extends Model {
   /**
    * Expanded podcast JSON for item detail and socket events.
    * Must be a strict superset of `toOldJSONMinified()` — built by spreading minified, then adding expanded-only fields.
-   *
-   * @param {string} libraryItemId
    */
-  toOldJSONExpanded(libraryItemId) {
+  toOldJSONExpanded(libraryItemId: string) {
     if (!libraryItemId) {
       throw new Error(`[Podcast] Cannot convert to old JSON because libraryItemId is not provided`)
     }
@@ -495,4 +501,10 @@ class Podcast extends Model {
   }
 }
 
-module.exports = Podcast
+namespace Podcast {
+  export type PodcastExpanded = Podcast
+  /** Podcast loaded with its library item (playlists) */
+  export type PodcastExpandedWithLibraryItem = Podcast & { libraryItem: LibraryItem }
+}
+
+export = Podcast

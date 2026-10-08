@@ -188,7 +188,8 @@ class OidcAuthStrategy {
         // If no existing user was matched, auto-register if configured
         if (global.ServerSettings.authOpenIDAutoRegister) {
           Logger.info(`[User] openid: Auto-registering user with sub "${userinfo.sub}"`, userinfo)
-          user = await Database.userModel.createUserFromOpenIdUserInfo(userinfo)
+          // cast(d): create returns the new user (the null branch of createUserFromOpenIdUserInfo is not reached)
+          user = (await Database.userModel.createUserFromOpenIdUserInfo(userinfo)) as OidcUser
           isNewUser = true
         } else {
           Logger.warn(`[User] openid: User not found and auto-register is disabled`)
@@ -290,7 +291,8 @@ class OidcAuthStrategy {
     const absPermissions = userinfo[absPermissionsClaim]
     if (!absPermissions) throw new Error(`Advanced permissions claim ${absPermissionsClaim} not found in userinfo`)
 
-    if (await user.updatePermissionsFromExternalJSON(absPermissions)) {
+    // cast(d): the claim holds the permissions JSON object (updatePermissionsFromExternalJSON throws on keys it does not know)
+    if (await user.updatePermissionsFromExternalJSON(absPermissions as Parameters<User['updatePermissionsFromExternalJSON']>[0])) {
       Logger.info(`[OidcAuth] openid callback: Updating advanced perms for user "${user.username}" using "${JSON.stringify(absPermissions)}"`)
     }
   }

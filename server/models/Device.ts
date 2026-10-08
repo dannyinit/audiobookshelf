@@ -1,35 +1,33 @@
-const { DataTypes, Model } = require('sequelize')
-const oldDevice = require('../objects/DeviceInfo')
+import Sequelize = require('sequelize')
+import type { Attributes, CreationOptional, InferAttributes, InferCreationAttributes, InitOptions, ModelAttributes, ModelStatic, NonAttribute } from 'sequelize'
+import oldDevice = require('../objects/DeviceInfo')
+import type User = require('./User')
+import type { DeviceExtraData, ModelsSequelize } from './types'
+const { DataTypes, Model } = Sequelize
 
-class Device extends Model {
-  constructor(values, options) {
-    super(values, options)
+/**
+ * Old device info (objects/DeviceInfo) as passed to createFromOld/updateFromOld, which is stored with its id set
+ */
+type OldDeviceInfo = Omit<oldDevice, 'id'> & { id: string }
 
-    /** @type {UUIDV4} */
-    this.id
-    /** @type {string} */
-    this.deviceId
-    /** @type {string} */
-    this.clientName
-    /** @type {string} */
-    this.clientVersion
-    /** @type {string} */
-    this.ipAddress
-    /** @type {string} */
-    this.deviceName
-    /** @type {string} */
-    this.deviceVersion
-    /** @type {object} */
-    this.extraData
-    /** @type {UUIDV4} */
-    this.userId
-    /** @type {Date} */
-    this.createdAt
-    /** @type {Date} */
-    this.updatedAt
-  }
+class Device extends Model<InferAttributes<Device>, InferCreationAttributes<Device>> {
+  declare id: CreationOptional<string>
+  declare deviceId: string | null
+  declare clientName: string | null
+  declare clientVersion: string | null
+  declare ipAddress: string | null
+  declare deviceName: string | null
+  declare deviceVersion: string | null
+  declare extraData: DeviceExtraData
+  declare userId: string | null
+  declare createdAt: CreationOptional<Date>
+  declare updatedAt: CreationOptional<Date>
 
-  static async getOldDeviceByDeviceId(deviceId) {
+  // Associations, only set when included
+
+  declare user?: NonAttribute<User>
+
+  static async getOldDeviceByDeviceId(deviceId: string) {
     const device = await this.findOne({
       where: {
         deviceId
@@ -39,12 +37,12 @@ class Device extends Model {
     return device.getOldDevice()
   }
 
-  static createFromOld(oldDevice) {
+  static createFromOld(oldDevice: OldDeviceInfo) {
     const device = this.getFromOld(oldDevice)
     return this.create(device)
   }
 
-  static updateFromOld(oldDevice) {
+  static updateFromOld(oldDevice: OldDeviceInfo) {
     const device = this.getFromOld(oldDevice)
     return this.update(device, {
       where: {
@@ -53,8 +51,8 @@ class Device extends Model {
     })
   }
 
-  static getFromOld(oldDeviceInfo) {
-    let extraData = {}
+  static getFromOld(oldDeviceInfo: OldDeviceInfo) {
+    let extraData: DeviceExtraData = {}
 
     if (oldDeviceInfo.manufacturer) {
       extraData.manufacturer = oldDeviceInfo.manufacturer
@@ -87,9 +85,11 @@ class Device extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: ModelsSequelize): void
+  // Model.init signature, only declared so the class stays assignable to Model (Database calls init(sequelize))
+  static init<MS extends ModelStatic<Sequelize.Model>, M extends InstanceType<MS>>(this: MS, attributes: ModelAttributes<M, Attributes<M>> | ModelsSequelize, options?: InitOptions<M>): MS
+  static init(sequelize: ModelsSequelize) {
     super.init(
       {
         id: {
@@ -174,4 +174,4 @@ class Device extends Model {
   }
 }
 
-module.exports = Device
+export = Device

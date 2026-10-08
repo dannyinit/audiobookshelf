@@ -1,60 +1,80 @@
-const { DataTypes, Model } = require('sequelize')
+import Sequelize = require('sequelize')
+import type { Attributes, BelongsToGetAssociationMixin, CreationOptional, FindOptions, InferAttributes, InferCreationAttributes, InitOptions, ModelAttributes, ModelStatic, NonAttribute, UpsertOptions, WhereOptions } from 'sequelize'
+import oldPlaybackSession = require('../objects/PlaybackSession')
+import type { PlaybackMediaMetadata } from '../utils/types'
+import type Book = require('./Book')
+import type Device = require('./Device')
+import type PodcastEpisode = require('./PodcastEpisode')
+import type { ModelsSequelize, PlaybackSessionExtraData, UpdateValues } from './types'
+const { DataTypes, Model } = Sequelize
 
-const oldPlaybackSession = require('../objects/PlaybackSession')
+/**
+ * Old playback session (objects/PlaybackSession) as passed to createFromOld/updateFromOld, which is stored with its id and user set
+ */
+type OldPlaybackSession = Omit<oldPlaybackSession, 'id' | 'userId'> & { id: string; userId: string }
 
-class PlaybackSession extends Model {
-  constructor(values, options) {
-    super(values, options)
+/**
+ * Attributes accepted by create/upsert: the old session timestamps are epoch ms (the DATE columns convert them to Dates)
+ */
+type PlaybackSessionCreationAttributes = InferCreationAttributes<PlaybackSession, { omit: 'createdAt' | 'updatedAt' }> & {
+  createdAt?: Date | number | null
+  updatedAt?: Date | number | null
+}
 
-    /** @type {UUIDV4} */
-    this.id
-    /** @type {UUIDV4} */
-    this.mediaItemId
-    /** @type {string} */
-    this.mediaItemType
-    /** @type {string} */
-    this.displayTitle
-    /** @type {string} */
-    this.displayAuthor
-    /** @type {number} */
-    this.duration
-    /** @type {number} */
-    this.playMethod
-    /** @type {string} */
-    this.mediaPlayer
-    /** @type {number} */
-    this.startTime
-    /** @type {number} */
-    this.currentTime
-    /** @type {string} */
-    this.serverVersion
-    /** @type {string} */
-    this.coverPath
-    /** @type {number} */
-    this.timeListening
-    /** @type {Object} */
-    this.mediaMetadata
-    /** @type {string} */
-    this.date
-    /** @type {string} */
-    this.dayOfWeek
-    /** @type {Object} */
-    this.extraData
-    /** @type {UUIDV4} */
-    this.userId
-    /** @type {UUIDV4} */
-    this.deviceId
-    /** @type {UUIDV4} */
-    this.libraryId
-    /** @type {Date} */
-    this.updatedAt
-    /** @type {Date} */
-    this.createdAt
-  }
+/**
+ * dataValues of a loaded session with the included media item (moved to mediaItem by the afterFind hook)
+ */
+type PlaybackSessionDataValues = InferAttributes<PlaybackSession> & {
+  book?: Book
+  podcastEpisode?: PodcastEpisode
+  mediaItem?: Book | PodcastEpisode
+}
 
-  static async getOldPlaybackSessions(where = null) {
+class PlaybackSession extends Model<InferAttributes<PlaybackSession>, PlaybackSessionCreationAttributes> {
+  declare id: CreationOptional<string>
+  declare mediaItemId: string | null
+  declare mediaItemType: string
+  declare displayTitle: string | null
+  declare displayAuthor: string | null
+  declare duration: number | null
+  declare playMethod: number | null
+  declare mediaPlayer: string | null
+  declare startTime: number | null
+  declare currentTime: number
+  declare serverVersion: string | null
+  declare coverPath: string | null
+  declare timeListening: number | null
+  declare mediaMetadata: PlaybackMediaMetadata | null
+  declare date: string | null
+  declare dayOfWeek: string | null
+  declare extraData: PlaybackSessionExtraData | null
+  declare userId: string
+  declare deviceId: string | null
+  declare libraryId: string | null
+  declare updatedAt: CreationOptional<Date>
+  declare createdAt: CreationOptional<Date>
+
+  declare sequelize: ModelsSequelize
+  declare static readonly sequelize: ModelsSequelize
+
+  // Expanded properties
+
+  /** Set by the afterFind hook when the book or podcast episode is included */
+  declare mediaItem?: NonAttribute<Book | PodcastEpisode>
+
+  // Associations, only set when included (the afterFind hook moves book or podcastEpisode to mediaItem and deletes them)
+
+  declare device?: NonAttribute<Device>
+  declare book?: NonAttribute<Book>
+  declare podcastEpisode?: NonAttribute<PodcastEpisode>
+
+  declare getBook: BelongsToGetAssociationMixin<Book>
+  declare getPodcastEpisode: BelongsToGetAssociationMixin<PodcastEpisode>
+
+  static async getOldPlaybackSessions(where: WhereOptions<PlaybackSession> | null = null) {
     const playbackSessions = await this.findAll({
-      where,
+      // cast(b): sequelize accepts a null where (no condition), its types do not
+      where: where as WhereOptions<PlaybackSession>,
       include: [
         {
           model: this.sequelize.models.device
@@ -64,7 +84,7 @@ class PlaybackSession extends Model {
     return playbackSessions.map((session) => this.getOldPlaybackSession(session))
   }
 
-  static async getById(sessionId) {
+  static async getById(sessionId: string) {
     const playbackSession = await this.findByPk(sessionId, {
       include: [
         {
@@ -76,7 +96,7 @@ class PlaybackSession extends Model {
     return this.getOldPlaybackSession(playbackSession)
   }
 
-  static getOldPlaybackSession(playbackSessionExpanded) {
+  static getOldPlaybackSession(playbackSessionExpanded: PlaybackSession) {
     const isPodcastEpisode = playbackSessionExpanded.mediaItemType === 'podcastEpisode'
 
     return new oldPlaybackSession({
@@ -107,7 +127,7 @@ class PlaybackSession extends Model {
     })
   }
 
-  static removeById(sessionId) {
+  static removeById(sessionId: string) {
     return this.destroy({
       where: {
         id: sessionId
@@ -115,16 +135,18 @@ class PlaybackSession extends Model {
     })
   }
 
-  static createFromOld(oldPlaybackSession) {
+  static createFromOld(oldPlaybackSession: OldPlaybackSession) {
     const playbackSession = this.getFromOld(oldPlaybackSession)
     return this.upsert(playbackSession, {
       silent: true
-    })
+      // cast(b): the JS passes silent, which UpsertOptions does not declare
+    } as unknown as UpsertOptions<InferAttributes<PlaybackSession>>)
   }
 
-  static updateFromOld(oldPlaybackSession) {
+  static updateFromOld(oldPlaybackSession: OldPlaybackSession) {
     const playbackSession = this.getFromOld(oldPlaybackSession)
-    return this.update(playbackSession, {
+    // cast(b): the old session timestamps are epoch ms, which the DATE columns accept; update types the values with the Date attributes
+    return this.update(playbackSession as unknown as UpdateValues<InferAttributes<PlaybackSession>>, {
       where: {
         id: playbackSession.id
       },
@@ -132,7 +154,7 @@ class PlaybackSession extends Model {
     })
   }
 
-  static getFromOld(oldPlaybackSession) {
+  static getFromOld(oldPlaybackSession: OldPlaybackSession) {
     return {
       id: oldPlaybackSession.id,
       mediaItemId: oldPlaybackSession.episodeId || oldPlaybackSession.bookId,
@@ -161,17 +183,20 @@ class PlaybackSession extends Model {
     }
   }
 
-  getMediaItem(options) {
+  getMediaItem(options?: FindOptions): Promise<Book | PodcastEpisode | null> {
     if (!this.mediaItemType) return Promise.resolve(null)
     const mixinMethodName = `get${this.sequelize.uppercaseFirst(this.mediaItemType)}`
-    return this[mixinMethodName](options)
+    // cast(d): mediaItemType is "book" or "podcastEpisode", so the name is one of the association getters
+    return this[mixinMethodName as 'getBook' | 'getPodcastEpisode'](options)
   }
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: ModelsSequelize): void
+  // Model.init signature, only declared so the class stays assignable to Model (Database calls init(sequelize))
+  static init<MS extends ModelStatic<Sequelize.Model>, M extends InstanceType<MS>>(this: MS, attributes: ModelAttributes<M, Attributes<M>> | ModelsSequelize, options?: InitOptions<M>): MS
+  static init(sequelize: ModelsSequelize) {
     super.init(
       {
         id: {
@@ -231,27 +256,29 @@ class PlaybackSession extends Model {
     })
     PlaybackSession.belongsTo(podcastEpisode, { foreignKey: 'mediaItemId', constraints: false })
 
-    PlaybackSession.addHook('afterFind', (findResult) => {
+    PlaybackSession.addHook('afterFind', (findResult: PlaybackSession[] | PlaybackSession | null) => {
       if (!findResult) return
 
       if (!Array.isArray(findResult)) findResult = [findResult]
 
       for (const instance of findResult) {
+        // Same object as instance.dataValues, typed with the included rows
+        const dataValues: PlaybackSessionDataValues = instance.dataValues
         if (instance.mediaItemType === 'book' && instance.book !== undefined) {
           instance.mediaItem = instance.book
-          instance.dataValues.mediaItem = instance.dataValues.book
+          dataValues.mediaItem = dataValues.book
         } else if (instance.mediaItemType === 'podcastEpisode' && instance.podcastEpisode !== undefined) {
           instance.mediaItem = instance.podcastEpisode
-          instance.dataValues.mediaItem = instance.dataValues.podcastEpisode
+          dataValues.mediaItem = dataValues.podcastEpisode
         }
         // To prevent mistakes:
         delete instance.book
-        delete instance.dataValues.book
+        delete dataValues.book
         delete instance.podcastEpisode
-        delete instance.dataValues.podcastEpisode
+        delete dataValues.podcastEpisode
       }
     })
   }
 }
 
-module.exports = PlaybackSession
+export = PlaybackSession

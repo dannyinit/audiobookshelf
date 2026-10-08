@@ -1,65 +1,51 @@
-const { DataTypes, Model } = require('sequelize')
-const libraryItemsPodcastFilters = require('../utils/queries/libraryItemsPodcastFilters')
+import Sequelize = require('sequelize')
+import type { Attributes, CreationAttributes, CreationOptional, InferAttributes, InferCreationAttributes, InitOptions, ModelAttributes, ModelStatic, NonAttribute } from 'sequelize'
+import libraryItemsPodcastFilters = require('../utils/queries/libraryItemsPodcastFilters')
+import type AudioFile = require('../objects/files/AudioFile')
+import type MediaProgress = require('./MediaProgress')
+import type PlaylistMediaItem = require('./PlaylistMediaItem')
+import type Podcast = require('./Podcast')
+import type { AudioFileObject, AudioTrack, ChapterObject, ModelsSequelize, PodcastEpisodeExtraData, RssPodcastEpisode } from './types'
+import type * as ModelTypes from './types'
+const { DataTypes, Model } = Sequelize
+
 /**
- * @typedef ChapterObject
- * @property {number} id
- * @property {number} start
- * @property {number} end
- * @property {string} title
+ * Attributes accepted by create: publishedAt may be epoch ms (the DATE column converts it to a Date)
  */
+type PodcastEpisodeCreationAttributes = InferCreationAttributes<PodcastEpisode, { omit: 'publishedAt' }> & {
+  publishedAt: Date | number | null
+}
 
-class PodcastEpisode extends Model {
-  constructor(values, options) {
-    super(values, options)
+class PodcastEpisode extends Model<InferAttributes<PodcastEpisode>, PodcastEpisodeCreationAttributes> {
+  declare id: CreationOptional<string>
+  declare index: number | null
+  declare season: string | null
+  declare episode: string | null
+  declare episodeType: string | null
+  declare title: string | null
+  declare subtitle: string | null
+  declare description: string | null
+  declare pubDate: string
+  declare enclosureURL: string | null
+  /** BIGINT column, read as a number; a new episode keeps the length string from the RSS enclosure until reloaded */
+  declare enclosureSize: number | string | null
+  declare enclosureType: string | null
+  declare publishedAt: Date | null
+  declare audioFile: AudioFileObject
+  declare chapters: ChapterObject[]
+  declare extraData: PodcastEpisodeExtraData | null
+  declare podcastId: string
+  declare createdAt: CreationOptional<Date>
+  declare updatedAt: CreationOptional<Date>
 
-    /** @type {string} */
-    this.id
-    /** @type {number} */
-    this.index
-    /** @type {string} */
-    this.season
-    /** @type {string} */
-    this.episode
-    /** @type {string} */
-    this.episodeType
-    /** @type {string} */
-    this.title
-    /** @type {string} */
-    this.subtitle
-    /** @type {string} */
-    this.description
-    /** @type {string} */
-    this.pubDate
-    /** @type {string} */
-    this.enclosureURL
-    /** @type {BigInt} */
-    this.enclosureSize
-    /** @type {string} */
-    this.enclosureType
-    /** @type {Date} */
-    this.publishedAt
-    /** @type {import('./Book').AudioFileObject} */
-    this.audioFile
-    /** @type {ChapterObject[]} */
-    this.chapters
-    /** @type {Object} */
-    this.extraData
-    /** @type {string} */
-    this.podcastId
-    /** @type {Date} */
-    this.createdAt
-    /** @type {Date} */
-    this.updatedAt
-  }
+  // Associations, only set when included
 
-  /**
-   *
-   * @param {import('../utils/podcastUtils').RssPodcastEpisode} rssPodcastEpisode
-   * @param {string} podcastId
-   * @param {import('../objects/files/AudioFile')} audioFile
-   */
-  static async createFromRssPodcastEpisode(rssPodcastEpisode, podcastId, audioFile) {
-    const podcastEpisode = {
+  declare podcast: NonAttribute<Podcast>
+  declare mediaProgresses?: NonAttribute<MediaProgress[]>
+  declare playlistMediaItem?: NonAttribute<PlaylistMediaItem>
+
+  static async createFromRssPodcastEpisode(rssPodcastEpisode: RssPodcastEpisode, podcastId: string, audioFile: AudioFile) {
+    const podcastEpisode: CreationAttributes<PodcastEpisode> & { extraData: PodcastEpisodeExtraData } = {
       index: null,
       season: rssPodcastEpisode.season,
       episode: rssPodcastEpisode.episode,
@@ -73,7 +59,8 @@ class PodcastEpisode extends Model {
       enclosureType: rssPodcastEpisode.enclosure?.type || null,
       publishedAt: rssPodcastEpisode.publishedAt,
       podcastId,
-      audioFile: audioFile.toJSON(),
+      // cast(d): the audio file was probed, so the fields that AudioFile types as nullable before construct are set
+      audioFile: audioFile.toJSON() as AudioFileObject,
       chapters: [],
       extraData: {}
     }
@@ -84,7 +71,9 @@ class PodcastEpisode extends Model {
     if (audioFile.chapters?.length) {
       podcastEpisode.chapters = audioFile.chapters.map((ch) => ({ ...ch }))
     } else if (rssPodcastEpisode.chapters?.length) {
-      podcastEpisode.chapters = rssPodcastEpisode.chapters.map((ch) => ({ ...ch }))
+      // NOTE: RSS chapters can have end null (the last chapter when no end time is given), which is stored as is in chapters
+      // cast(c): the JS stores the RSS chapters in a chapters column typed with a numeric end; see the NOTE above
+      podcastEpisode.chapters = rssPodcastEpisode.chapters.map((ch) => ({ ...ch })) as ChapterObject[]
     }
 
     return this.create(podcastEpisode)
@@ -92,9 +81,11 @@ class PodcastEpisode extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: ModelsSequelize): void
+  // Model.init signature, only declared so the class stays assignable to Model (Database calls init(sequelize))
+  static init<MS extends ModelStatic<Sequelize.Model>, M extends InstanceType<MS>>(this: MS, attributes: ModelAttributes<M, Attributes<M>> | ModelsSequelize, options?: InitOptions<M>): MS
+  static init(sequelize: ModelsSequelize) {
     super.init(
       {
         id: {
@@ -150,22 +141,18 @@ class PodcastEpisode extends Model {
     })
   }
 
-  get size() {
+  get size(): NonAttribute<number> {
     return this.audioFile?.metadata.size || 0
   }
 
-  get duration() {
+  get duration(): NonAttribute<number> {
     return this.audioFile?.duration || 0
   }
 
   /**
    * Used for matching the episode with an episode in the RSS feed
-   *
-   * @param {string} guid
-   * @param {string} enclosureURL
-   * @returns {boolean}
    */
-  checkMatchesGuidOrEnclosureUrl(guid, enclosureURL) {
+  checkMatchesGuidOrEnclosureUrl(guid: string | null, enclosureURL: string): boolean {
     if (this.extraData?.guid && this.extraData.guid === guid) {
       return true
     }
@@ -177,12 +164,10 @@ class PodcastEpisode extends Model {
 
   /**
    * Used in client players
-   *
-   * @param {string} libraryItemId
-   * @returns {import('./Book').AudioTrack}
    */
-  getAudioTrack(libraryItemId) {
-    const track = structuredClone(this.audioFile)
+  getAudioTrack(libraryItemId: string): AudioTrack {
+    // cast(d): the clone gets the track properties (startOffset, title, contentUrl) assigned below
+    const track = structuredClone(this.audioFile) as AudioTrack
     track.startOffset = 0
     track.title = this.audioFile.metadata.filename
     track.index = 1 // Podcast episodes only have one track
@@ -190,7 +175,7 @@ class PodcastEpisode extends Model {
     return track
   }
 
-  toOldJSON(libraryItemId) {
+  toOldJSON(libraryItemId: string) {
     if (!libraryItemId) {
       throw new Error(`[PodcastEpisode] Cannot convert to old JSON because libraryItemId is not provided`)
     }
@@ -227,8 +212,9 @@ class PodcastEpisode extends Model {
     }
   }
 
-  toOldJSONExpanded(libraryItemId) {
-    const json = this.toOldJSON(libraryItemId)
+  toOldJSONExpanded(libraryItemId: string) {
+    // Typed with the expanded properties, which are added below
+    const json: ReturnType<PodcastEpisode['toOldJSON']> & { audioTrack?: AudioTrack; size?: number; duration?: number } = this.toOldJSON(libraryItemId)
 
     json.audioTrack = this.getAudioTrack(libraryItemId)
     json.size = this.size
@@ -238,4 +224,8 @@ class PodcastEpisode extends Model {
   }
 }
 
-module.exports = PodcastEpisode
+namespace PodcastEpisode {
+  export type ChapterObject = ModelTypes.ChapterObject
+}
+
+export = PodcastEpisode

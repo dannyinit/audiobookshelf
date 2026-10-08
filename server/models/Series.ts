@@ -1,49 +1,43 @@
-const { DataTypes, Model, where, fn, col, literal } = require('sequelize')
+import Sequelize = require('sequelize')
+import type { Attributes, BelongsToManyGetAssociationsMixin, OrderItem, CreationOptional, InferAttributes, InferCreationAttributes, InitOptions, ModelAttributes, ModelStatic, NonAttribute } from 'sequelize'
+import utils = require('../utils/index')
+import type Book = require('./Book')
+import type BookSeries = require('./BookSeries')
+import type { ModelsSequelize } from './types'
+const { DataTypes, Model, where, fn, col, literal } = Sequelize
+const { getTitlePrefixAtEnd, getTitleIgnorePrefix } = utils
 
-const { getTitlePrefixAtEnd, getTitleIgnorePrefix } = require('../utils/index')
+class Series extends Model<InferAttributes<Series>, InferCreationAttributes<Series>> {
+  declare id: CreationOptional<string>
+  declare name: string
+  declare nameIgnorePrefix: string
+  declare description: CreationOptional<string | null>
+  declare libraryId: string
+  declare createdAt: CreationOptional<Date>
+  declare updatedAt: CreationOptional<Date>
 
-class Series extends Model {
-  constructor(values, options) {
-    super(values, options)
+  declare sequelize: ModelsSequelize
 
-    /** @type {UUIDV4} */
-    this.id
-    /** @type {string} */
-    this.name
-    /** @type {string} */
-    this.nameIgnorePrefix
-    /** @type {string} */
-    this.description
-    /** @type {UUIDV4} */
-    this.libraryId
-    /** @type {Date} */
-    this.createdAt
-    /** @type {Date} */
-    this.updatedAt
+  // Expanded properties
 
-    // Expanded properties
+  /** only set when expanded (books with their libraryItem, authors and series) */
+  declare books: NonAttribute<Book.BookExpandedWithLibraryItem[]>
+  /** Join table row, set when loaded through Book.series */
+  declare bookSeries: NonAttribute<BookSeries>
 
-    /** @type {import('./Book').BookExpandedWithLibraryItem[]} - only set when expanded */
-    this.books
-  }
+  declare getBooks: BelongsToManyGetAssociationsMixin<Book>
 
   /**
    * Check if series exists
-   * @param {string} seriesId
-   * @returns {Promise<boolean>}
    */
-  static async checkExistsById(seriesId) {
+  static async checkExistsById(seriesId: string): Promise<boolean> {
     return (await this.count({ where: { id: seriesId } })) > 0
   }
 
   /**
    * Get series by name and libraryId. name case insensitive
-   *
-   * @param {string} seriesName
-   * @param {string} libraryId
-   * @returns {Promise<Series>}
    */
-  static async getByNameAndLibrary(seriesName, libraryId) {
+  static async getByNameAndLibrary(seriesName: string, libraryId: string): Promise<Series | null> {
     return this.findOne({
       where: [
         where(fn('lower', col('name')), seriesName.toLowerCase()),
@@ -54,25 +48,14 @@ class Series extends Model {
     })
   }
 
-  /**
-   *
-   * @param {string} seriesId
-   * @returns {Promise<Series>}
-   */
-  static async getExpandedById(seriesId) {
+  static async getExpandedById(seriesId: string): Promise<Series | null> {
     const series = await this.findByPk(seriesId)
     if (!series) return null
     series.books = await series.getBooksExpandedWithLibraryItem()
     return series
   }
 
-  /**
-   *
-   * @param {string} seriesName
-   * @param {string} libraryId
-   * @returns {Promise<Series>}
-   */
-  static async findOrCreateByNameAndLibrary(seriesName, libraryId) {
+  static async findOrCreateByNameAndLibrary(seriesName: string, libraryId: string): Promise<Series> {
     const series = await this.getByNameAndLibrary(seriesName, libraryId)
     if (series) return series
     return this.create({
@@ -84,9 +67,11 @@ class Series extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: ModelsSequelize): void
+  // Model.init signature, only declared so the class stays assignable to Model (Database calls init(sequelize))
+  static init<MS extends ModelStatic<Sequelize.Model>, M extends InstanceType<MS>>(this: MS, attributes: ModelAttributes<M, Attributes<M>> | ModelsSequelize, options?: InitOptions<M>): MS
+  static init(sequelize: ModelsSequelize) {
     super.init(
       {
         id: {
@@ -138,10 +123,8 @@ class Series extends Model {
 
   /**
    * Get all books in collection expanded with library item
-   *
-   * @returns {Promise<import('./Book').BookExpandedWithLibraryItem[]>}
    */
-  getBooksExpandedWithLibraryItem() {
+  getBooksExpandedWithLibraryItem(): Promise<Book.BookExpandedWithLibraryItem[]> {
     return this.getBooks({
       joinTableAttributes: ['sequence'],
       include: [
@@ -161,8 +144,10 @@ class Series extends Model {
           }
         }
       ],
-      order: [[literal('CAST(`bookSeries.sequence` AS FLOAT) ASC NULLS LAST')]]
-    })
+      // cast(b): sequelize accepts an order item with only a literal (which holds the direction), its types do not
+      order: [[literal('CAST(`bookSeries.sequence` AS FLOAT) ASC NULLS LAST')] as unknown as OrderItem]
+      // cast(b): the libraryItem is included, which getBooks does not type
+    }) as Promise<Book.BookExpandedWithLibraryItem[]>
   }
 
   toOldJSON() {
@@ -177,7 +162,7 @@ class Series extends Model {
     }
   }
 
-  toJSONMinimal(sequence) {
+  toJSONMinimal(sequence: string | null) {
     return {
       id: this.id,
       name: this.name,
@@ -186,4 +171,4 @@ class Series extends Model {
   }
 }
 
-module.exports = Series
+export = Series

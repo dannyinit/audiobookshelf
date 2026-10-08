@@ -1,61 +1,53 @@
-const Path = require('path')
-const { DataTypes, Model } = require('sequelize')
-const uuidv4 = require('uuid').v4
-const Logger = require('../Logger')
-const date = require('../libs/dateAndTime')
-const { secondsToTimestamp } = require('../utils')
+import Path = require('path')
+import Sequelize = require('sequelize')
+import type { Attributes, CreationOptional, InferAttributes, InferCreationAttributes, InitOptions, ModelAttributes, ModelStatic, NonAttribute, Transaction } from 'sequelize'
+import uuid = require('uuid')
+import Logger = require('../Logger')
+import dateAndTime = require('../libs/dateAndTime')
+import utils = require('../utils')
+import type { DateAndTime } from '../objects/types'
+import type Book = require('./Book')
+import type Feed = require('./Feed')
+import type LibraryItem = require('./LibraryItem')
+import type PodcastEpisode = require('./PodcastEpisode')
+import type { AudioTrack, ModelsSequelize } from './types'
+const uuidv4 = uuid.v4
+// cast(a): the vendored date-and-time is a minified UMD bundle that TypeScript cannot type
+const date = dateAndTime as unknown as DateAndTime
+const { DataTypes, Model } = Sequelize
+const { secondsToTimestamp } = utils
 
-class FeedEpisode extends Model {
-  constructor(values, options) {
-    super(values, options)
+/**
+ * Custom element of the vendored rss library: element name to content
+ */
+type RssCustomElement = Record<string, unknown>
 
-    /** @type {UUIDV4} */
-    this.id
-    /** @type {string} */
-    this.title
-    /** @type {string} */
-    this.author
-    /** @type {string} */
-    this.description
-    /** @type {string} */
-    this.siteURL
-    /** @type {string} */
-    this.enclosureURL
-    /** @type {string} */
-    this.enclosureType
-    /** @type {BigInt} */
-    this.enclosureSize
-    /** @type {string} */
-    this.pubDate
-    /** @type {string} */
-    this.season
-    /** @type {string} */
-    this.episode
-    /** @type {string} */
-    this.episodeType
-    /** @type {number} */
-    this.duration
-    /** @type {string} */
-    this.filePath
-    /** @type {boolean} */
-    this.explicit
-    /** @type {UUIDV4} */
-    this.feedId
-    /** @type {Date} */
-    this.createdAt
-    /** @type {Date} */
-    this.updatedAt
-  }
+class FeedEpisode extends Model<InferAttributes<FeedEpisode>, InferCreationAttributes<FeedEpisode>> {
+  declare id: CreationOptional<string>
+  declare title: string | null
+  declare author: string | null
+  declare description: string | null
+  declare siteURL: string
+  declare enclosureURL: string
+  declare enclosureType: string
+  /** BIGINT column, a number in sqlite */
+  declare enclosureSize: number
+  declare pubDate: string
+  declare season: CreationOptional<string | null>
+  declare episode: CreationOptional<string | null>
+  declare episodeType: CreationOptional<string | null>
+  declare duration: number
+  declare filePath: string
+  declare explicit: boolean
+  declare feedId: string
+  declare createdAt: CreationOptional<Date>
+  declare updatedAt: CreationOptional<Date>
 
-  /**
-   *
-   * @param {import('./LibraryItem').LibraryItemExpanded} libraryItemExpanded
-   * @param {import('./Feed')} feed
-   * @param {string} slug
-   * @param {import('./PodcastEpisode')} episode
-   * @param {string} [existingEpisodeId]
-   */
-  static getFeedEpisodeObjFromPodcastEpisode(libraryItemExpanded, feed, slug, episode, existingEpisodeId = null) {
+  // Associations, only set when included
+
+  declare feed?: NonAttribute<Feed>
+
+  static getFeedEpisodeObjFromPodcastEpisode(libraryItemExpanded: LibraryItem.PodcastLibraryItem, feed: Feed, slug: string, episode: PodcastEpisode, existingEpisodeId: string | null = null) {
     const episodeId = existingEpisodeId || uuidv4()
     return {
       id: episodeId,
@@ -77,22 +69,16 @@ class FeedEpisode extends Model {
     }
   }
 
-  /**
-   *
-   * @param {import('./LibraryItem').LibraryItemExpanded} libraryItemExpanded
-   * @param {import('./Feed')} feed
-   * @param {string} slug
-   * @param {import('sequelize').Transaction} transaction
-   * @returns {Promise<FeedEpisode[]>}
-   */
-  static async createFromPodcastEpisodes(libraryItemExpanded, feed, slug, transaction) {
+  static async createFromPodcastEpisodes(libraryItemExpanded: LibraryItem.PodcastLibraryItem, feed: Feed, slug: string, transaction: Transaction): Promise<FeedEpisode[]> {
     const feedEpisodeObjs = []
 
     // Sort podcastEpisodes by pubDate. episodic is newest to oldest. serial is oldest to newest.
     if (feed.podcastType === 'episodic') {
-      libraryItemExpanded.media.podcastEpisodes.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
+      // cast(d): subtracting Dates subtracts their timestamps, as in the JS
+      libraryItemExpanded.media.podcastEpisodes.sort((a, b) => (new Date(b.pubDate) as unknown as number) - (new Date(a.pubDate) as unknown as number))
     } else {
-      libraryItemExpanded.media.podcastEpisodes.sort((a, b) => new Date(a.pubDate) - new Date(b.pubDate))
+      // cast(d): subtracting Dates subtracts their timestamps, as in the JS
+      libraryItemExpanded.media.podcastEpisodes.sort((a, b) => (new Date(a.pubDate) as unknown as number) - (new Date(b.pubDate) as unknown as number))
     }
 
     let numExisting = 0
@@ -111,12 +97,8 @@ class FeedEpisode extends Model {
 
   /**
    * If chapters for an audiobook match the audio tracks then use chapter titles instead of audio file names
-   *
-   * @param {import('./Book').AudioTrack[]} trackList
-   * @param {import('./Book')} book
-   * @returns {boolean}
    */
-  static checkUseChapterTitlesForEpisodes(trackList, book) {
+  static checkUseChapterTitlesForEpisodes(trackList: AudioTrack[], book: Book): boolean {
     const chapters = book.chapters || []
     if (trackList.length !== chapters.length) return false
     for (let i = 0; i < trackList.length; i++) {
@@ -128,17 +110,9 @@ class FeedEpisode extends Model {
   }
 
   /**
-   *
-   * @param {import('./Book')} book
-   * @param {Date} pubDateStart
-   * @param {import('./Feed')} feed
-   * @param {string} slug
-   * @param {import('./Book').AudioFileObject} audioTrack
-   * @param {boolean} useChapterTitles
-   * @param {number} offsetIndex
-   * @param {string} [existingEpisodeId]
+   * @param [existingEpisodeId]
    */
-  static getFeedEpisodeObjFromAudiobookTrack(book, pubDateStart, feed, slug, audioTrack, useChapterTitles, offsetIndex, existingEpisodeId = null) {
+  static getFeedEpisodeObjFromAudiobookTrack(book: Book, pubDateStart: Date, feed: Feed, slug: string, audioTrack: AudioTrack, useChapterTitles: boolean, offsetIndex: number, existingEpisodeId: string | null = null) {
     // Example: <pubDate>Fri, 04 Feb 2015 00:00:00 GMT</pubDate>
     // Offset pubdate in 1 minute intervals to ensure correct order
     const timeOffset = offsetIndex * 60000
@@ -149,7 +123,7 @@ class FeedEpisode extends Model {
 
     const contentUrl = `/feed/${slug}/item/${episodeId}/media${Path.extname(audioTrack.metadata.filename)}`
 
-    let title = Path.basename(audioTrack.metadata.filename, Path.extname(audioTrack.metadata.filename))
+    let title: string | null = Path.basename(audioTrack.metadata.filename, Path.extname(audioTrack.metadata.filename))
     if (book.includedAudioFiles.length == 1) {
       // If audiobook is a single file, use book title instead of chapter/file title
       title = book.title
@@ -178,15 +152,7 @@ class FeedEpisode extends Model {
     }
   }
 
-  /**
-   *
-   * @param {import('./LibraryItem').LibraryItemExpanded} libraryItemExpanded
-   * @param {import('./Feed')} feed
-   * @param {string} slug
-   * @param {import('sequelize').Transaction} transaction
-   * @returns {Promise<FeedEpisode[]>}
-   */
-  static async createFromAudiobookTracks(libraryItemExpanded, feed, slug, transaction) {
+  static async createFromAudiobookTracks(libraryItemExpanded: LibraryItem.BookLibraryItem, feed: Feed, slug: string, transaction: Transaction): Promise<FeedEpisode[]> {
     const trackList = libraryItemExpanded.getTrackList()
     const useChapterTitles = this.checkUseChapterTitlesForEpisodes(trackList, libraryItemExpanded.media)
 
@@ -207,14 +173,9 @@ class FeedEpisode extends Model {
   }
 
   /**
-   *
-   * @param {import('./Book').BookExpandedWithLibraryItem[]} books
-   * @param {import('./Feed')} feed
-   * @param {string} slug
-   * @param {import('sequelize').Transaction} transaction
-   * @returns {Promise<FeedEpisode[]>}
+   * @param books books expanded with their libraryItem
    */
-  static async createFromBooks(books, feed, slug, transaction) {
+  static async createFromBooks(books: Book.BookExpandedWithLibraryItem[], feed: Feed, slug: string, transaction: Transaction): Promise<FeedEpisode[]> {
     // This is never null unless the books array is empty, as this method is not invoked when no books. Reduce needs an initial item
     const earliestLibraryItemCreatedAt =
       books.length > 0
@@ -236,7 +197,8 @@ class FeedEpisode extends Model {
         })
         numExisting = existingEpisode ? numExisting + 1 : numExisting
 
-        feedEpisodeObjs.push(this.getFeedEpisodeObjFromAudiobookTrack(book, earliestLibraryItemCreatedAt, feed, slug, track, useChapterTitles, offsetIndex++, existingEpisode?.id))
+        // earliestLibraryItemCreatedAt is set: this loop only runs when books is not empty
+        feedEpisodeObjs.push(this.getFeedEpisodeObjFromAudiobookTrack(book, earliestLibraryItemCreatedAt!, feed, slug, track, useChapterTitles, offsetIndex++, existingEpisode?.id))
       }
     }
     Logger.info(`[FeedEpisode] Upserting ${feedEpisodeObjs.length} episodes for feed ${feed.id} (${numExisting} existing)`)
@@ -245,9 +207,11 @@ class FeedEpisode extends Model {
 
   /**
    * Initialize model
-   * @param {import('../Database').sequelize} sequelize
    */
-  static init(sequelize) {
+  static init(sequelize: ModelsSequelize): void
+  // Model.init signature, only declared so the class stays assignable to Model (Database calls init(sequelize))
+  static init<MS extends ModelStatic<Sequelize.Model>, M extends InstanceType<MS>>(this: MS, attributes: ModelAttributes<M, Attributes<M>> | ModelsSequelize, options?: InitOptions<M>): MS
+  static init(sequelize: ModelsSequelize) {
     super.init(
       {
         id: {
@@ -307,12 +271,8 @@ class FeedEpisode extends Model {
     }
   }
 
-  /**
-   *
-   * @param {string} hostPrefix
-   */
-  getRSSData(hostPrefix) {
-    const customElements = [
+  getRSSData(hostPrefix: string) {
+    const customElements: RssCustomElement[] = [
       { 'itunes:author': this.author || null },
       { 'itunes:duration': Math.round(Number(this.duration)) },
       {
@@ -346,4 +306,4 @@ class FeedEpisode extends Model {
   }
 }
 
-module.exports = FeedEpisode
+export = FeedEpisode

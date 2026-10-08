@@ -47,7 +47,7 @@ class AudioTrack {
     this.metadata = audioFile.metadata.clone()
   }
 
-  setFromStream(title: string, duration: number, contentUrl: string) {
+  setFromStream(title: string | null, duration: number, contentUrl: string) {
     this.index = 1
     this.startOffset = 0
     this.duration = duration
