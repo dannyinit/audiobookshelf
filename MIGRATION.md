@@ -184,3 +184,7 @@ These rules apply from batch 3 onward. Where they conflict with rule 4 or rule 9
 ### Log
 - 2026-10-09: Type quality audit finished (a4-context/phase3-evidence/audit/4-type-audit.md). Rules 13 to 18 added.
 - 2026-10-09: Batch 3a (server/models) done under rules 13 to 18; see "Batch 3a" in the Log above. Batch 3b is pending.
+
+### Clarification of rule 17 (2026-10-09, after batch 3a)
+
+A "kind" of cast means casts to the same target type (for example all `as number`), counted across the whole batch whatever the reason tag. Do not split a group by reason to stay under the limit of 10. If the same target type is cast more than 10 times in a batch, stop and report it.
