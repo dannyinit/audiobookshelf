@@ -212,3 +212,9 @@ These rules apply from batch 3 onward. Where they conflict with rule 4 or rule 9
 ### Clarification of rule 17 (2026-10-09, after batch 3a)
 
 A "kind" of cast means casts to the same target type (for example all `as number`), counted across the whole batch whatever the reason tag. Do not split a group by reason to stay under the limit of 10. If the same target type is cast more than 10 times in a batch, stop and report it.
+
+### Clarification of rules 14 and 15 (2026-10-09, after batch 3b)
+
+- Rule 14 has one more tag: `// cast(e): <why>` marks a temporary cast that exists only because a JavaScript file has not been converted yet (for example Database.js, whose `sequelize` is null until init). Name the file that removes it, for example `cast(e): remove when Database.js is converted`. Use e instead of d for these. The existing `as InitializedDatabase` casts are tagged d and are removed in batch 9 together with the InitializedDatabase type.
+- Rule 15 also bans `undefined as unknown as T`. If a parameter can receive undefined, declare it optional or `T | undefined`.
+- Do not add new shared workaround types. Use InitializedDatabase from server/utils/types.ts where Database must be non-null. If another shared type seems needed, stop and report it.
