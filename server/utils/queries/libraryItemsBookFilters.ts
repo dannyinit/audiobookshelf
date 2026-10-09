@@ -16,7 +16,7 @@ import Series = require('../../models/Series')
 import LibraryItem = require('../../models/LibraryItem')
 import type { CountOptions, FindAndCountOptions, FindOptions } from 'sequelize'
 import type { InitializedDatabase } from '../types'
-import type { FilteredLibraryItem, QueryFindOptions, QueryInclude, QueryOrderItem, QueryReplacements, UserPermissionBookWhere, UserPermissions, WhereItem } from './types'
+import type { FilteredLibraryItem, QueryInclude, QueryOrderItem, QueryReplacements, RuntimeFindOptions, UserPermissionBookWhere, UserPermissions, WhereItem } from './types'
 const { profile } = profiler
 
 // cast(d): Database.js is still JS; sequelize is null until Database.init, which runs before any query
@@ -386,7 +386,7 @@ export = {
    *
    * @returns { booksToExclude, bookSeriesToInclude }
    */
-  async getCollapseSeriesBooksToExclude(bookFindOptions: QueryFindOptions, seriesWhere: Record<string | symbol, unknown> | null, replacements: QueryReplacements = {}) {
+  async getCollapseSeriesBooksToExclude(bookFindOptions: RuntimeFindOptions, seriesWhere: Record<string | symbol, unknown> | null, replacements: QueryReplacements = {}) {
     const allSeriesRows = await Database.seriesModel.findAll({
       attributes: ['id', 'name', [Sequelize.literal('(SELECT count(*) FROM bookSeries bs WHERE bs.seriesId = series.id)'), 'numBooks']],
       distinct: true,
@@ -405,8 +405,8 @@ export = {
         }
       ],
       order: [Sequelize.literal('CAST(`books.bookSeries.sequence` AS FLOAT) ASC NULLS LAST')]
-      // See QueryFindOptions; distinct is not a findAll option (sequelize ignores it)
-    } as unknown as FindOptions)
+      // cast(b): checked as RuntimeFindOptions (the shapes Sequelize accepts at runtime); its FindOptions type is stricter; distinct is a count option, which findAll ignores
+    } satisfies RuntimeFindOptions as FindOptions)
     // books (with their book_series row and libraryItem) are included above
     const allSeries = allSeriesRows as CollapseSeriesRow[]
     const bookSeriesToInclude: CollapseSeriesBookSeries[] = []
@@ -437,14 +437,14 @@ export = {
     countCache.clear()
   },
 
-  async findAndCountAll(findOptions: QueryFindOptions, limit: number | null, offset: number | null, useCountCache: boolean): Promise<{ rows: Book[]; count: number }> {
+  async findAndCountAll(findOptions: RuntimeFindOptions, limit: number | null, offset: number | null, useCountCache: boolean): Promise<{ rows: Book[]; count: number }> {
     const model = Database.bookModel
     if (useCountCache) {
       const countCacheKey = stringifySequelizeQuery(findOptions)
       Logger.debug(`[LibraryItemsBookFilters] countCacheKey: ${countCacheKey}`)
       if (!countCache.has(countCacheKey)) {
-        // See QueryFindOptions
-        const count = await model.count(findOptions as unknown as CountOptions)
+        // cast(b): RuntimeFindOptions relaxes options to the shapes Sequelize accepts at runtime; its CountOptions type is stricter
+        const count = await model.count(findOptions as CountOptions)
         countCache.set(countCacheKey, count)
       }
 
@@ -452,8 +452,8 @@ export = {
       // A null offset is passed through, as in the JS
       findOptions.offset = offset as number
 
-      // See QueryFindOptions
-      const rows = await model.findAll(findOptions as unknown as FindOptions)
+      // cast(b): RuntimeFindOptions relaxes options to the shapes Sequelize accepts at runtime; its FindOptions type is stricter
+      const rows = await model.findAll(findOptions as FindOptions)
 
       // Set above when missing
       return { rows, count: countCache.get(countCacheKey) as number }
@@ -463,8 +463,8 @@ export = {
     // A null offset is passed through, as in the JS
     findOptions.offset = offset as number
 
-    // See QueryFindOptions
-    return await model.findAndCountAll(findOptions as unknown as FindOptions)
+    // cast(b): RuntimeFindOptions relaxes options to the shapes Sequelize accepts at runtime; its FindOptions type is stricter
+    return await model.findAndCountAll(findOptions as FindOptions)
   },
 
   /**
@@ -659,7 +659,7 @@ export = {
         seriesBookWhere = bookWhere
       }
 
-      const bookFindOptions: QueryFindOptions = {
+      const bookFindOptions: RuntimeFindOptions = {
         where: seriesBookWhere,
         include: [
           {
@@ -692,7 +692,7 @@ export = {
       }
     }
 
-    const findOptions: QueryFindOptions = {
+    const findOptions: RuntimeFindOptions = {
       where: bookWhere,
       distinct: true,
       attributes: bookAttributes,
@@ -883,8 +883,8 @@ export = {
       subQuery: false,
       limit,
       offset
-      // See QueryFindOptions
-    } as unknown as FindAndCountOptions)
+      // cast(b): checked as RuntimeFindOptions (the shapes Sequelize accepts at runtime); its FindAndCountOptions type is stricter, and TypeScript does not compare the nested single include objects of the literal with it
+    } satisfies RuntimeFindOptions as unknown as FindAndCountOptions)
 
     // bookSeries (with book, libraryItem, authors and progress) is included above
     const libraryItems = (series as SeriesWithBookSeries[])
@@ -966,8 +966,8 @@ export = {
       subQuery: false,
       limit,
       order: Database.sequelize.random()
-      // See QueryFindOptions
-    } as unknown as FindOptions)
+      // cast(b): checked as RuntimeFindOptions (the shapes Sequelize accepts at runtime); its FindOptions type is stricter, and TypeScript does not compare the nested single include objects of the literal with it
+    } satisfies RuntimeFindOptions as unknown as FindOptions)
 
     // bookSeries is included above
     const booksFromSeriesToInclude = (seriesNotStarted as SeriesWithBookSeries[]).map((se) => se.bookSeries?.[0]?.bookId).filter((bid) => bid)
@@ -1024,8 +1024,8 @@ export = {
       distinct: true,
       col: 'id',
       subQuery: false
-      // See QueryFindOptions
-    } as unknown as CountOptions)
+      // cast(b): checked as RuntimeFindOptions with the count option col (the shapes Sequelize accepts at runtime); its CountOptions type is stricter
+    } satisfies RuntimeFindOptions & Pick<CountOptions, 'col'> as CountOptions)
 
     // Step 2b: Select random IDs with lightweight includes only
     const randomSelection = await Database.bookModel.findAll({
@@ -1037,8 +1037,8 @@ export = {
       distinct: true,
       limit,
       order: Database.sequelize.random()
-      // See QueryFindOptions; distinct is not a findAll option (sequelize ignores it)
-    } as unknown as FindOptions)
+      // cast(b): checked as RuntimeFindOptions (the shapes Sequelize accepts at runtime); its FindOptions type is stricter; distinct is a count option, which findAll ignores
+    } satisfies RuntimeFindOptions as FindOptions)
 
     const selectedIds = randomSelection.map((b) => b.id).filter(Boolean)
     if (!selectedIds.length) {
@@ -1081,8 +1081,8 @@ export = {
         }
       ],
       subQuery: false
-      // See QueryFindOptions
-    } as unknown as FindOptions)
+      // cast(b): checked as RuntimeFindOptions (the shapes Sequelize accepts at runtime); its FindOptions type is stricter
+    } satisfies RuntimeFindOptions as FindOptions)
 
     const booksById = new Map(books.map((b) => [b.id, b]))
     // Books with the includes above; filter(Boolean) removes ids that were not found
@@ -1237,8 +1237,8 @@ export = {
       distinct: true,
       limit,
       offset
-      // See QueryFindOptions; distinct is not a findAll option (sequelize ignores it)
-    } as unknown as FindOptions)
+      // cast(b): checked as RuntimeFindOptions (the shapes Sequelize accepts at runtime); its FindOptions type is stricter; distinct is a count option, which findAll ignores
+    } satisfies RuntimeFindOptions as FindOptions)
 
     const itemMatches: { libraryItem: ReturnType<LibraryItem['toOldJSONExpanded']> }[] = []
 
@@ -1353,8 +1353,8 @@ export = {
       distinct: true,
       limit,
       offset
-      // See QueryFindOptions; distinct is not a findAll option (sequelize ignores it)
-    } as unknown as FindOptions)
+      // cast(b): checked as RuntimeFindOptions (the shapes Sequelize accepts at runtime); its FindOptions type is stricter, and TypeScript does not compare the nested single include objects of the literal with it; distinct is a count option, which findAll ignores
+    } satisfies RuntimeFindOptions as unknown as FindOptions)
     const seriesMatches: { series: ReturnType<Series['toOldJSON']>; books: ReturnType<LibraryItem['toOldJSON']>[] }[] = []
     // bookSeries (with book and libraryItem) is included above
     for (const series of allSeries as SeriesWithBookSeries[]) {

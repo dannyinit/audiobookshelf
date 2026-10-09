@@ -8,9 +8,9 @@ import Library = require('../../models/Library')
 import Podcast = require('../../models/Podcast')
 import PodcastEpisode = require('../../models/PodcastEpisode')
 import LibraryItem = require('../../models/LibraryItem')
-import type { CountOptions, FindOptions, Model, ModelStatic, WhereOptions, Order, IncludeOptions } from 'sequelize'
+import type { CountOptions, FindOptions, Model, ModelStatic, WhereAttributeHash, Order, IncludeOptions } from 'sequelize'
 import type { InitializedDatabase } from '../types'
-import type { FilteredLibraryItem, MediaGroupQuery, QueryFindOptions, QueryReplacements, UserPermissionPodcastWhere, UserPermissions, WhereItem } from './types'
+import type { FilteredLibraryItem, MediaGroupQuery, QueryReplacements, RuntimeFindOptions, UserPermissionPodcastWhere, UserPermissions, WhereItem } from './types'
 const { profile } = profiler
 
 // cast(d): Database.js is still JS; sequelize is null until Database.init, which runs before any query
@@ -132,21 +132,21 @@ export = {
     countCache.clear()
   },
 
-  async findAndCountAll<M extends Model>(findOptions: QueryFindOptions, model: ModelStatic<M>, limit: number, offset: number, useCountCache: boolean): Promise<{ rows: M[]; count: number }> {
+  async findAndCountAll<M extends Model>(findOptions: RuntimeFindOptions, model: ModelStatic<M>, limit: number, offset: number, useCountCache: boolean): Promise<{ rows: M[]; count: number }> {
     if (useCountCache) {
       const countCacheKey = stringifySequelizeQuery(findOptions)
       Logger.debug(`[LibraryItemsPodcastFilters] countCacheKey: ${countCacheKey}`)
       if (!countCache.has(countCacheKey)) {
-        // See QueryFindOptions
-        const count = await model.count(findOptions as unknown as CountOptions)
+        // cast(b): RuntimeFindOptions relaxes options to the shapes Sequelize accepts at runtime; its CountOptions type is stricter
+        const count = await model.count(findOptions as CountOptions)
         countCache.set(countCacheKey, count)
       }
 
       findOptions.limit = limit || null
       findOptions.offset = offset
 
-      // See QueryFindOptions
-      const rows = await model.findAll(findOptions as unknown as FindOptions)
+      // cast(b): RuntimeFindOptions relaxes options to the shapes Sequelize accepts at runtime; its FindOptions type is stricter
+      const rows = await model.findAll(findOptions as FindOptions)
 
       // Set above when missing
       return { rows, count: countCache.get(countCacheKey) as number }
@@ -155,8 +155,8 @@ export = {
     findOptions.limit = limit || null
     findOptions.offset = offset
 
-    // See QueryFindOptions
-    return await model.findAndCountAll(findOptions as unknown as FindOptions)
+    // cast(b): RuntimeFindOptions relaxes options to the shapes Sequelize accepts at runtime; its FindOptions type is stricter
+    return await model.findAndCountAll(findOptions as FindOptions)
   },
 
   /**
@@ -205,7 +205,7 @@ export = {
     replacements = { ...replacements, ...userPermissionPodcastWhere.replacements }
     podcastWhere.push(...userPermissionPodcastWhere.podcastWhere)
 
-    const findOptions: QueryFindOptions = {
+    const findOptions: RuntimeFindOptions = {
       where: podcastWhere,
       replacements,
       distinct: true,
@@ -273,7 +273,7 @@ export = {
     }
 
     const podcastEpisodeIncludes: IncludeOptions[] = []
-    let podcastEpisodeWhere: Record<string, unknown> | WhereOptions[] = {}
+    let podcastEpisodeWhere: WhereAttributeHash | WhereAttributeHash[] = {}
     let libraryItemWhere = {
       libraryId
     }
@@ -320,7 +320,7 @@ export = {
 
     const userPermissionPodcastWhere = this.getUserPermissionPodcastWhereQuery(user)
 
-    const findOptions: QueryFindOptions = {
+    const findOptions: RuntimeFindOptions = {
       where: podcastEpisodeWhere,
       replacements: userPermissionPodcastWhere.replacements,
       include: [
@@ -517,7 +517,7 @@ export = {
   async getRecentEpisodes(user: User, library: Library, limit: number, offset: number) {
     const userPermissionPodcastWhere = this.getUserPermissionPodcastWhereQuery(user)
 
-    const findOptions: QueryFindOptions = {
+    const findOptions: RuntimeFindOptions = {
       where: {
         '$mediaProgresses.isFinished$': {
           [Sequelize.Op.or]: [null, false]
@@ -552,8 +552,8 @@ export = {
 
     const findtAll = process.env.QUERY_PROFILING ? profile(Database.podcastEpisodeModel.findAll.bind(Database.podcastEpisodeModel)) : Database.podcastEpisodeModel.findAll.bind(Database.podcastEpisodeModel)
 
-    // See QueryFindOptions
-    const episodes = await findtAll(findOptions as unknown as FindOptions)
+    // cast(b): RuntimeFindOptions relaxes options to the shapes Sequelize accepts at runtime; its FindOptions type is stricter
+    const episodes = await findtAll(findOptions as FindOptions)
 
     // The podcast and its libraryItem are included above
     const episodeResults = (episodes as EpisodeWithPodcast[]).map((ep) => {

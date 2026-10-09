@@ -10,7 +10,7 @@ import Book = require('../../models/Book')
 import Feed = require('../../models/Feed')
 import type { FindAndCountOptions } from 'sequelize'
 import type { InitializedDatabase } from '../types'
-import type { FilteredLibraryItem, QueryInclude, QueryOrderItem, UserPermissions, WhereItem } from './types'
+import type { FilteredLibraryItem, QueryInclude, QueryOrderItem, RuntimeFindOptions, UserPermissions, WhereItem } from './types'
 
 // cast(d): Database.js is still JS; sequelize is null until Database.init, which runs before any query
 const Database = DatabaseModule as InitializedDatabase
@@ -197,8 +197,8 @@ export = {
         ...seriesIncludes
       ],
       order
-      // See QueryFindOptions
-    } as unknown as FindAndCountOptions)
+      // cast(b): checked as RuntimeFindOptions (the shapes Sequelize accepts at runtime); its FindAndCountOptions type is stricter
+    } satisfies RuntimeFindOptions as FindAndCountOptions)
 
     // Map series to old series
     const allOldSeries: (ReturnType<Series['toOldJSON']> & { totalDuration?: number; rssFeed?: unknown; books?: unknown[] })[] = []

@@ -17,7 +17,7 @@ Goal: convert every first-party .js file under server/ and index.js to TypeScrip
 | --- | --- | --- | --- |
 | 1 | server/utils (all subfolders) | 46 | done |
 | 2 | server/objects (all subfolders) | 18 | done |
-| 3 | server/models | 25 | 3a done, 3b done (QueryFindOptions kept, see Known deviations) |
+| 3 | server/models | 25 | 3a done, 3b done, 3c done (QueryFindOptions replaced by RuntimeFindOptions) |
 | 4 | server/auth and server/routers | 6 | done |
 | 5 | server/managers | 18 | done |
 | 6 | server/scanner | 13 | done |
@@ -203,6 +203,21 @@ Each has a `NOTE:` comment at the line.
 - `!` per file (151, each with a comment saying why the value is set): BookScanner 27, AudioFileScanner 16, MigrationManager 15, BackupManager 13, LibraryScanner 12, PodcastManager 9, LibraryScan 8, Scanner 7, CacheManager 6, CronManager 6, PlaybackSessionManager 6, NfoFileScanner 5, PodcastScanner 5, LibraryItemScanData 3, AbsMetadataFileScanner 2, ApiCacheManager 2, ShareManager 2, AudioMetadataManager 1, CoverManager 1, LogManager 1, NotificationManager 1, LibraryItemScanner 1, OpfFileScanner 1, ScanLogger 1.
 - Whole server (all .ts under server/ except libs): before the batch 391 `as`, 108 `as unknown as`, 19 `!` (115 files); now 567 `as`, 164 `as unknown as`, 170 `!` (148 files).
 
+### Batch 3c: replace QueryFindOptions (files from batch 1, no file converted or skipped)
+- Counts before (all .ts files under server/ except server/libs, 148 files, TypeScript AST; `as const` not counted): 567 `as`, 164 `as unknown as`, 170 non-null `!`. `grep -rn QueryFindOptions server`: 31 matches.
+- Counts after: 582 `as`, 149 `as unknown as`, 170 `!`. `grep -rn QueryFindOptions server`: 0 matches.
+- server/utils/queries/types.ts: `QueryFindOptions` (every option except limit, offset, distinct, subQuery and benchmark was `unknown`) is replaced by `RuntimeFindOptions`: `Omit<FindOptions, 'where' | 'attributes' | 'limit' | 'include' | 'order'>` with those options added back in the shapes Sequelize v6 accepts at runtime (`where: WhereOptions | null`, `attributes: FindAttributeOptions | null`, `limit: number | null`, `include` a single object or an array whose nested includes may be single objects, `order: Order | QueryOrderItem[]` for `[literal]` items) plus `distinct?: boolean`. Every other option (replacements, offset, subQuery, benchmark, logging, ...) keeps the Sequelize type; nothing is `unknown` or `any`. Each relaxed option is a superset of the Sequelize one.
+- The existing `QueryInclude` (was `Record<string, unknown>`) is the include part of the same type: `Omit<IncludeOptions, ...>` with the same relaxed where, attributes, limit, include and order. `QueryOrderItem` (`OrderItem | [literal]`) is unchanged. No other shared type was added.
+- Call sites (all cast b, tagged, comment "See QueryFindOptions" replaced):
+  - The 7 casts of a `RuntimeFindOptions` variable (libraryItemsBookFilters `findAndCountAll` 3; libraryItemsPodcastFilters `findAndCountAll` 3 and `getRecentEpisodes` 1) are now plain `findOptions as FindOptions` / `as CountOptions` (were `as unknown as`).
+  - The 11 option literals cast inline are now checked with `satisfies RuntimeFindOptions` (type-only, emits nothing). 8 are now a plain `as` (libraryFilters 2, seriesFilters 1, libraryItemsBookFilters 5). The Step 2a count in `getDiscoverLibraryItems` passes the count option `col`, so it is checked with `satisfies RuntimeFindOptions & Pick<CountOptions, 'col'>` (inline, not a new type). 3 stay `as unknown as` (libraryItemsBookFilters `getContinueSeriesLibraryItems`, `getDiscoverLibraryItems` step 1, `search` series): TypeScript does not consider the literal type (nested single include objects) comparable to FindOptions / FindAndCountOptions, so a plain `as` is rejected; the literal is still fully checked by `satisfies`.
+- Other type-only changes: libraryItemsPodcastFilters `getFilteredPodcastEpisodes`: `let podcastEpisodeWhere: Record<string, unknown> | WhereOptions[]` became `WhereAttributeHash | WhereAttributeHash[]` (it was only accepted by the `unknown` where; `WhereOptions[]` is an array of where options, which Sequelize's `WhereOptions` does not include, and the elements are attribute hashes); the unused `WhereOptions` import was removed. libraryFilters `getFilterData`: the comment "count options; see QueryFindOptions" was reworded; that first `as CountOptions` is not needed (checked: the build is clean without it) and is kept, as before.
+- Casts (rule 17): no cast added or removed; 18 existing casts changed (15 from `as unknown as` to `as`, 3 still `as unknown as`), all tagged b (a 0, b 18, c 0, d 0). By target type: `FindOptions` 11, `FindAndCountOptions` 4, `CountOptions` 3. `FindOptions` is over 10 (rule 17): these are the existing casts at each model call, now from the shared type; Sequelize's model methods only take `FindOptions`, so they cannot go without changing the calls or the query expressions (reported, not changed).
+- Not in scope, for batch 11: other find option casts that never used QueryFindOptions are still `as unknown as Includeable` / `Includeable[]` / `FindOptions` (models/LibraryItem 1, models/User 2, models/Playlist 3, scanner/PodcastScanner 1, scanner/BookScanner 2, managers/RssFeedManager 1, utils/queries/userStats 2, routers/ApiRouter 2); not checked one by one, they are candidates for `QueryInclude` / `RuntimeFindOptions`.
+- Compiled JS: built HEAD (634aeaba) and this change, printed every compiled server file with the TypeScript printer with comments removed: identical, no file added or removed. The raw output differs in 38 comment lines only. No compiled JS line changed.
+- No bugs found, no tests changed.
+- Result: `npm run build:server` (clean build) reports 0 `error TS`; `npm test` 356 passing, 0 failing.
+
 ## Extra rules
 9. If a file cannot be typed cleanly without changing behaviour, first use the smallest possible `as` with a one-line comment and a line in the Bugs section. If that still fails, leave the file as .js, list it under Skipped with the reason, and move on.
 10. You may add missing @types packages to devDependencies in package.json (for example express, passport, cookie-parser). Mention them in the Log.
@@ -213,7 +228,7 @@ Each has a `NOTE:` comment at the line.
 - The Phase 2 finders and providers (server/finders, server/providers) have the same class field issue: fields declared without an initialiser compile to `field;` lines (already present at 9c4185a0, for example `baseUrl;` in Audnexus and OpenLibrary). Mark them `declare` (rule 12).
 
 ## Skipped files
-(none yet; batches 1 to 6 skipped nothing)
+(none yet; batches 1 to 6 and 3c skipped nothing)
 
 ## Rules added after the type quality audit (2026-10-09)
 
@@ -253,7 +268,7 @@ These rules apply from batch 3 onward. Where they conflict with rule 4 or rule 9
 
 ### Added to "Known deviations to clean up at the end" (from batch 3b)
 
-- server/utils/queries/types.ts `QueryFindOptions` (with `QueryInclude`, `QueryOrderItem`) is kept: libraryItemsBookFilters and libraryItemsPodcastFilters build their find options with values that Sequelize accepts at runtime but its types reject (single nested include objects, null where/attributes/limit, `[literal]` order items, `distinct` on findAll); see "Batch 3b" in the Log. Removing it needs a decision: rewrite those expressions (behaviour-neutral in Sequelize, but changes the compiled JS) or allow a type derived from the Sequelize option types that relaxes only those options.
+- (Done in batch 3c, see "Batch 3c" in the Log.) server/utils/queries/types.ts `QueryFindOptions` was kept in batch 3b because libraryItemsBookFilters and libraryItemsPodcastFilters build their find options with values that Sequelize accepts at runtime but its types reject; batch 3c replaced it with `RuntimeFindOptions`, derived from Sequelize's FindOptions with only those options relaxed, without rewriting the queries.
 - server/utils/types.ts `InitializedDatabase`: Database.js types `sequelize` as `Sequelize | null`; 6 files cast the required Database once to this type. Remove it when Database is converted (batch 9), together with the JSDoc added to Database.js for `libraryFilterData` and `getPlaybackSessions`.
 - Two `undefined as unknown as number` casts in models/LibraryItem.ts `getForAuthor` (batch 3a, the libraryFilters parameters are typed `number`) are still there.
 
@@ -262,6 +277,7 @@ These rules apply from batch 3 onward. Where they conflict with rule 4 or rule 9
 - 2026-10-09: Batch 3a (server/models) done under rules 13 to 18; see "Batch 3a" in the Log above. Batch 3b is pending.
 - 2026-10-09: Batches 5 and 6 done with three recorded exceptions to rule 17 (catch variables, scanner dynamic metadata keys, one `as string` in LibraryScanner); see "Batch 5 and 6" in the Log above.
 - 2026-10-09: Batch 3b done: TypedDatabase, ApiDatabase, PatchModels and the `as unknown as LibraryItem['media']` casts are removed; QueryFindOptions is kept (Known deviations). See "Batch 3b" in the Log above.
+- 2026-10-09: Batch 3c done: QueryFindOptions is replaced by RuntimeFindOptions (built from Sequelize's FindOptions); item 1 of the final cleanup is done. See "Batch 3c" in the Log above.
 
 ### Clarification of rule 17 (2026-10-09, after batch 3a)
 
@@ -277,7 +293,7 @@ A "kind" of cast means casts to the same target type (for example all `as number
 
 Open items collected from the type quality audit and from batches 3a and 3b. Each item is done only when its check passes. If time or usage runs out, do items 1 and 3 first.
 
-1. QueryFindOptions (server/utils/queries/types.ts): replace it with one shared type built from Sequelize's own option types (take FindOptions, omit where, attributes, limit, include, order and distinct, and add them back with the shapes Sequelize accepts at runtime: where, attributes and limit may be null; include may be a single object or an array; order items may be a literal; distinct allowed). Do not rewrite the queries. Check: no match for QueryFindOptions in server/, 0 error TS, 356 passing, compiled JS unchanged apart from comments.
+1. (done in batch 3c) QueryFindOptions (server/utils/queries/types.ts): replace it with one shared type built from Sequelize's own option types (take FindOptions, omit where, attributes, limit, include, order and distinct, and add them back with the shapes Sequelize accepts at runtime: where, attributes and limit may be null; include may be a single object or an array; order items may be a literal; distinct allowed). Do not rewrite the queries. Check: no match for QueryFindOptions in server/, 0 error TS, 356 passing, compiled JS unchanged apart from comments.
 2. InitializedDatabase and every `cast(e)`: remove them when Database.js is converted (batch 9). Check: no match for InitializedDatabase and no match for `cast(e)` in server/.
 3. Replace the 8 `null as unknown as T` casts and the `undefined as unknown as number` casts (LibraryItem.ts:604) with honest types (`T | null`, optional parameters). Check: no match for `null as unknown as` and `undefined as unknown as`. New type errors may reveal bugs (for example OidcAuthStrategy.verifyCallback reads user.isActive on null); list them in Bugs, do not fix them.
 4. ApiRouter.ts: RouteHandler has `never` parameters; remove after batch 7 (rule 18). Check: no `never` parameter types left in the route handler types.

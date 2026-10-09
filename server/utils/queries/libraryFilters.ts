@@ -15,7 +15,7 @@ import BookSeries = require('../../models/BookSeries')
 import Feed = require('../../models/Feed')
 import type { CountOptions, FindAndCountOptions, FindOptions } from 'sequelize'
 import type { LibraryFilterData, SortInstance } from '../types'
-import type { FilteredLibraryItem, QueryInclude, WhereItem, UserPermissions } from './types'
+import type { FilteredLibraryItem, QueryInclude, RuntimeFindOptions, WhereItem, UserPermissions } from './types'
 const { createNewSortInstance } = fastSort
 const { profile } = profiler
 
@@ -314,8 +314,8 @@ export = {
         ...seriesIncludes
       ],
       order: [['createdAt', 'DESC']]
-      // See QueryFindOptions
-    } as unknown as FindAndCountOptions)
+      // cast(b): checked as RuntimeFindOptions (the shapes Sequelize accepts at runtime); its FindAndCountOptions type is stricter
+    } satisfies RuntimeFindOptions as FindAndCountOptions)
 
     const allOldSeries: (ReturnType<Series['toOldJSON']> & { rssFeed?: unknown; books?: unknown[] })[] = []
     // bookSeries (with book and libraryItem) and feeds are included above
@@ -390,8 +390,8 @@ export = {
       limit,
       distinct: true,
       order: [['createdAt', 'DESC']]
-      // See QueryFindOptions
-    } as unknown as FindAndCountOptions)
+      // cast(b): checked as RuntimeFindOptions (the shapes Sequelize accepts at runtime); its FindAndCountOptions type is stricter
+    } satisfies RuntimeFindOptions as FindAndCountOptions)
 
     return {
       // books are included above
@@ -499,7 +499,7 @@ export = {
       // This is done to handle the edge case of podcasts having been deleted and not having
       // an updatedAt timestamp to trigger a reload of the filter data
       const podcastModelCount = process.env.QUERY_PROFILING ? profile(Database.podcastModel.count.bind(Database.podcastModel)) : Database.podcastModel.count.bind(Database.podcastModel)
-      // count options; see QueryFindOptions
+      // count options; this cast is not needed (the options are valid CountOptions), kept as before
       const podcastCountFromDatabase = await podcastModelCount({
         include: {
           model: Database.libraryItemModel,

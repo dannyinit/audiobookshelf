@@ -1,7 +1,7 @@
 /**
  * Types shared by the library query helpers in server/utils/queries.
  */
-import type { OrderItem, WhereAttributeHash } from 'sequelize'
+import type { FindAttributeOptions, FindOptions, Includeable, IncludeOptions, Order, OrderItem, WhereAttributeHash, WhereOptions } from 'sequelize'
 import type Sequelize = require('sequelize')
 import type LibraryItem = require('../../models/LibraryItem')
 import type Feed = require('../../models/Feed')
@@ -58,25 +58,6 @@ export interface UserPermissions {
   accessExplicitContent?: boolean
 }
 
-/**
- * Find options as the query helpers build them. Sequelize accepts these at runtime but its types are stricter
- * (arrays of where options, a null limit, single nested include objects, [literal] order items),
- * so they are cast to the sequelize options type where they are passed to a model.
- */
-export interface QueryFindOptions {
-  where?: unknown
-  replacements?: QueryReplacements
-  include?: unknown
-  attributes?: unknown
-  order?: unknown
-  limit?: number | null
-  offset?: number
-  distinct?: boolean
-  subQuery?: boolean
-  benchmark?: boolean
-  logging?: (sql: string, timing?: number) => void
-}
-
 type Literal = ReturnType<typeof Sequelize.literal>
 
 /**
@@ -85,6 +66,30 @@ type Literal = ReturnType<typeof Sequelize.literal>
 export type QueryOrderItem = OrderItem | [Literal]
 
 /**
- * Include options as the queries build them (see QueryFindOptions)
+ * Include options as the queries build them: Sequelize's IncludeOptions, with the options that Sequelize v6 accepts
+ * at runtime in more shapes than its types allow (see RuntimeFindOptions). Every other option keeps the Sequelize type.
  */
-export type QueryInclude = Record<string, unknown>
+export interface QueryInclude extends Omit<IncludeOptions, 'where' | 'attributes' | 'limit' | 'include' | 'order'> {
+  where?: WhereOptions | null
+  attributes?: FindAttributeOptions | null
+  limit?: number | null
+  // A single nested include object is accepted as well as an array
+  include?: Includeable | QueryInclude | (Includeable | QueryInclude)[]
+  order?: Order | QueryOrderItem[]
+}
+
+/**
+ * Find options as the query helpers build them: Sequelize's FindOptions, with the options relaxed to the shapes
+ * Sequelize v6 accepts at runtime but its types reject: where, attributes and limit may be null, a nested include
+ * may be a single object instead of an array, order items may be [literal], and distinct (a count option) is
+ * allowed (findAll ignores it). Every other option keeps the Sequelize type. Each relaxed option is a superset of
+ * the Sequelize one, so these options are cast to FindOptions / CountOptions with a plain `as` where they are passed to a model.
+ */
+export interface RuntimeFindOptions extends Omit<FindOptions, 'where' | 'attributes' | 'limit' | 'include' | 'order'> {
+  where?: WhereOptions | null
+  attributes?: FindAttributeOptions | null
+  limit?: number | null
+  include?: Includeable | QueryInclude | (Includeable | QueryInclude)[]
+  order?: Order | QueryOrderItem[]
+  distinct?: boolean
+}
