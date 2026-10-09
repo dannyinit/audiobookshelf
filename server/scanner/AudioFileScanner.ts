@@ -173,6 +173,7 @@ class AudioFileScanner {
     // cast(c): read as in the JS (see NOTE above)
     const { title, author, series, publishedYear } = mediaMetadataFromScan as MediaMetadataFromScan & { author?: string; series?: string }
     // setDataFromPath sets the filename and path of scanned files
+    // cast(d): FileMetadata types filename and path as string | null, but scanned and stored files always have both
     const { filename, path } = audioLibraryFile.metadata as { filename: string; path: string }
     let partbasename = Path.basename(filename, Path.extname(filename))
 
