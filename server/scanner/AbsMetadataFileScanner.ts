@@ -1,8 +1,19 @@
-const Path = require('path')
-const fsExtra = require('../libs/fsExtra')
-const { readTextFile } = require('../utils/fileUtils')
-const { LogLevel } = require('../utils/constants')
-const abmetadataGenerator = require('../utils/generators/abmetadataGenerator')
+import Path = require('path')
+import fsExtra = require('../libs/fsExtra')
+import fileUtils = require('../utils/fileUtils')
+import constants = require('../utils/constants')
+import abmetadataGenerator = require('../utils/generators/abmetadataGenerator')
+import type LibraryScan = require('./LibraryScan')
+import type ScanLogger = require('./ScanLogger')
+import type LibraryItemScanData = require('./LibraryItemScanData')
+import type { BookMetadataObject, PodcastMetadataObject } from './types'
+const { readTextFile } = fileUtils
+const { LogLevel } = constants
+
+/**
+ * Validated metadata.json values
+ */
+type AbMetadata = NonNullable<ReturnType<typeof abmetadataGenerator.parseJson>>
 
 class AbsMetadataFileScanner {
   constructor() {}
@@ -10,14 +21,12 @@ class AbsMetadataFileScanner {
   /**
    * Check for metadata.json file and set book metadata
    *
-   * @param {import('./LibraryScan')} libraryScan
-   * @param {import('./LibraryItemScanData')} libraryItemData
-   * @param {Object} bookMetadata
-   * @param {string} [existingLibraryItemId]
+   * @param [existingLibraryItemId]
    */
-  async scanBookMetadataFile(libraryScan, libraryItemData, bookMetadata, existingLibraryItemId = null) {
+  async scanBookMetadataFile(libraryScan: LibraryScan | ScanLogger, libraryItemData: LibraryItemScanData, bookMetadata: BookMetadataObject, existingLibraryItemId: string | null = null) {
     const metadataLibraryFile = libraryItemData.metadataJsonLibraryFile
-    let metadataText = metadataLibraryFile ? await readTextFile(metadataLibraryFile.metadata.path) : null
+    // Scanned library files have a path (set by setDataFromPath)
+    let metadataText = metadataLibraryFile ? await readTextFile(metadataLibraryFile.metadata.path!) : null
     let metadataFilePath = metadataLibraryFile?.metadata.path
 
     // When metadata file is not stored with library item then check in the /metadata/items folder for it
@@ -32,7 +41,7 @@ class AbsMetadataFileScanner {
 
     if (metadataText) {
       libraryScan.addLog(LogLevel.INFO, `Found metadata file "${metadataFilePath}"`)
-      const abMetadata = abmetadataGenerator.parseJson(metadataText, 'book') || {}
+      const abMetadata: AbMetadata = abmetadataGenerator.parseJson(metadataText, 'book') || {}
 
       for (const key in abMetadata) {
         // TODO: When to override with null or empty arrays?
@@ -42,7 +51,8 @@ class AbsMetadataFileScanner {
         if (key === 'tags' && !abMetadata.tags?.length) continue
         if (key === 'chapters' && !abMetadata.chapters?.length) continue
 
-        bookMetadata[key] = abMetadata[key]
+        // cast(d): dynamic metadata key
+        (bookMetadata as Record<string, unknown>)[key] = abMetadata[key]
       }
     }
   }
@@ -50,14 +60,12 @@ class AbsMetadataFileScanner {
   /**
    * Check for metadata.json file and set podcast metadata
    *
-   * @param {import('./LibraryScan')} libraryScan
-   * @param {import('./LibraryItemScanData')} libraryItemData
-   * @param {Object} podcastMetadata
-   * @param {string} [existingLibraryItemId]
+   * @param [existingLibraryItemId]
    */
-  async scanPodcastMetadataFile(libraryScan, libraryItemData, podcastMetadata, existingLibraryItemId = null) {
+  async scanPodcastMetadataFile(libraryScan: LibraryScan | ScanLogger, libraryItemData: LibraryItemScanData, podcastMetadata: PodcastMetadataObject, existingLibraryItemId: string | null = null) {
     const metadataLibraryFile = libraryItemData.metadataJsonLibraryFile
-    let metadataText = metadataLibraryFile ? await readTextFile(metadataLibraryFile.metadata.path) : null
+    // Scanned library files have a path (set by setDataFromPath)
+    let metadataText = metadataLibraryFile ? await readTextFile(metadataLibraryFile.metadata.path!) : null
     let metadataFilePath = metadataLibraryFile?.metadata.path
 
     // When metadata file is not stored with library item then check in the /metadata/items folder for it
@@ -72,14 +80,15 @@ class AbsMetadataFileScanner {
 
     if (metadataText) {
       libraryScan.addLog(LogLevel.INFO, `Found metadata file "${metadataFilePath}"`)
-      const abMetadata = abmetadataGenerator.parseJson(metadataText, 'podcast') || {}
+      const abMetadata: AbMetadata = abmetadataGenerator.parseJson(metadataText, 'podcast') || {}
       for (const key in abMetadata) {
         if (abMetadata[key] === undefined || abMetadata[key] === null) continue
         if (key === 'tags' && !abMetadata.tags?.length) continue
 
-        podcastMetadata[key] = abMetadata[key]
+        // cast(d): dynamic metadata key
+        (podcastMetadata as Record<string, unknown>)[key] = abMetadata[key]
       }
     }
   }
 }
-module.exports = new AbsMetadataFileScanner()
+export = new AbsMetadataFileScanner()

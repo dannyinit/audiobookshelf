@@ -1,62 +1,56 @@
-const uuidv4 = require('uuid').v4
-const Path = require('path')
-const { LogLevel } = require('../utils/constants')
-const { getTitleIgnorePrefix } = require('../utils/index')
-const AudioFileScanner = require('./AudioFileScanner')
-const Database = require('../Database')
-const { filePathToPOSIX, getFileTimestampsWithIno } = require('../utils/fileUtils')
-const AudioFile = require('../objects/files/AudioFile')
-const CoverManager = require('../managers/CoverManager')
-const LibraryFile = require('../objects/files/LibraryFile')
-const fsExtra = require('../libs/fsExtra')
-const PodcastEpisode = require('../models/PodcastEpisode')
-const AbsMetadataFileScanner = require('./AbsMetadataFileScanner')
-const htmlSanitizer = require('../utils/htmlSanitizer')
+import uuid = require('uuid')
+import Path = require('path')
+import constants = require('../utils/constants')
+import utils = require('../utils/index')
+import AudioFileScanner = require('./AudioFileScanner')
+import Database = require('../Database')
+import fileUtils = require('../utils/fileUtils')
+import AudioFile = require('../objects/files/AudioFile')
+import CoverManager = require('../managers/CoverManager')
+import LibraryFile = require('../objects/files/LibraryFile')
+import fsExtra = require('../libs/fsExtra')
+// Only used as a type; required for its side effects so the module load order stays as in the JS
+import '../models/PodcastEpisode'
+import type PodcastEpisode = require('../models/PodcastEpisode')
+import AbsMetadataFileScanner = require('./AbsMetadataFileScanner')
+import htmlSanitizer = require('../utils/htmlSanitizer')
+import type LibraryItem = require('../models/LibraryItem')
+import type { CreationAttributes, Includeable } from 'sequelize'
+import type Podcast = require('../models/Podcast')
+import type LibraryScan = require('./LibraryScan')
+import type ScanLogger = require('./ScanLogger')
+import type LibraryItemScanData = require('./LibraryItemScanData')
+import type { AudioFileObject, LibraryFileObject, LibrarySettingsObject } from '../models/types'
+import type { PodcastMetadataObject } from './types'
+const uuidv4 = uuid.v4
+const { LogLevel } = constants
+const { getTitleIgnorePrefix } = utils
+const { filePathToPOSIX, getFileTimestampsWithIno } = fileUtils
 
 /**
- * Metadata for podcasts pulled from files
- * @typedef PodcastMetadataObject
- * @property {string} title
- * @property {string} titleIgnorePrefix
- * @property {string} author
- * @property {string} releaseDate
- * @property {string} feedURL
- * @property {string} imageURL
- * @property {string} description
- * @property {string} itunesPageURL
- * @property {string} itunesId
- * @property {string} language
- * @property {string} podcastType
- * @property {string[]} genres
- * @property {string[]} tags
- * @property {boolean} explicit
+ * Plain podcast episode of a new podcast (created with the library item)
  */
+type NewPodcastEpisode = Parameters<typeof AudioFileScanner.setPodcastEpisodeMetadataFromAudioMetaTags>[0] & {
+  audioFile: ReturnType<AudioFile['toJSON']>
+  chapters: AudioFile['chapters']
+}
 
 class PodcastScanner {
   constructor() {}
 
-  /**
-   * @param {import('../models/LibraryItem')} existingLibraryItem
-   * @param {import('./LibraryItemScanData')} libraryItemData
-   * @param {import('../models/Library').LibrarySettingsObject} librarySettings
-   * @param {import('./LibraryScan')} libraryScan
-   * @returns {Promise<{libraryItem:import('../models/LibraryItem'), wasUpdated:boolean}>}
-   */
-  async rescanExistingPodcastLibraryItem(existingLibraryItem, libraryItemData, librarySettings, libraryScan) {
-    /** @type {import('../models/Podcast')} */
-    const media = await existingLibraryItem.getMedia({
+  async rescanExistingPodcastLibraryItem(existingLibraryItem: LibraryItem, libraryItemData: LibraryItemScanData, librarySettings: LibrarySettingsObject, libraryScan: LibraryScan | ScanLogger): Promise<{ libraryItem: LibraryItem; wasUpdated: boolean }> {
+    // cast(d): the media of a podcast library item is a podcast (with its episodes included)
+    const media = (await existingLibraryItem.getMedia({
       include: [
         {
           model: Database.podcastEpisodeModel
         }
       ]
-    })
+    })) as Podcast
 
-    /** @type {import('../models/PodcastEpisode')[]} */
-    let existingPodcastEpisodes = media.podcastEpisodes
+    let existingPodcastEpisodes: PodcastEpisode[] = media.podcastEpisodes
 
-    /** @type {AudioFile[]} */
-    let newAudioFiles = []
+    let newAudioFiles: AudioFile[] = []
 
     // Track episode add/remove/update so item_updated includes the current episode list
     let hasEpisodeChanges = false
@@ -64,7 +58,7 @@ class PodcastScanner {
     if (libraryItemData.hasAudioFileChanges || libraryItemData.audioLibraryFiles.length !== existingPodcastEpisodes.length) {
       // Filter out and destroy episodes that were removed.
       // filter() returns a new array — reassign to media.podcastEpisodes before emit.
-      const episodesToRemove = []
+      const episodesToRemove: PodcastEpisode[] = []
       existingPodcastEpisodes = existingPodcastEpisodes.filter((ep) => {
         if (libraryItemData.checkAudioFileRemoved(ep.audioFile)) {
           episodesToRemove.push(ep)
@@ -114,12 +108,14 @@ class PodcastScanner {
             scannedAudioFiles = scannedAudioFiles.filter((saf) => saf !== matchedScannedAudioFile)
             const audioFile = new AudioFile(podcastEpisode.audioFile)
             audioFile.updateFromScan(matchedScannedAudioFile)
-            podcastEpisode.audioFile = audioFile.toJSON()
+            // cast(d): the stored audio file JSON (AudioFile toJSON)
+            podcastEpisode.audioFile = audioFile.toJSON() as AudioFileObject
             podcastEpisode.changed('audioFile', true)
 
             // Set metadata and save episode
             AudioFileScanner.setPodcastEpisodeMetadataFromAudioMetaTags(podcastEpisode, libraryScan)
-            libraryScan.addLog(LogLevel.INFO, `Podcast episode "${podcastEpisode.title}" keys changed [${podcastEpisode.changed()?.join(', ')}]`)
+            // cast(d): changed() returns false when nothing changed; false?.join is undefined, as in the JS
+            libraryScan.addLog(LogLevel.INFO, `Podcast episode "${podcastEpisode.title}" keys changed [${(podcastEpisode.changed() as string[] | undefined)?.join(', ')}]`)
             await podcastEpisode.save()
             hasEpisodeChanges = true
           }
@@ -155,7 +151,8 @@ class PodcastScanner {
           chapters: newAudioFile.chapters || [],
           podcastId: media.id
         }
-        const newPodcastEpisode = Database.podcastEpisodeModel.build(newEpisode)
+        // cast(d): pubDate is null until the date tag sets it (the column allows null; the model types it as a string) and the audio file is the AudioFile JSON
+        const newPodcastEpisode = Database.podcastEpisodeModel.build(newEpisode as unknown as CreationAttributes<PodcastEpisode>)
         // Set metadata and save new episode
         AudioFileScanner.setPodcastEpisodeMetadataFromAudioMetaTags(newPodcastEpisode, libraryScan)
         libraryScan.addLog(LogLevel.INFO, `New Podcast episode "${newPodcastEpisode.title}" added`)
@@ -197,7 +194,8 @@ class PodcastScanner {
     // Check if cover is not set and image files were found
     if (!media.coverPath && libraryItemData.imageLibraryFiles.length) {
       // Prefer using a cover image with the name "cover" otherwise use the first image
-      const coverMatch = libraryItemData.imageLibraryFiles.find((iFile) => /\/cover\.[^.\/]*$/.test(iFile.metadata.path))
+      // Scanned library files have a path (set by setDataFromPath)
+      const coverMatch = libraryItemData.imageLibraryFiles.find((iFile) => /\/cover\.[^.\/]*$/.test(iFile.metadata.path!))
       media.coverPath = coverMatch?.metadata.path || libraryItemData.imageLibraryFiles[0].metadata.path
       hasMediaChanges = true
     }
@@ -206,7 +204,8 @@ class PodcastScanner {
 
     for (const key in podcastMetadata) {
       // Ignore unset metadata and empty arrays
-      if (podcastMetadata[key] === undefined || (Array.isArray(podcastMetadata[key]) && !podcastMetadata[key].length)) continue
+      // cast(d): dynamic metadata key (all 4 casts)
+      if ((podcastMetadata as Record<string, unknown>)[key] === undefined || (Array.isArray((podcastMetadata as Record<string, unknown>)[key]) && !((podcastMetadata as Record<string, unknown>)[key] as unknown[]).length)) continue
 
       if (key === 'genres') {
         const existingGenres = media.genres || []
@@ -224,9 +223,12 @@ class PodcastScanner {
           media.changed('tags', true)
           hasMediaChanges = true
         }
-      } else if (podcastMetadata[key] !== media[key]) {
-        libraryScan.addLog(LogLevel.DEBUG, `Updating podcast ${key} "${media[key]}" => "${podcastMetadata[key]}" for podcast "${podcastMetadata.title}"`)
-        media[key] = podcastMetadata[key]
+        // cast(d): dynamic metadata key (both casts)
+      } else if ((podcastMetadata as Record<string, unknown>)[key] !== (media as unknown as Record<string, unknown>)[key]) {
+        // cast(d): dynamic metadata key (both casts)
+        libraryScan.addLog(LogLevel.DEBUG, `Updating podcast ${key} "${(media as unknown as Record<string, unknown>)[key]}" => "${(podcastMetadata as Record<string, unknown>)[key]}" for podcast "${podcastMetadata.title}"`)
+        // cast(d): dynamic metadata key (both casts; the podcast metadata keys are podcast fields of the same types: strings, explicit boolean)
+        ;(media as unknown as Record<string, unknown>)[key] = (podcastMetadata as Record<string, unknown>)[key]
         hasMediaChanges = true
       }
     }
@@ -249,7 +251,8 @@ class PodcastScanner {
     // Save Podcast changes to db
     if (hasMediaChanges) {
       await media.save()
-      await this.saveMetadataFile(existingLibraryItem, libraryScan)
+      // cast(d): this scanner only rescans podcast library items (media is the podcast set above)
+      await this.saveMetadataFile(existingLibraryItem as LibraryItem.PodcastLibraryItem, libraryScan)
       libraryItemUpdated = global.ServerSettings.storeMetadataWithItem
     }
 
@@ -264,14 +267,7 @@ class PodcastScanner {
     }
   }
 
-  /**
-   *
-   * @param {import('./LibraryItemScanData')} libraryItemData
-   * @param {import('../models/Library').LibrarySettingsObject} librarySettings
-   * @param {import('./LibraryScan')} libraryScan
-   * @returns {Promise<import('../models/LibraryItem')>}
-   */
-  async scanNewPodcastLibraryItem(libraryItemData, librarySettings, libraryScan) {
+  async scanNewPodcastLibraryItem(libraryItemData: LibraryItemScanData, librarySettings: LibrarySettingsObject, libraryScan: LibraryScan | ScanLogger): Promise<LibraryItem | null> {
     // Scan audio files found
     let scannedAudioFiles = await AudioFileScanner.executeMediaFileScans(libraryItemData.mediaType, libraryItemData, libraryItemData.audioLibraryFiles)
 
@@ -281,14 +277,14 @@ class PodcastScanner {
       return null
     }
 
-    const newPodcastEpisodes = []
+    const newPodcastEpisodes: NewPodcastEpisode[] = []
 
     // Create podcast episodes from audio files
     for (const audioFile of scannedAudioFiles) {
       // Podcast episode audio files always have index 1
       audioFile.index = 1
 
-      const newEpisode = {
+      const newEpisode: NewPodcastEpisode = {
         title: audioFile.metaTags.tagTitle || audioFile.metadata.filenameNoExt,
         subtitle: null,
         season: null,
@@ -313,7 +309,8 @@ class PodcastScanner {
     // Set cover image from library file
     if (libraryItemData.imageLibraryFiles.length) {
       // Prefer using a cover image with the name "cover" otherwise use the first image
-      const coverMatch = libraryItemData.imageLibraryFiles.find((iFile) => /\/cover\.[^.\/]*$/.test(iFile.metadata.path))
+      // Scanned library files have a path (set by setDataFromPath)
+      const coverMatch = libraryItemData.imageLibraryFiles.find((iFile) => /\/cover\.[^.\/]*$/.test(iFile.metadata.path!))
       podcastMetadata.coverPath = coverMatch?.metadata.path || libraryItemData.imageLibraryFiles[0].metadata.path
     }
 
@@ -348,22 +345,27 @@ class PodcastScanner {
     }
 
     libraryItemObj.podcast = podcastObject
-    const libraryItem = await Database.libraryItemModel.create(libraryItemObj, {
+    // cast(b): created with the nested podcast (the association sets mediaId) and the scanned LibraryFile objects (serialized with toJSON)
+    const libraryItem = await Database.libraryItemModel.create(libraryItemObj as unknown as CreationAttributes<LibraryItem>, {
+      // cast(b): sequelize accepts a single model or include object as a nested include, its types only allow an array
       include: {
         model: Database.podcastModel,
         include: Database.podcastEpisodeModel
-      }
+      } as unknown as Includeable
     })
 
-    Database.addGenresToFilterData(libraryItemData.libraryId, libraryItem.podcast.genres)
-    Database.addTagsToFilterData(libraryItemData.libraryId, libraryItem.podcast.tags)
+    // The podcast is created with the library item (included above)
+    Database.addGenresToFilterData(libraryItemData.libraryId, libraryItem.podcast!.genres)
+    Database.addTagsToFilterData(libraryItemData.libraryId, libraryItem.podcast!.tags)
 
     // Load for emitting to client
-    libraryItem.media = await libraryItem.getMedia({
+    // cast(d): the media of the new podcast library item is the podcast created above
+    libraryItem.media = (await libraryItem.getMedia({
       include: Database.podcastEpisodeModel
-    })
+    })) as Podcast
 
-    await this.saveMetadataFile(libraryItem, libraryScan)
+    // cast(d): the library item was created as a podcast above
+    await this.saveMetadataFile(libraryItem as LibraryItem.PodcastLibraryItem, libraryScan)
     if (global.ServerSettings.storeMetadataWithItem) {
       libraryItem.changed('libraryFiles', true)
       await libraryItem.save()
@@ -374,15 +376,13 @@ class PodcastScanner {
 
   /**
    *
-   * @param {PodcastEpisode[]} podcastEpisodes Not the models for new podcasts
-   * @param {import('./LibraryItemScanData')} libraryItemData
-   * @param {import('./LibraryScan')} libraryScan
-   * @param {string} [existingLibraryItemId]
-   * @returns {Promise<PodcastMetadataObject>}
+   * @param podcastEpisodes Not the models for new podcasts
+   * @param [existingLibraryItemId]
    */
-  async getPodcastMetadataFromScanData(podcastEpisodes, libraryItemData, libraryScan, existingLibraryItemId = null) {
-    const podcastMetadata = {
-      title: libraryItemData.mediaMetadata.title,
+  async getPodcastMetadataFromScanData(podcastEpisodes: (PodcastEpisode | NewPodcastEpisode)[], libraryItemData: LibraryItemScanData, libraryScan: LibraryScan | ScanLogger, existingLibraryItemId: string | null = null): Promise<PodcastMetadataObject> {
+    const podcastMetadata: PodcastMetadataObject = {
+      // The folder or file name gives the title
+      title: libraryItemData.mediaMetadata.title!,
       titleIgnorePrefix: undefined,
       author: undefined,
       releaseDate: undefined,
@@ -417,12 +417,8 @@ class PodcastScanner {
   }
 
   /**
-   *
-   * @param {import('../models/LibraryItem')} libraryItem
-   * @param {import('./LibraryScan')} libraryScan
-   * @returns {Promise}
    */
-  async saveMetadataFile(libraryItem, libraryScan) {
+  async saveMetadataFile(libraryItem: LibraryItem.PodcastLibraryItem, libraryScan: LibraryScan | ScanLogger) {
     let metadataPath = Path.join(global.MetadataPath, 'items', libraryItem.id)
     let storeMetadataWithItem = global.ServerSettings.storeMetadataWithItem
     if (storeMetadataWithItem) {
@@ -450,7 +446,9 @@ class PodcastScanner {
       itunesPageURL: libraryItem.media.itunesPageURL,
       itunesId: libraryItem.media.itunesId,
       itunesArtistId: libraryItem.media.itunesArtistId,
-      asin: libraryItem.media.asin,
+      // NOTE: Podcast has no asin, so this is always undefined (and left out of metadata.json)
+      // cast(c): read as in the JS (see NOTE above)
+      asin: (libraryItem.media as Podcast & { asin?: string }).asin,
       language: libraryItem.media.language,
       explicit: !!libraryItem.media.explicit,
       podcastType: libraryItem.media.podcastType
@@ -495,4 +493,4 @@ class PodcastScanner {
       })
   }
 }
-module.exports = new PodcastScanner()
+export = new PodcastScanner()

@@ -1,22 +1,87 @@
-const Path = require('path')
-const Logger = require('../Logger')
-const prober = require('../utils/prober')
-const { LogLevel } = require('../utils/constants')
-const { parseOverdriveMediaMarkersAsChapters } = require('../utils/parsers/parseOverdriveMediaMarkers')
-const parseNameString = require('../utils/parsers/parseNameString')
-const parseSeriesString = require('../utils/parsers/parseSeriesString')
-const LibraryItem = require('../models/LibraryItem')
-const AudioFile = require('../objects/files/AudioFile')
+import Path = require('path')
+import Logger = require('../Logger')
+import prober = require('../utils/prober')
+import constants = require('../utils/constants')
+import parseOverdriveMediaMarkers = require('../utils/parsers/parseOverdriveMediaMarkers')
+import parseNameString = require('../utils/parsers/parseNameString')
+import parseSeriesString = require('../utils/parsers/parseSeriesString')
+// Only used as a type; required for its side effects so the module load order stays as in the JS
+import '../models/LibraryItem'
+import type LibraryItem = require('../models/LibraryItem')
+import AudioFile = require('../objects/files/AudioFile')
+import type LibraryFile = require('../objects/files/LibraryFile')
+import type MediaProbeData = require('./MediaProbeData')
+import type LibraryScan = require('./LibraryScan')
+import type ScanLogger = require('./ScanLogger')
+import type LibraryItemScanData = require('./LibraryItemScanData')
+import type { AudioFileObject, ChapterObject, LibraryFileObject } from '../models/types'
+import type { BookMetadataObject, PodcastMetadataObject } from './types'
+import type AudioMetaTags = require('../objects/metadata/AudioMetaTags')
+const { LogLevel } = constants
+
+/**
+ * Meta tag name (AudioMetaTags field)
+ */
+type MetaTagKey = keyof ReturnType<AudioMetaTags['toJSON']>
+
+/**
+ * Meta tag to read and the metadata key it maps to
+ */
+interface MetaTagMapping {
+  tag: MetaTagKey
+  altTag?: MetaTagKey
+  key: string
+}
+const { parseOverdriveMediaMarkersAsChapters } = parseOverdriveMediaMarkers
+
+/**
+ * Audio file of a book or podcast episode: a scanned AudioFile, its JSON (AudioFile toJSON) or the stored JSON
+ */
+type ScannedOrStoredAudioFile = AudioFile | ReturnType<AudioFile['toJSON']> | AudioFileObject
+
+/**
+ * Library file to scan: a scanned LibraryFile or the stored JSON (modified files)
+ */
+type ScannedOrStoredLibraryFile = LibraryFile | LibraryFileObject
+
+/**
+ * The fields smart track order reads and sets
+ */
+interface OrderableAudioFile {
+  discNumFromFilename: number | null
+  discNumFromMeta: number | null
+  trackNumFromFilename: number | null
+  trackNumFromMeta: number | null
+  index: number | null
+}
+
+/**
+ * Library item metadata parsed from the folder and file names (see LibraryItemScanData)
+ */
+type MediaMetadataFromScan = LibraryItemScanData['mediaMetadata']
+
+/**
+ * Podcast episode whose metadata is set from its audio file meta tags (the model, or the plain episode object of a new podcast)
+ */
+interface PodcastEpisodeWithAudioFile {
+  title: string | null
+  subtitle: string | null
+  description: string | null
+  pubDate: string | null
+  season: string | null
+  episode: string | null
+  episodeType: string | null
+  publishedAt: Date | number | null
+  audioFile: ScannedOrStoredAudioFile
+}
 
 class AudioFileScanner {
   constructor() {}
 
   /**
    * Is array of numbers sequential, i.e. 1, 2, 3, 4
-   * @param {number[]} nums
-   * @returns {boolean}
    */
-  isSequential(nums) {
+  isSequential(nums: number[]): boolean {
     if (!nums?.length) return false
     if (nums.length === 1) return true
     let prev = nums[0]
@@ -29,10 +94,8 @@ class AudioFileScanner {
 
   /**
    * Remove
-   * @param {number[]} nums
-   * @returns {number[]}
    */
-  removeDupes(nums) {
+  removeDupes(nums: number[]): number[] {
     if (!nums || !nums.length) return []
     if (nums.length === 1) return nums
 
@@ -45,17 +108,14 @@ class AudioFileScanner {
 
   /**
    * Order audio files by track/disc number
-   * @param {string} libraryItemRelPath
-   * @param {import('../models/Book').AudioFileObject[]} audioFiles
-   * @returns {import('../models/Book').AudioFileObject[]}
    */
-  runSmartTrackOrder(libraryItemRelPath, audioFiles) {
+  runSmartTrackOrder<T extends OrderableAudioFile>(libraryItemRelPath: string, audioFiles: T[]): T[] {
     if (!audioFiles.length) return []
 
-    let discsFromFilename = []
-    let tracksFromFilename = []
-    let discsFromMeta = []
-    let tracksFromMeta = []
+    let discsFromFilename: number[] = []
+    let tracksFromFilename: number[] = []
+    let discsFromMeta: number[] = []
+    let tracksFromMeta: number[] = []
 
     audioFiles.forEach((af) => {
       if (af.discNumFromFilename !== null) discsFromFilename.push(af.discNumFromFilename)
@@ -68,14 +128,14 @@ class AudioFileScanner {
     tracksFromFilename.sort((a, b) => a - b)
     tracksFromMeta.sort((a, b) => a - b)
 
-    let discKey = null
+    let discKey: 'discNumFromMeta' | 'discNumFromFilename' | null = null
     if (discsFromMeta.length === audioFiles.length && this.isSequential(discsFromMeta)) {
       discKey = 'discNumFromMeta'
     } else if (discsFromFilename.length === audioFiles.length && this.isSequential(discsFromFilename)) {
       discKey = 'discNumFromFilename'
     }
 
-    let trackKey = null
+    let trackKey: 'trackNumFromFilename' | 'trackNumFromMeta' | null = null
     tracksFromFilename = this.removeDupes(tracksFromFilename)
     tracksFromMeta = this.removeDupes(tracksFromMeta)
     if (tracksFromFilename.length > tracksFromMeta.length) {
@@ -87,13 +147,16 @@ class AudioFileScanner {
     if (discKey !== null) {
       Logger.debug(`[AudioFileScanner] Smart track order for "${libraryItemRelPath}" using disc key ${discKey} and track key ${trackKey}`)
       audioFiles.sort((a, b) => {
-        let Dx = a[discKey] - b[discKey]
-        if (Dx === 0) Dx = a[trackKey] - b[trackKey]
+        // An audio file without a disc or track number (null) sorts as 0 (only files with numbers are counted above)
+        // The disc and track keys were set above
+        let Dx = a[discKey!]! - b[discKey!]!
+        if (Dx === 0) Dx = a[trackKey!]! - b[trackKey!]!
         return Dx
       })
     } else {
       Logger.debug(`[AudioFileScanner] Smart track order for "${libraryItemRelPath}" using track key ${trackKey}`)
-      audioFiles.sort((a, b) => a[trackKey] - b[trackKey])
+      // The track key was set above; a file without a track number (null) sorts as 0
+      audioFiles.sort((a, b) => a[trackKey!]! - b[trackKey!]!)
     }
 
     for (let i = 0; i < audioFiles.length; i++) {
@@ -104,26 +167,29 @@ class AudioFileScanner {
 
   /**
    * Get track and disc number from audio filename
-   * @param {{title:string, subtitle:string, series:string, sequence:string, publishedYear:string, narrators:string}} mediaMetadataFromScan
-   * @param {LibraryItem.LibraryFileObject} audioLibraryFile
-   * @returns {{trackNumber:number, discNumber:number}}
    */
-  getTrackAndDiscNumberFromFilename(mediaMetadataFromScan, audioLibraryFile) {
-    const { title, author, series, publishedYear } = mediaMetadataFromScan
-    const { filename, path } = audioLibraryFile.metadata
+  getTrackAndDiscNumberFromFilename(mediaMetadataFromScan: MediaMetadataFromScan, audioLibraryFile: ScannedOrStoredLibraryFile): { trackNumber: number | null; discNumber: number | null } {
+    // NOTE: the filename metadata has authors and seriesName, not author and series, so those two are always undefined and never removed from the filename
+    // cast(c): read as in the JS (see NOTE above)
+    const { title, author, series, publishedYear } = mediaMetadataFromScan as MediaMetadataFromScan & { author?: string; series?: string }
+    // setDataFromPath sets the filename and path of scanned files
+    const { filename, path } = audioLibraryFile.metadata as { filename: string; path: string }
     let partbasename = Path.basename(filename, Path.extname(filename))
 
     // Remove title, author, series, and publishedYear from filename if there
     if (title) partbasename = partbasename.replace(title, '')
     if (author) partbasename = partbasename.replace(author, '')
     if (series) partbasename = partbasename.replace(series, '')
-    if (publishedYear) partbasename = partbasename.replace(publishedYear)
+    // NOTE: replace without a replacement replaces the year with the string "undefined"
+    // cast(c): called as in the JS (see NOTE above)
+    if (publishedYear) partbasename = (partbasename as string & { replace(searchValue: string): string }).replace(publishedYear)
 
     // Look for disc number
     let discNumber = null
     const discMatch = partbasename.match(/\b(disc|cd) ?(\d\d?)\b/i)
     if (discMatch && discMatch.length > 2 && discMatch[2]) {
-      if (!isNaN(discMatch[2])) {
+      // cast(d): isNaN coerces the matched digits, as in the JS
+      if (!isNaN(discMatch[2] as unknown as number)) {
         discNumber = Number(discMatch[2])
       }
 
@@ -146,15 +212,10 @@ class AudioFileScanner {
     }
   }
 
-  /**
-   *
-   * @param {string} mediaType
-   * @param {LibraryItem.LibraryFileObject} libraryFile
-   * @param {{title:string, subtitle:string, series:string, sequence:string, publishedYear:string, narrators:string}} mediaMetadataFromScan
-   * @returns {Promise<AudioFile>}
-   */
-  async scan(mediaType, libraryFile, mediaMetadataFromScan) {
-    const probeData = await prober.probe(libraryFile.metadata.path)
+  async scan(mediaType: string, libraryFile: ScannedOrStoredLibraryFile, mediaMetadataFromScan: MediaMetadataFromScan): Promise<AudioFile | null> {
+    // cast(d): an error result only has error, which is checked first; the other reads come after that check
+    // setDataFromPath sets the path of scanned files
+    const probeData = (await prober.probe(libraryFile.metadata.path!)) as MediaProbeData
 
     if (probeData.error) {
       Logger.error(`[AudioFileScanner] ${probeData.error} : "${libraryFile.metadata.path}"`)
@@ -167,8 +228,9 @@ class AudioFileScanner {
     }
 
     const audioFile = new AudioFile()
-    audioFile.trackNumFromMeta = probeData.audioMetaTags.trackNumber
-    audioFile.discNumFromMeta = probeData.audioMetaTags.discNumber
+    // setData sets the audio meta tags of probe data
+    audioFile.trackNumFromMeta = probeData.audioMetaTags!.trackNumber
+    audioFile.discNumFromMeta = probeData.audioMetaTags!.discNumber
     if (mediaType === 'book') {
       const { trackNumber, discNumber } = this.getTrackAndDiscNumberFromFilename(mediaMetadataFromScan, libraryFile)
       audioFile.trackNumFromFilename = trackNumber
@@ -181,45 +243,32 @@ class AudioFileScanner {
 
   /**
    * Scan LibraryFiles and return AudioFiles
-   * @param {string} mediaType
-   * @param {import('./LibraryItemScanData')} libraryItemScanData
-   * @param {LibraryItem.LibraryFileObject[]} audioLibraryFiles
-   * @returns {Promise<AudioFile[]>}
    */
-  async executeMediaFileScans(mediaType, libraryItemScanData, audioLibraryFiles) {
+  async executeMediaFileScans(mediaType: string, libraryItemScanData: LibraryItemScanData, audioLibraryFiles: ScannedOrStoredLibraryFile[]): Promise<AudioFile[]> {
     const batchSize = 32
-    const results = []
+    const results: AudioFile[] = []
     for (let batch = 0; batch < audioLibraryFiles.length; batch += batchSize) {
-      const proms = []
+      const proms: Promise<AudioFile | null>[] = []
       for (let i = batch; i < Math.min(batch + batchSize, audioLibraryFiles.length); i++) {
         proms.push(this.scan(mediaType, audioLibraryFiles[i], libraryItemScanData.mediaMetadata))
       }
-      results.push(...(await Promise.all(proms).then((scanResults) => scanResults.filter((sr) => sr))))
+      // cast(d): the failed scans (null) are filtered out
+      results.push(...(await Promise.all(proms).then((scanResults) => scanResults.filter((sr) => sr) as AudioFile[])))
     }
 
     return results
   }
 
-  /**
-   *
-   * @param {string} audioFilePath
-   * @returns {object}
-   */
-  probeAudioFile(audioFilePath) {
+  probeAudioFile(audioFilePath: string) {
     Logger.debug(`[AudioFileScanner] Running ffprobe for audio file at "${audioFilePath}"`)
     return prober.rawProbe(audioFilePath)
   }
 
   /**
    * Set book metadata & chapters from audio file meta tags
-   *
-   * @param {string} bookTitle
-   * @param {import('../models/Book').AudioFileObject} audioFile
-   * @param {Object} bookMetadata
-   * @param {import('./LibraryScan')} libraryScan
    */
-  setBookMetadataFromAudioMetaTags(bookTitle, audioFiles, bookMetadata, libraryScan) {
-    const MetadataMapArray = [
+  setBookMetadataFromAudioMetaTags(bookTitle: string, audioFiles: ScannedOrStoredAudioFile[], bookMetadata: BookMetadataObject, libraryScan: LibraryScan | ScanLogger) {
+    const MetadataMapArray: MetaTagMapping[] = [
       {
         tag: 'tagComposer',
         key: 'narrators'
@@ -288,9 +337,11 @@ class AudioFileScanner {
         value = value.trim() // Trim whitespace
 
         if (mapping.key === 'narrators') {
-          bookMetadata.narrators = parseNameString.parse(value)?.names || []
+          // cast(d): the name parser types its names as possibly undefined; they are the parsed strings
+          bookMetadata.narrators = (parseNameString.parse(value)?.names || []) as string[]
         } else if (mapping.key === 'authors') {
-          bookMetadata.authors = parseNameString.parse(value)?.names || []
+          // cast(d): the name parser types its names as possibly undefined; they are the parsed strings
+          bookMetadata.authors = (parseNameString.parse(value)?.names || []) as string[]
         } else if (mapping.key === 'genres') {
           bookMetadata.genres = this.parseGenresString(value)
         } else if (mapping.key === 'series') {
@@ -305,7 +356,8 @@ class AudioFileScanner {
               })
               .filter(Boolean)
             if (series.length) {
-              bookMetadata.series = series
+              // cast(d): the series that did not parse (null) are filtered out
+              bookMetadata.series = series as BookMetadataObject['series']
             }
           } else {
             // Detect if multiple series are in the series & series-part tags.
@@ -338,7 +390,8 @@ class AudioFileScanner {
             ]
           }
         } else {
-          bookMetadata[mapping.key] = value
+          // cast(d): dynamic metadata key
+          (bookMetadata as Record<string, unknown>)[mapping.key] = value
         }
       }
     })
@@ -352,15 +405,11 @@ class AudioFileScanner {
 
   /**
    * Set podcast metadata from first audio file
-   *
-   * @param {import('../models/Book').AudioFileObject} audioFile
-   * @param {Object} podcastMetadata
-   * @param {import('./LibraryScan')} libraryScan
    */
-  setPodcastMetadataFromAudioMetaTags(audioFile, podcastMetadata, libraryScan) {
+  setPodcastMetadataFromAudioMetaTags(audioFile: ScannedOrStoredAudioFile, podcastMetadata: PodcastMetadataObject, libraryScan: LibraryScan | ScanLogger) {
     const audioFileMetaTags = audioFile.metaTags
 
-    const MetadataMapArray = [
+    const MetadataMapArray: MetaTagMapping[] = [
       {
         tag: 'tagAlbum',
         altTag: 'tagSeries',
@@ -404,20 +453,20 @@ class AudioFileScanner {
           podcastMetadata.genres = this.parseGenresString(value)
           libraryScan.addLog(LogLevel.DEBUG, `Mapping metadata to key ${tagToUse} => ${mapping.key}: ${podcastMetadata.genres.join(', ')}`)
         } else {
-          podcastMetadata[mapping.key] = value
-          libraryScan.addLog(LogLevel.DEBUG, `Mapping metadata to key ${tagToUse} => ${mapping.key}: ${podcastMetadata[mapping.key]}`)
+          // cast(d): dynamic metadata key
+          (podcastMetadata as Record<string, unknown>)[mapping.key] = value
+          // cast(d): dynamic metadata key
+          libraryScan.addLog(LogLevel.DEBUG, `Mapping metadata to key ${tagToUse} => ${mapping.key}: ${(podcastMetadata as Record<string, unknown>)[mapping.key]}`)
         }
       }
     })
   }
 
   /**
-   *
-   * @param {import('../models/PodcastEpisode')} podcastEpisode Not the model when creating new podcast
-   * @param {import('./ScanLogger')} scanLogger
+   * @param podcastEpisode Not the model when creating new podcast
    */
-  setPodcastEpisodeMetadataFromAudioMetaTags(podcastEpisode, scanLogger) {
-    const MetadataMapArray = [
+  setPodcastEpisodeMetadataFromAudioMetaTags(podcastEpisode: PodcastEpisodeWithAudioFile, scanLogger: LibraryScan | ScanLogger) {
+    const MetadataMapArray: MetaTagMapping[] = [
       {
         tag: 'tagComment',
         altTag: 'tagDescription',
@@ -464,44 +513,45 @@ class AudioFileScanner {
 
         if (mapping.key === 'pubDate') {
           const pubJsDate = new Date(value)
-          if (pubJsDate && !isNaN(pubJsDate)) {
+          // cast(d): isNaN coerces the Date to its time value, as in the JS
+          if (pubJsDate && !isNaN(pubJsDate as unknown as number)) {
             podcastEpisode.publishedAt = pubJsDate.valueOf()
             podcastEpisode.pubDate = value
-            scanLogger.addLog(LogLevel.DEBUG, `Mapping metadata to key ${tagToUse} => ${mapping.key}: ${podcastEpisode[mapping.key]}`)
+            // cast(d): dynamic metadata key
+            scanLogger.addLog(LogLevel.DEBUG, `Mapping metadata to key ${tagToUse} => ${mapping.key}: ${(podcastEpisode as unknown as Record<string, unknown>)[mapping.key]}`)
           } else {
             scanLogger.addLog(LogLevel.WARN, `Mapping pubDate with tag ${tagToUse} has invalid date "${value}"`)
           }
         } else if (mapping.key === 'episodeType') {
           if (['full', 'trailer', 'bonus'].includes(value)) {
             podcastEpisode.episodeType = value
-            scanLogger.addLog(LogLevel.DEBUG, `Mapping metadata to key ${tagToUse} => ${mapping.key}: ${podcastEpisode[mapping.key]}`)
+            // cast(d): dynamic metadata key
+            scanLogger.addLog(LogLevel.DEBUG, `Mapping metadata to key ${tagToUse} => ${mapping.key}: ${(podcastEpisode as unknown as Record<string, unknown>)[mapping.key]}`)
           } else {
             scanLogger.addLog(LogLevel.WARN, `Mapping episodeType with invalid value "${value}". Must be one of [full, trailer, bonus].`)
           }
         } else {
-          podcastEpisode[mapping.key] = value
-          scanLogger.addLog(LogLevel.DEBUG, `Mapping metadata to key ${tagToUse} => ${mapping.key}: ${podcastEpisode[mapping.key]}`)
+          // cast(d): dynamic metadata key (description, subtitle, season, episode, title: string columns)
+          (podcastEpisode as unknown as Record<string, unknown>)[mapping.key] = value
+          // cast(d): dynamic metadata key
+          scanLogger.addLog(LogLevel.DEBUG, `Mapping metadata to key ${tagToUse} => ${mapping.key}: ${(podcastEpisode as unknown as Record<string, unknown>)[mapping.key]}`)
         }
       }
     })
   }
 
-  /**
-   * @param {string} bookTitle
-   * @param {AudioFile[]} audioFiles
-   * @param {import('./LibraryScan')} libraryScan
-   * @returns {import('../models/Book').ChapterObject[]}
-   */
-  getBookChaptersFromAudioFiles(bookTitle, audioFiles, libraryScan) {
+  getBookChaptersFromAudioFiles(bookTitle: string, audioFiles: ScannedOrStoredAudioFile[], libraryScan: LibraryScan | ScanLogger): ChapterObject[] {
     // If overdrive media markers are present then use those instead
-    const overdriveChapters = parseOverdriveMediaMarkersAsChapters(audioFiles)
+    // cast(d): scanned and stored audio files have a duration
+    const overdriveChapters = parseOverdriveMediaMarkersAsChapters(audioFiles as Parameters<typeof parseOverdriveMediaMarkersAsChapters>[0])
     if (overdriveChapters?.length) {
       libraryScan.addLog(LogLevel.DEBUG, 'Overdrive Media Markers and preference found! Using these for chapter definitions')
 
-      return overdriveChapters
+      // cast(d): addChapterEndTimes sets the end of every chapter
+      return overdriveChapters as ChapterObject[]
     }
 
-    let chapters = []
+    let chapters: ChapterObject[] = []
 
     // If first audio file has embedded chapters then use embedded chapters
     if (audioFiles[0].chapters?.length) {
@@ -557,7 +607,8 @@ class AudioFileScanner {
         if (file.duration) {
           let title = file.metadata.filename ? Path.basename(file.metadata.filename, Path.extname(file.metadata.filename)) : `Chapter ${currChapterId}`
           if (useMetaTagAsTitle) {
-            title = file.metaTags.tagTitle
+            // Every file has a title tag when useMetaTagAsTitle is true
+            title = file.metaTags.tagTitle!
           }
 
           chapters.push({
@@ -576,11 +627,8 @@ class AudioFileScanner {
   /**
    * Parse a genre string into multiple genres
    * @example "Fantasy;Sci-Fi;History" => ["Fantasy", "Sci-Fi", "History"]
-   *
-   * @param {string} genreTag
-   * @returns {string[]}
    */
-  parseGenresString(genreTag) {
+  parseGenresString(genreTag: string): string[] {
     if (!genreTag?.length) return []
     const separators = ['/', '//', ';']
     for (let i = 0; i < separators.length; i++) {
@@ -594,4 +642,4 @@ class AudioFileScanner {
     return [genreTag]
   }
 }
-module.exports = new AudioFileScanner()
+export = new AudioFileScanner()

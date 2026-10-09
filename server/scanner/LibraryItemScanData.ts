@@ -1,60 +1,95 @@
-const packageJson = require('../../package.json')
-const { LogLevel } = require('../utils/constants')
-const LibraryItem = require('../models/LibraryItem')
-const globals = require('../utils/globals')
+import packageJson = require('../../package.json')
+import constants = require('../utils/constants')
+// Only used as a type; required for its side effects so the module load order stays as in the JS
+import '../models/LibraryItem'
+import type LibraryItem = require('../models/LibraryItem')
+import globals = require('../utils/globals')
+import type LibraryFile = require('../objects/files/LibraryFile')
+import type scandir = require('../utils/scandir')
+import type LibraryScan = require('./LibraryScan')
+import type ScanLogger = require('./ScanLogger')
+import type { AudioFileObject, EBookFileObject, LibraryFileObject } from '../models/types'
+import type { BookMetadataObject, NewLibraryItemObject } from './types'
+const { LogLevel } = constants
+
+interface LibraryFileModifiedObject {
+  old: LibraryFileObject
+  new: LibraryFileObject
+}
+
+/**
+ * Library item metadata parsed from the folder and file names (see utils/scandir)
+ */
+type LibraryItemFilenameMetadata = ReturnType<typeof scandir.getBookDataFromDir>
+
+/**
+ * Data of a scanned library item folder or file (see LibraryItemScanner getLibraryItemScanData)
+ */
+interface LibraryItemScanDataInput {
+  libraryFolderId: string
+  libraryId: string
+  mediaType: string
+  ino: string
+  mtimeMs: number
+  ctimeMs: number
+  birthtimeMs: number
+  path: string
+  relPath: string
+  isFile: boolean
+  mediaMetadata: LibraryItemFilenameMetadata
+  libraryFiles: LibraryFile[]
+}
 
 class LibraryItemScanData {
-  /**
-   * @typedef LibraryFileModifiedObject
-   * @property {LibraryItem.LibraryFileObject} old
-   * @property {LibraryItem.LibraryFileObject} new
-   */
+  declare libraryFolderId: string
+  declare libraryId: string
+  declare mediaType: string
+  declare ino: string
+  declare mtimeMs: number
+  declare ctimeMs: number
+  declare birthtimeMs: number
+  declare path: string
+  declare relPath: string
+  declare isFile: boolean
+  declare mediaMetadata: LibraryItemFilenameMetadata
+  declare libraryFiles: LibraryFile[]
+  /** Set by checkLibraryItemData */
+  declare hasChanges: boolean
+  /** Set by checkLibraryItemData */
+  declare hasPathChange: boolean
+  declare libraryFilesRemoved: LibraryFileObject[]
+  declare libraryFilesAdded: LibraryFile[]
+  declare libraryFilesModified: LibraryFileModifiedObject[]
 
-  constructor(data) {
-    /** @type {string} */
+  constructor(data: LibraryItemScanDataInput) {
     this.libraryFolderId = data.libraryFolderId
-    /** @type {string} */
     this.libraryId = data.libraryId
-    /** @type {string} */
     this.mediaType = data.mediaType
-    /** @type {string} */
     this.ino = data.ino
-    /** @type {number} */
     this.mtimeMs = data.mtimeMs
-    /** @type {number} */
     this.ctimeMs = data.ctimeMs
-    /** @type {number} */
     this.birthtimeMs = data.birthtimeMs
-    /** @type {string} */
     this.path = data.path
-    /** @type {string} */
     this.relPath = data.relPath
-    /** @type {boolean} */
     this.isFile = data.isFile
-    /** @type {import('../utils/scandir').LibraryItemFilenameMetadata} */
     this.mediaMetadata = data.mediaMetadata
-    /** @type {import('../objects/files/LibraryFile')[]} */
     this.libraryFiles = data.libraryFiles
 
     // Set after check
-    /** @type {boolean} */
     this.hasChanges
-    /** @type {boolean} */
     this.hasPathChange
-    /** @type {LibraryItem.LibraryFileObject[]} */
     this.libraryFilesRemoved = []
-    /** @type {LibraryItem.LibraryFileObject[]} */
     this.libraryFilesAdded = []
-    /** @type {LibraryFileModifiedObject[]} */
     this.libraryFilesModified = []
   }
 
   /**
    * Used to create a library item
    */
-  get libraryItemObject() {
+  get libraryItemObject(): NewLibraryItemObject {
     let size = 0
-    this.libraryFiles.forEach((lf) => size += (!isNaN(lf.metadata.size) ? Number(lf.metadata.size) : 0))
+    // cast(d): isNaN coerces a null size to 0, as in the JS
+    this.libraryFiles.forEach((lf) => size += (!isNaN(lf.metadata.size as number) ? Number(lf.metadata.size) : 0))
     return {
       ino: this.ino,
       path: this.path,
@@ -73,12 +108,10 @@ class LibraryItemScanData {
     }
   }
 
-  /** @type {boolean} */
   get hasLibraryFileChanges() {
     return this.libraryFilesRemoved.length + this.libraryFilesModified.length + this.libraryFilesAdded.length
   }
 
-  /** @type {boolean} */
   get hasAudioFileChanges() {
     return (this.audioLibraryFilesRemoved.length + this.audioLibraryFilesAdded.length + this.audioLibraryFilesModified.length) > 0
   }
@@ -165,28 +198,30 @@ class LibraryItemScanData {
 
   /** @type {LibraryItem.LibraryFileObject} */
   get metadataOpfLibraryFile() {
-    return this.libraryFiles.find(lf => lf.metadata.ext.toLowerCase() === '.opf')
+    // Scanned library files have an extension (set by setDataFromPath)
+    return this.libraryFiles.find(lf => lf.metadata.ext!.toLowerCase() === '.opf')
   }
 
   /** @type {LibraryItem.LibraryFileObject} */
   get metadataNfoLibraryFile() {
-    return this.libraryFiles.find(lf => lf.metadata.ext.toLowerCase() === '.nfo')
+    // Scanned library files have an extension (set by setDataFromPath)
+    return this.libraryFiles.find(lf => lf.metadata.ext!.toLowerCase() === '.nfo')
   }
 
   /**
-   * 
-   * @param {LibraryItem} existingLibraryItem 
-   * @param {import('./LibraryScan')} libraryScan
-   * @returns {boolean} true if changes found
+   * @returns true if changes found
    */
-  async checkLibraryItemData(existingLibraryItem, libraryScan) {
+  async checkLibraryItemData(existingLibraryItem: LibraryItem, libraryScan: LibraryScan | ScanLogger): Promise<boolean> {
     const keysToCompare = ['libraryFolderId', 'ino', 'path', 'relPath', 'isFile']
     this.hasChanges = false
     this.hasPathChange = false
     for (const key of keysToCompare) {
-      if (existingLibraryItem[key] !== this[key]) {
-        libraryScan.addLog(LogLevel.DEBUG, `Library item "${existingLibraryItem.relPath}" key "${key}" changed from "${existingLibraryItem[key]}" to "${this[key]}"`)
-        existingLibraryItem[key] = this[key]
+      // cast(d): dynamic metadata key (both casts)
+      if ((existingLibraryItem as unknown as Record<string, unknown>)[key] !== (this as unknown as Record<string, unknown>)[key]) {
+        // cast(d): dynamic metadata key (both casts)
+        libraryScan.addLog(LogLevel.DEBUG, `Library item "${existingLibraryItem.relPath}" key "${key}" changed from "${(existingLibraryItem as unknown as Record<string, unknown>)[key]}" to "${(this as unknown as Record<string, unknown>)[key]}"`)
+        // cast(d): dynamic metadata key (both casts; the keys are libraryFolderId, ino, path, relPath and isFile, which have the same types on both)
+        ;(existingLibraryItem as unknown as Record<string, unknown>)[key] = (this as unknown as Record<string, unknown>)[key]
         this.hasChanges = true
 
         if (key === 'relPath' || key === 'path') {
@@ -268,7 +303,8 @@ class LibraryItemScanData {
       existingLibraryItem.lastScan = Date.now()
       existingLibraryItem.lastScanVersion = packageJson.version
 
-      libraryScan.addLog(LogLevel.DEBUG, `Library item "${existingLibraryItem.relPath}" changed: [${existingLibraryItem.changed()?.join(',') || ''}]`)
+      // cast(d): changed() returns false when nothing changed; false?.join is undefined, as in the JS
+      libraryScan.addLog(LogLevel.DEBUG, `Library item "${existingLibraryItem.relPath}" changed: [${(existingLibraryItem.changed() as string[] | undefined)?.join(',') || ''}]`)
 
       if (this.hasLibraryFileChanges) {
         existingLibraryItem.changed('libraryFiles', true)
@@ -282,28 +318,29 @@ class LibraryItemScanData {
 
   /**
    * Update existing library file with scanned in library file data
-   * @param {string} libraryItemPath
-   * @param {LibraryItem.LibraryFileObject} existingLibraryFile 
-   * @param {import('../objects/files/LibraryFile')} scannedLibraryFile 
-   * @param {import('./LibraryScan')} libraryScan
-   * @returns {boolean} false if no changes
+   * @returns false if no changes
    */
-  compareUpdateLibraryFile(libraryItemPath, existingLibraryFile, scannedLibraryFile, libraryScan) {
+  compareUpdateLibraryFile(libraryItemPath: string, existingLibraryFile: LibraryFileObject, scannedLibraryFile: LibraryFile, libraryScan: LibraryScan | ScanLogger): boolean {
     let hasChanges = false
 
     if (existingLibraryFile.ino !== scannedLibraryFile.ino) {
-      existingLibraryFile.ino = scannedLibraryFile.ino
+      // setDataFromPath sets the ino of scanned files
+      existingLibraryFile.ino = scannedLibraryFile.ino!
       hasChanges = true
     }
 
     for (const key in existingLibraryFile.metadata) {
-      if (existingLibraryFile.metadata[key] !== scannedLibraryFile.metadata[key]) {
+      // cast(d): dynamic metadata key (both casts)
+      if ((existingLibraryFile.metadata as unknown as Record<string, unknown>)[key] !== (scannedLibraryFile.metadata as unknown as Record<string, unknown>)[key]) {
         if (key !== 'path' && key !== 'relPath') {
-          libraryScan.addLog(LogLevel.DEBUG, `Library file "${existingLibraryFile.metadata.relPath}" for library item "${libraryItemPath}" key "${key}" changed from "${existingLibraryFile.metadata[key]}" to "${scannedLibraryFile.metadata[key]}"`)
+          // cast(d): dynamic metadata key (both casts)
+          libraryScan.addLog(LogLevel.DEBUG, `Library file "${existingLibraryFile.metadata.relPath}" for library item "${libraryItemPath}" key "${key}" changed from "${(existingLibraryFile.metadata as unknown as Record<string, unknown>)[key]}" to "${(scannedLibraryFile.metadata as unknown as Record<string, unknown>)[key]}"`)
         } else {
-          libraryScan.addLog(LogLevel.DEBUG, `Library file for library item "${libraryItemPath}" key "${key}" changed from "${existingLibraryFile.metadata[key]}" to "${scannedLibraryFile.metadata[key]}"`)
+          // cast(d): dynamic metadata key (both casts)
+          libraryScan.addLog(LogLevel.DEBUG, `Library file for library item "${libraryItemPath}" key "${key}" changed from "${(existingLibraryFile.metadata as unknown as Record<string, unknown>)[key]}" to "${(scannedLibraryFile.metadata as unknown as Record<string, unknown>)[key]}"`)
         }
-        existingLibraryFile.metadata[key] = scannedLibraryFile.metadata[key]
+        // cast(d): dynamic metadata key (both casts; the same file metadata keys on both)
+        (existingLibraryFile.metadata as unknown as Record<string, unknown>)[key] = (scannedLibraryFile.metadata as unknown as Record<string, unknown>)[key]
         hasChanges = true
       }
     }
@@ -317,10 +354,9 @@ class LibraryItemScanData {
 
   /**
    * Check if existing audio file on Book was removed
-   * @param {import('../models/Book').AudioFileObject} existingAudioFile 
-   * @returns {boolean} true if audio file was removed
+   * @returns true if audio file was removed
    */
-  checkAudioFileRemoved(existingAudioFile) {
+  checkAudioFileRemoved(existingAudioFile: AudioFileObject): boolean {
     if (!this.audioLibraryFilesRemoved.length) return false
     // First check exact path
     if (this.audioLibraryFilesRemoved.some(af => af.metadata.path === existingAudioFile.metadata.path)) {
@@ -332,10 +368,9 @@ class LibraryItemScanData {
 
   /**
    * Check if existing ebook file on Book was removed
-   * @param {import('../models/Book').EBookFileObject} ebookFile 
-   * @returns {boolean} true if ebook file was removed
+   * @returns true if ebook file was removed
    */
-  checkEbookFileRemoved(ebookFile) {
+  checkEbookFileRemoved(ebookFile: EBookFileObject): boolean {
     if (!this.ebookLibraryFiles.length) return true
 
     if (this.ebookLibraryFiles.some(lf => lf.metadata.path === ebookFile.metadata.path)) {
@@ -347,22 +382,24 @@ class LibraryItemScanData {
 
   /**
    * Set data parsed from filenames
-   * 
-   * @param {Object} bookMetadata 
    */
-  setBookMetadataFromFilenames(bookMetadata) {
+  setBookMetadataFromFilenames(bookMetadata: BookMetadataObject) {
     const keysToMap = ['title', 'subtitle', 'publishedYear', 'asin']
     for (const key in this.mediaMetadata) {
-      if (keysToMap.includes(key) && this.mediaMetadata[key]) {
-        bookMetadata[key] = this.mediaMetadata[key]
+      // cast(d): dynamic metadata key
+      if (keysToMap.includes(key) && (this.mediaMetadata as unknown as Record<string, unknown>)[key]) {
+        // cast(d): dynamic metadata key (both casts)
+        (bookMetadata as Record<string, unknown>)[key] = (this.mediaMetadata as unknown as Record<string, unknown>)[key]
       }
     }
 
     if (this.mediaMetadata.authors?.length) {
-      bookMetadata.authors = this.mediaMetadata.authors
+      // cast(d): the name parser types its names as possibly undefined; they are the parsed strings
+      bookMetadata.authors = this.mediaMetadata.authors as string[]
     }
     if (this.mediaMetadata.narrators?.length) {
-      bookMetadata.narrators = this.mediaMetadata.narrators
+      // cast(d): the name parser types its names as possibly undefined; they are the parsed strings
+      bookMetadata.narrators = this.mediaMetadata.narrators as string[]
     }
     if (this.mediaMetadata.seriesName) {
       bookMetadata.series = [
@@ -374,4 +411,4 @@ class LibraryItemScanData {
     }
   }
 }
-module.exports = LibraryItemScanData
+export = LibraryItemScanData

@@ -19,8 +19,8 @@ Goal: convert every first-party .js file under server/ and index.js to TypeScrip
 | 2 | server/objects (all subfolders) | 18 | done |
 | 3 | server/models | 25 | 3a done, 3b done (QueryFindOptions kept, see Known deviations) |
 | 4 | server/auth and server/routers | 6 | done |
-| 5 | server/managers | 18 | todo |
-| 6 | server/scanner | 13 | todo |
+| 5 | server/managers | 18 | done |
+| 6 | server/scanner | 13 | done |
 | 7 | server/controllers (remaining 22) | 22 | todo |
 | 8 | server/migrations | 15 | todo |
 | 9 | server top-level files (Logger, Database, Auth, SocketAuthority, Watcher, Server) and index.js | 7 | todo |
@@ -51,6 +51,18 @@ Each has a `NOTE:` comment at the line.
 - server/models/LibraryItem.ts `saveMetadataFile`: the podcast branch writes `asin: mediaExpanded.asin`, but Podcast has no asin, so it is always undefined (and left out of metadata.json).
 - server/models/User.ts `checkCanAccessLibraryItem`: `libraryItem.media.metadata?.explicit` reads a property of the old models; Book and Podcast have no `metadata`, so that half of the explicit check is always false.
 - server/models/Session.ts `refreshToken` (with server/auth/TokenManager.ts `createTokensAndSession`, `rotateTokensForSession`): the column is NOT NULL, but TokenManager writes `generateRefreshToken` results, which are null when signing fails; the create/update then fails validation and throws instead of reporting the signing error.
+- server/managers/NotificationManager.ts `onTest`: calls `triggerNotification('onTest')` without event data; `getApprisePayload` then reads the template variables from undefined and throws a TypeError for the default onTest templates (`{{version}}`). onTest is not called anywhere at the moment.
+- server/managers/CronManager.ts `checkUpdatePodcastCron`: the log title falls back to `libraryItem.media.metadata?.title`, an old-model property; Podcast has no `metadata`, so the fallback is always undefined.
+- server/managers/RssFeedManager.ts `checkFeedRequiresUpdate`: when the library item, collection or series of a feed no longer exists, `getEntity` returns null and the next read throws a TypeError (2 places); `getFeed`: when `updateFeedForEntity` returns null, `feed.buildXml` throws a TypeError.
+- server/managers/PodcastManager.ts `createPodcastsFromFeedUrls`: when `getFileTimestampsWithIno` fails (returns false), the library item is created with `ino` undefined and the timestamps 0; when the feed title is empty or not a string, `sanitizeFilename` returns false, so the podcast path ends in "/false" and `relPath` is false.
+- server/managers/CoverSearchManager.ts `startSearch`: on a failed search it calls `onError(error.message)`, but onError takes (provider, errorMessage), so the client gets the message as the provider and an undefined error.
+- server/managers/MigrationManager.ts constructor: the default `configPath = global.configPath` reads a global that is never set (the global is `ConfigPath`); Database passes the path, so the default is not used.
+- server/scanner/MediaProbeData.ts `setData`: prober accepts a file with only a video stream; `audio_stream` is then null and the reads of `this.audioStream` throw a TypeError, which prober.probe returns as the error (so the AudioFileScanner "no audio stream" message is not used for such files).
+- server/scanner/AudioFileScanner.ts `getTrackAndDiscNumberFromFilename`: reads `author` and `series` from the filename metadata, which has `authors` and `seriesName`, so the author and series are never removed from the filename; `partbasename.replace(publishedYear)` has no replacement, so the year is replaced with the string "undefined".
+- server/scanner/PodcastScanner.ts `saveMetadataFile`: writes `asin: libraryItem.media.asin`, but Podcast has no asin, so it is always undefined (same as LibraryItem `saveMetadataFile`).
+- server/scanner/LibraryItemScanner.ts `getLibraryItemScanData`: when `getFileTimestampsWithIno` fails (returns false), the scan data gets `ino` undefined and the timestamps 0.
+- server/scanner/Scanner.ts `quickMatchLibraryItem`: `PodcastFinder.search` returns null for a podcast without a title, and `results.length` then throws a TypeError.
+- server/scanner/LibraryScanner.ts `scanLibrary`: when a library item is removed while the scan runs, `getExpandedById` returns null and the null is pushed to the updated items and emitted to clients (`items_updated`).
 
 ## Log
 ### Batch 1: server/utils (46 files, all converted, none skipped)
@@ -150,6 +162,47 @@ Each has a `NOTE:` comment at the line.
 - No bugs found, no tests changed.
 - Result: `npm run build:server` reports 0 `error TS`; `npm test` 356 passing, 0 failing.
 
+### Batch 5 and 6: server/managers, server/scanner (31 files, all converted, none skipped)
+- File count: 31 `.js` files (server/managers 18, server/scanner 13, no subfolders), as the Progress table says.
+- All 31 files converted (build 0 `error TS`, 356 passing). Two commits: `phase3 batch 5: server/managers` (the 18 managers, scanner/MediaProbeData, which PodcastManager needs for its probe result, and the shared type changes; this commit builds and passes the tests on its own) and `phase3 batch 6: server/scanner` (the other 12 scanner files).
+- Decisions from the user (2026-10-09):
+  - fsExtra: new `server/libs/fsExtra.d.ts` (sibling of the vendored server/libs/fsExtra directory, not index.d.ts) declares the module with the existing `FsExtra` type, so `import fs = require('../libs/fsExtra')` is typed without a cast. Checked with a clean build: dist-server/server/libs/fsExtra/index.js is still emitted and dist-server/server/libs is identical to the build of the previous commit. The 14 `as unknown as FsExtra` casts from earlier batches are now redundant; remove them in batch 11: models/LibraryItem, objects/DailyLog, objects/Stream, routers/ApiRouter, routers/HlsRouter, utils/comicBookExtractors, utils/ffmpegHelpers, utils/fileUtils, utils/generators/hlsPlaylistGenerator, utils/migrations/absMetadataMigration, utils/migrations/dbMigration, utils/migrations/oldDbFiles, utils/queries/adminStats, utils/queries/userStats (one each).
+  - Exception 1 to rule 17 (catch variables): `(error as Error)` at each use of a catch clause variable, tagged `cast(d): catch variable is unknown`. Count: 16 (CoverSearchManager 7, AbMergeManager 2, BackupManager 2, BinaryManager 1, CacheManager 1, LogManager 1, MigrationManager 1, PlaybackSessionManager 1).
+  - Exception 2 to rule 17 (dynamic metadata keys): one `as Record<string, unknown>` (`as unknown as Record<string, unknown>` for model and class instances) at each dynamic-key access in the listed scanner files, tagged `cast(d): dynamic metadata key`, no aliases or rewritten loops. Count: 71 (Scanner 18, LibraryItemScanData 17, BookScanner 12, PodcastScanner 9, AudioFileScanner 7, OpfFileScanner 3, NfoFileScanner 3, AbsMetadataFileScanner 2). The dynamic writes into models (BookScanner and PodcastScanner `media[key] = metadata[key]`, LibraryItemScanData `existingLibraryItem[key] = this[key]` and the file metadata, AudioFileScanner `podcastEpisode[mapping.key]`, Scanner `updatePayload` / `episode`) only copy strings, booleans and the arrays the loops handle separately, which match the model field types (the metadata sources were checked: folder names, audio meta tags, opf, nfo, comic info, metadata.json), so no NOTE was needed.
+  - Not covered by the exceptions (normal rule 17 counts): MediaProbeData `construct` (this[key], 3, not a listed file) and PlaybackSessionManager `syncLocalSession` (1) cast to `Record<string, unknown>` (4 in total); in Scanner, 4 dynamic reads that the JS uses as a string are cast to `Record<string, string>` and 3 that it spreads as a list to `Record<string, string[]>`.
+  - Exception 3 to rule 17 (`as string`): server/scanner/LibraryScanner.ts line 674 (`hasAudioFiles`), `fileUpdateGroup[itemDir] as string` passed to `checkFilepathIsAudioFile`, tagged `cast(d): record is string | string[], single-file check is in a separate function`. With it `as string` is at 11 in the batch; it is the only cast kind over the limit apart from exceptions 1 and 2.
+  - Meta tags are not read through casts: AudioFileScanner types the `tag`/`altTag` of its mapping tables with the AudioMetaTags keys, so `metaTags[mapping.tag]` is a typed read.
+- devDependencies added (rule 10): `@types/nodemailer`, `@types/semver`.
+- New type files: `server/managers/types.ts` (`UploadedFile`, express-fileupload file used by CoverManager and BackupManager) and `server/scanner/types.ts` (`BookMetadataObject` and `PodcastMetadataObject`, the JSDoc typedefs of BookScanner and PodcastScanner moved there because the metadata sources share them, plus `coverPath` which scanNewPodcastLibraryItem sets; `NewLibraryItemObject`, the object LibraryItemScanData `libraryItemObject` returns and the book and podcast scanners complete before create).
+- Files outside the batch changed (type-only or comment-only; the compiled JS is unchanged):
+  - server/utils/types.ts: `declare global` gets `MaxFailedEpisodeChecks`, `XAccel`, `appRoot` and `process.pkg`; `ZipArchive` gets `on('progress')`, `abort()` and `append()` (BackupManager); the probe data types `ProbeTags`, `ProbeStreamInfo`, `ProbeChapter`, `RawProbeData` moved here unchanged from utils/prober.ts (shared with scanner/MediaProbeData; prober.ts imports them).
+  - server/objects/types.ts: `TaskString.subs` is `(string | number | null | undefined)[]` (the managers pass numbers, and a null or undefined title); server/objects/Task.ts: the `*Subs` fields use that type and `setData` accepts `data: null` (PodcastManager and Scanner pass null; `{ ...null }` is `{}`).
+  - server/models/types.ts: `AudioFileObject.embeddedCoverArt?` and `LibraryFileObject.fileType` (both written by the objects' toJSON); `AudioFileObject.metaTags` is the AudioMetaTags toJSON type (was `object`).
+  - server/models/Feed.ts: `FeedOptionsObject.ownerName`/`ownerEmail` are `string | null` (RssFeedManager sets null; the columns allow null).
+  - server/models/User.ts: `ProgressUpdatePayloadObject` `episodeId`, `duration`, `lastUpdate`, `markAsFinishedTimeRemaining`, `markAsFinishedPercentComplete` accept null (playback sessions and library settings pass null; the model reads them with `||`/`isNullOrNaN`).
+  - server/models/LibraryItem.ts: `getTrackList(episodeId?: string | null)`; `lastScan` is typed like `mtime` (get `Date | null`, set `Date | number | null`, creation accepts epoch ms), because LibraryItemScanData and the scanners set it to `Date.now()`.
+  - server/models/Podcast.ts `checkCanDirectPlay(..., episodeId: string | null | undefined)`.
+  - server/models/Book.ts: association declarations used by the scanners: `bookAuthors?`, `bookSeries?` (join rows created with a new book), `addAuthor`, `addSeries`, `getAuthors`, `getSeries`; server/models/Author.ts: `bookAuthor` (the join row when loaded through a book, like Series `bookSeries`). server/utils/queries/libraryItemsBookFilters.ts: `BookRow` omits `bookSeries` and `bookAuthors` from Book as well, because it declares them itself.
+  - server/utils/ffmpegHelpers.ts `addCoverAndMetadataToFile(..., mimeType: string | null, ...)` (AudioMetadataManager passes null when the files have different mime types; it is only compared).
+  - server/utils/generators/abmetadataGenerator.ts: `ValidatedAbMetadata` declares `authors`, `genres`, `tags` as arrays (they are validated as arrays).
+  - server/models/Library.ts: `lastScan` is typed like LibraryItem `lastScan` (get `Date | null`, set `Date | number | null`), because LibraryScanner sets it to `Date.now()`.
+  - server/finders/PodcastFinder.ts `search(term: string | null | undefined, ...)` (it returns null for an empty term; Scanner passes a podcast title that may be null).
+  - server/SocketAuthority.js: JSDoc `@param {any} [data]` on `emitter` (BackupManager emits `backup_applied` without data). Comment only.
+- Compiled JS compared with the build at d3617ecd (comments and parentheses stripped, quotes normalised). Differences:
+  - Module style as in batch 2: `const { a } = require('x')` / `require('x').v4` / `require('../../package.json').version` became `const x = require('x')` and `const { a } = x` after the other requires (same module object). `axios` is a default import (`axios_1.default`) in NotificationManager and BinaryManager. Typed views `const date = dateAndTime` (PlaybackSessionManager, LibraryScan) and `const archiver = archiverModule` (BackupManager).
+  - RssFeedManager: `const { Request, Response } = require('express')` (JSDoc only, both undefined) became `import type`; express is no longer required by this module.
+  - ApiCacheManager: `res.send = (body) => {...}` gained parentheses for its cast.
+  - BinaryManager: `module.exports.Binary/ffbinaries/nunicode = ...` (after `module.exports = BinaryManager`) became `BinaryManager.Binary/ffbinaries/nunicode = ...` before `module.exports = BinaryManager` (declared as `declare static` fields); same properties on the same object.
+  - CronManager `startPodcastCron`: `this.executePodcastCron(expression, libraryItemIds)` became `this.executePodcastCron(expression)`; executePodcastCron has one parameter (it reads the ids from the cron), so the argument was ignored (as LibraryItem `getPersonalizedShelves` in 3a).
+  - Local aliases of the same value (managers only): PodcastManager `createPodcastsFromFeedUrls` `feed.metadata.title` became `feedTitle` (`const feedTitle = feed.metadata.title`, 4 uses); PlaybackSessionManager `syncLocalSession` `session.mediaMetadata[key]` became `mediaMetadata[key]` (after the `{}` default).
+  - The scanner files differ only by the module-style lines above, and LibraryScanner's `module.exports = new LibraryScanner()` is now emitted at the end of the file instead of before its helper functions (they are function declarations, which are hoisted, so nothing runs in between).
+  - Requires: the same modules in the same order in every file (checked), except BackupManager, which required ../utils/fileUtils twice (once for `getFileSize`; now one require of the same cached module), and RssFeedManager (express, above). Modules that a file only uses as a type (LibraryItem in AudioFileScanner, LibraryItemScanData, LibraryItemScanner; LibraryScan in BookScanner and LibraryItemScanner; PodcastEpisode in PodcastScanner; Task in LibraryScanner) are kept as side-effect imports (`import '../models/LibraryItem'`), so they are still required in the same place (as in 3a).
+  - New emitted modules managers/types.js and scanner/types.js (type-only, like the other types.ts files).
+- Casts in the batch (all 31 files): 176 `as`, 56 `as unknown as`, 151 non-null `!`. By tag: a 8, b 13, c 15, d 192, e 4 (the 4 `as InitializedDatabase`; the 2 temporary LibraryScanner `cast(e)` in Scanner.ts were removed with the conversion).
+- By target type: `Record<string, unknown>` 75 (71 exception 2, plus MediaProbeData 3 and PlaybackSessionManager 1), `Error` 17 (16 exception 1, plus `output.destroy('Backup too large' as unknown as Error)`), `string` 11 (exception 3; BackupManager 2, BinaryManager 1, NotificationManager 1, PlaybackSessionManager 1, PodcastManager 3, BookScanner 1, Scanner 1, LibraryScanner 1), `string[]` 10, `number` 8, `Book` 6, `Podcast` 6, `LibraryItem.PodcastLibraryItem` 6, `InitializedDatabase` 4, `string | null` 4, `Includeable` 4, `Model` 4, `Record<string, string>` 4, `AudioFileObject[]` 3, `EBookFileObject` 3, `LibraryItem.BookLibraryItem` 3, `Record<string, string[]>` 3, every other target type 2 or fewer.
+- `!` per file (151, each with a comment saying why the value is set): BookScanner 27, AudioFileScanner 16, MigrationManager 15, BackupManager 13, LibraryScanner 12, PodcastManager 9, LibraryScan 8, Scanner 7, CacheManager 6, CronManager 6, PlaybackSessionManager 6, NfoFileScanner 5, PodcastScanner 5, LibraryItemScanData 3, AbsMetadataFileScanner 2, ApiCacheManager 2, ShareManager 2, AudioMetadataManager 1, CoverManager 1, LogManager 1, NotificationManager 1, LibraryItemScanner 1, OpfFileScanner 1, ScanLogger 1.
+- Whole server (all .ts under server/ except libs): before the batch 391 `as`, 108 `as unknown as`, 19 `!` (115 files); now 567 `as`, 164 `as unknown as`, 170 `!` (148 files).
+
 ## Extra rules
 9. If a file cannot be typed cleanly without changing behaviour, first use the smallest possible `as` with a one-line comment and a line in the Bugs section. If that still fails, leave the file as .js, list it under Skipped with the reason, and move on.
 10. You may add missing @types packages to devDependencies in package.json (for example express, passport, cookie-parser). Mention them in the Log.
@@ -160,7 +213,7 @@ Each has a `NOTE:` comment at the line.
 - The Phase 2 finders and providers (server/finders, server/providers) have the same class field issue: fields declared without an initialiser compile to `field;` lines (already present at 9c4185a0, for example `baseUrl;` in Audnexus and OpenLibrary). Mark them `declare` (rule 12).
 
 ## Skipped files
-(none yet; batches 1, 2, 3a, 3b and 4 skipped nothing)
+(none yet; batches 1 to 6 skipped nothing)
 
 ## Rules added after the type quality audit (2026-10-09)
 
@@ -207,6 +260,7 @@ These rules apply from batch 3 onward. Where they conflict with rule 4 or rule 9
 ### Log
 - 2026-10-09: Type quality audit finished (a4-context/phase3-evidence/audit/4-type-audit.md). Rules 13 to 18 added.
 - 2026-10-09: Batch 3a (server/models) done under rules 13 to 18; see "Batch 3a" in the Log above. Batch 3b is pending.
+- 2026-10-09: Batches 5 and 6 done with three recorded exceptions to rule 17 (catch variables, scanner dynamic metadata keys, one `as string` in LibraryScanner); see "Batch 5 and 6" in the Log above.
 - 2026-10-09: Batch 3b done: TypedDatabase, ApiDatabase, PatchModels and the `as unknown as LibraryItem['media']` casts are removed; QueryFindOptions is kept (Known deviations). See "Batch 3b" in the Log above.
 
 ### Clarification of rule 17 (2026-10-09, after batch 3a)
@@ -229,5 +283,6 @@ Open items collected from the type quality audit and from batches 3a and 3b. Eac
 4. ApiRouter.ts: RouteHandler has `never` parameters; remove after batch 7 (rule 18). Check: no `never` parameter types left in the route handler types.
 5. FilteredLibraryItem has an index signature `[key: string]: unknown`, and req.query is cast to all-string shapes in places (rule 15). List the remaining ones and fix what can be fixed without rewriting expressions.
 6. Retag old casts that have no reason tag, if time allows.
+7. Batch 5/6 rule 17 exceptions: the 71 `as Record<string, unknown>` dynamic metadata key casts in the scanner (see the batch 5/6 Log) are candidates for a typed key helper; the `as string` in LibraryScanner `hasAudioFiles` (with its `as string[]` and the other `fileUpdateGroup[itemDir] as string[]` reads) is a candidate for a proper type guard on the file update group entries; the 16 catch variable `as Error` casts can stay. Also remove the 14 redundant `as unknown as FsExtra` casts (server/libs/fsExtra.d.ts types the module).
 
 If batch 11 is not done by the report deadline, the open items above are reported as known limitations.
