@@ -1,23 +1,22 @@
-const { Request, Response, NextFunction } = require('express')
-const Logger = require('../Logger')
-const SocketAuthority = require('../SocketAuthority')
-const Database = require('../Database')
+import type { Response, NextFunction } from 'express'
+import Logger = require('../Logger')
+import SocketAuthority = require('../SocketAuthority')
+import Database = require('../Database')
 
-const RssFeedManager = require('../managers/RssFeedManager')
+import RssFeedManager = require('../managers/RssFeedManager')
 
-const libraryItemsBookFilters = require('../utils/queries/libraryItemsBookFilters')
+import libraryItemsBookFilters = require('../utils/queries/libraryItemsBookFilters')
+import type { RequestWithUser } from './types'
+import type { FilteredLibraryItem } from '../utils/queries/types'
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- *
- * @typedef RequestEntityObject
- * @property {import('../models/Series')} series
- *
- * @typedef {RequestWithUser & RequestEntityObject} SeriesControllerRequest
- */
+type Series = import('../models/Series')
+
+interface RequestEntityObject {
+  series: Series
+  libraryItemsInSeries: FilteredLibraryItem[]
+}
+
+type SeriesControllerRequest = RequestWithUser & RequestEntityObject
 
 class SeriesController {
   constructor() {}
@@ -28,17 +27,18 @@ class SeriesController {
    *
    * TODO: Update mobile app to use /api/libraries/:id/series/:seriesId API route instead
    * Series are not library specific so we need to know what the library id is
-   *
-   * @param {SeriesControllerRequest} req
-   * @param {Response} res
    */
-  async findOne(req, res) {
-    const include = (req.query.include || '')
+  async findOne(req: SeriesControllerRequest, res: Response) {
+    // cast(d): query value
+    const include = ((req.query.include as string | undefined) || '')
       .split(',')
       .map((v) => v.trim())
       .filter((v) => !!v)
 
-    const seriesJson = req.series.toOldJSON()
+    const seriesJson: ReturnType<Series['toOldJSON']> & {
+      progress?: { libraryItemIds: string[]; libraryItemIdsFinished: string[]; isFinished: boolean }
+      rssFeed?: unknown
+    } = req.series.toOldJSON()
 
     // Add progress map with isFinished flag
     if (include.includes('progress')) {
@@ -63,13 +63,10 @@ class SeriesController {
 
   /**
    * TODO: Currently unused in the client, should check for duplicate name
-   *
-   * @param {SeriesControllerRequest} req
-   * @param {Response} res
    */
-  async update(req, res) {
-    const keysToUpdate = ['name', 'description']
-    const payload = {}
+  async update(req: SeriesControllerRequest, res: Response) {
+    const keysToUpdate: ('name' | 'description')[] = ['name', 'description']
+    const payload: { name?: string; description?: string } = {}
     for (const key of keysToUpdate) {
       if (req.body[key] !== undefined && typeof req.body[key] === 'string') {
         payload[key] = req.body[key]
@@ -86,13 +83,7 @@ class SeriesController {
     res.json(req.series.toOldJSON())
   }
 
-  /**
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
-   * @param {NextFunction} next
-   */
-  async middleware(req, res, next) {
+  async middleware(req: RequestWithUser & Partial<RequestEntityObject>, res: Response, next: NextFunction) {
     const series = await Database.seriesModel.findByPk(req.params.id)
     if (!series) return res.sendStatus(404)
 
@@ -118,4 +109,4 @@ class SeriesController {
     next()
   }
 }
-module.exports = new SeriesController()
+export = new SeriesController()

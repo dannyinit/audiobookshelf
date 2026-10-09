@@ -1,23 +1,34 @@
-const { Request, Response } = require('express')
-const uuid = require('uuid')
-const Path = require('path')
-const { Op } = require('sequelize')
-const Logger = require('../Logger')
-const Database = require('../Database')
+import type { Request, Response } from 'express'
+import type { CreationAttributes, Model, ModelStatic } from 'sequelize'
+import uuid = require('uuid')
+import Path = require('path')
+import sequelize = require('sequelize')
+import Logger = require('../Logger')
+import Database = require('../Database')
 
-const { PlayMethod } = require('../utils/constants')
-const { getAudioMimeTypeFromExtname, encodeUriPath } = require('../utils/fileUtils')
-const zipHelpers = require('../utils/zipHelpers')
+import constants = require('../utils/constants')
+import fileUtils = require('../utils/fileUtils')
+import zipHelpers = require('../utils/zipHelpers')
 
-const PlaybackSession = require('../objects/PlaybackSession')
-const ShareManager = require('../managers/ShareManager')
+import PlaybackSession = require('../objects/PlaybackSession')
+import ShareManager = require('../managers/ShareManager')
+import type { RequestWithUser } from './types'
+
+const { Op } = sequelize
+const { PlayMethod } = constants
+const { getAudioMimeTypeFromExtname, encodeUriPath } = fileUtils
+
+type PublicRouter = import('../routers/PublicRouter')
+type Book = import('../models/Book')
+type LibraryItem = import('../models/LibraryItem')
+type DeviceInfo = import('../objects/DeviceInfo')
+type AudioTrack = import('../objects/files/AudioTrack')
+import type MediaItemShare = require('../models/MediaItemShare')
 
 /**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
+ * Media item share for the client; getMediaItemShareBySlug adds the share playback session
  */
+type MediaItemShareWithSession = MediaItemShare.MediaItemShareForClient & { playbackSession?: ReturnType<PlaybackSession['toJSONForClient']> }
 
 class ShareController {
   constructor() {}
@@ -26,18 +37,15 @@ class ShareController {
    * Public route
    * GET: /api/share/:slug
    * Get media item share by slug
-   *
-   * @this {import('../routers/PublicRouter')}
-   *
-   * @param {Request} req
-   * @param {Response} res
    */
-  async getMediaItemShareBySlug(req, res) {
+  async getMediaItemShareBySlug(this: PublicRouter, req: Request, res: Response) {
     const { slug } = req.params
     // Optional start time
-    let startTime = req.query.t && !isNaN(req.query.t) ? Math.max(0, parseInt(req.query.t)) : 0
+    // cast(d): isNaN coerces its argument (the query value is a string)
+    // cast(d): query value
+    let startTime = req.query.t && !isNaN(req.query.t as unknown as number) ? Math.max(0, parseInt(req.query.t as string)) : 0
 
-    const mediaItemShare = ShareManager.findBySlug(slug)
+    const mediaItemShare: MediaItemShareWithSession | null = ShareManager.findBySlug(slug)
     if (!mediaItemShare) {
       Logger.warn(`[ShareController] Media item share not found with slug ${slug}`)
       return res.sendStatus(404)
@@ -54,7 +62,8 @@ class ShareController {
         if (mediaItemShare.id === playbackSession.mediaItemShareId) {
           Logger.debug(`[ShareController] Found share playback session ${req.cookies.share_session_id}`)
           // If ?t was provided, override the cached currentTime
-          if (startTime > 0 && startTime < playbackSession.duration) {
+          // Non-null: share sessions are created with setData, which sets the duration
+          if (startTime > 0 && startTime < playbackSession.duration!) {
             playbackSession.currentTime = startTime
           }
           mediaItemShare.playbackSession = playbackSession.toJSONForClient()
@@ -80,7 +89,8 @@ class ShareController {
       }
 
       let startOffset = 0
-      const publicTracks = libraryItem.media.includedAudioFiles.map((audioFile) => {
+      // cast(d): getMediaItemsLibraryItem only returns book library items
+      const publicTracks = (libraryItem.media as Book).includedAudioFiles.map((audioFile) => {
         const audioTrack = {
           index: audioFile.index,
           startOffset,
@@ -105,15 +115,19 @@ class ShareController {
         clientName: 'Abs Web Share',
         deviceId: shareSessionId
       }
-      const deviceInfo = await this.playbackSessionManager.getDeviceInfo(req, clientDeviceInfo)
+      // cast(d): getDeviceInfo reads req.user?.id, so this public request without a user works, but its parameter type requires a user
+      const deviceInfo = await this.playbackSessionManager.getDeviceInfo(req as RequestWithUser, clientDeviceInfo)
 
       const newPlaybackSession = new PlaybackSession()
-      newPlaybackSession.setData(libraryItem, null, 'web-share', deviceInfo, startTime)
-      newPlaybackSession.audioTracks = publicTracks
+      // cast(d): share sessions have no user; setData stores the userId as is (the field is string | null), but its parameter is typed string
+      ;(newPlaybackSession.setData as (libraryItem: LibraryItem, userId: string | null, mediaPlayer: string, deviceInfo: DeviceInfo | null, startTime: number) => void)(libraryItem, null, 'web-share', deviceInfo, startTime)
+      // cast(d): share sessions keep plain track objects (toJSONForClient copies them with at.toJSON?.() || { ...at })
+      newPlaybackSession.audioTracks = publicTracks as unknown as AudioTrack[]
       newPlaybackSession.playMethod = PlayMethod.DIRECTPLAY
       newPlaybackSession.shareSessionId = shareSessionId
       newPlaybackSession.mediaItemShareId = mediaItemShare.id
-      newPlaybackSession.coverAspectRatio = libraryItem.library.settings.coverAspectRatio
+      // Non-null: getMediaItemsLibraryItem includes the library
+      newPlaybackSession.coverAspectRatio = libraryItem.library!.settings.coverAspectRatio
 
       mediaItemShare.playbackSession = newPlaybackSession.toJSONForClient()
       ShareManager.addOpenSharePlaybackSession(newPlaybackSession)
@@ -133,11 +147,8 @@ class ShareController {
    *
    * GET: /api/share/:slug/cover
    * Get media item share cover image
-   *
-   * @param {Request} req
-   * @param {Response} res
    */
-  async getMediaItemShareCoverImage(req, res) {
+  async getMediaItemShareCoverImage(req: Request, res: Response) {
     if (!req.cookies.share_session_id) {
       return res.status(404).send('Share session not set')
     }
@@ -173,11 +184,8 @@ class ShareController {
    *
    * GET: /api/share/:slug/track/:index
    * Get media item share audio track
-   *
-   * @param {Request} req
-   * @param {Response} res
    */
-  async getMediaItemShareAudioTrack(req, res) {
+  async getMediaItemShareAudioTrack(req: Request, res: Response) {
     if (!req.cookies.share_session_id) {
       return res.status(404).send('Share session not set')
     }
@@ -198,7 +206,8 @@ class ShareController {
     if (!audioTrack) {
       return res.status(404).send('Track not found')
     }
-    const audioTrackPath = audioTrack.metadata.path
+    // Non-null: share session tracks are built from the audio files with their metadata and path
+    const audioTrackPath = audioTrack.metadata!.path!
 
     if (global.XAccel) {
       const encodedURI = encodeUriPath(global.XAccel + audioTrackPath)
@@ -219,11 +228,8 @@ class ShareController {
    *
    * GET: /api/share/:slug/download
    * Downloads media item share
-   *
-   * @param {Request} req
-   * @param {Response} res
    */
-  async downloadMediaItemShare(req, res) {
+  async downloadMediaItemShare(req: Request, res: Response) {
     if (!req.cookies.share_session_id) {
       return res.status(404).send('Share session not set')
     }
@@ -242,7 +248,8 @@ class ShareController {
       return res.status(404).send('Share session not found')
     }
 
-    const libraryItem = await Database.libraryItemModel.findByPk(playbackSession.libraryItemId, {
+    // Non-null: share sessions are created with setData, which sets the library item id
+    const libraryItem = await Database.libraryItemModel.findByPk(playbackSession.libraryItemId!, {
       attributes: ['id', 'path', 'relPath', 'isFile']
     })
     if (!libraryItem) {
@@ -260,7 +267,7 @@ class ShareController {
         if (audioMimeType) {
           res.setHeader('Content-Type', audioMimeType)
         }
-        await new Promise((resolve, reject) => res.download(itemPath, libraryItem.relPath, (error) => (error ? reject(error) : resolve())))
+        await new Promise<void>((resolve, reject) => res.download(itemPath, libraryItem.relPath, (error) => (error ? reject(error) : resolve())))
       } else {
         const filename = `${itemTitle}.zip`
         await zipHelpers.zipDirectoryPipe(itemPath, filename, res)
@@ -278,11 +285,8 @@ class ShareController {
    *
    * PATCH: /api/share/:slug/progress
    * Update media item share progress
-   *
-   * @param {Request} req
-   * @param {Response} res
    */
-  async updateMediaItemShareProgress(req, res) {
+  async updateMediaItemShareProgress(req: Request, res: Response) {
     if (!req.cookies.share_session_id) {
       return res.status(404).send('Share session not set')
     }
@@ -303,7 +307,8 @@ class ShareController {
       return res.status(404).send('Share session not found')
     }
 
-    playbackSession.currentTime = Math.min(currentTime, playbackSession.duration)
+    // Non-null: share sessions are created with setData, which sets the duration
+    playbackSession.currentTime = Math.min(currentTime, playbackSession.duration!)
     playbackSession.updatedAt = Date.now()
     Logger.debug(`[ShareController] Update share playback session ${req.cookies.share_session_id} currentTime: ${playbackSession.currentTime}`)
     res.sendStatus(204)
@@ -312,11 +317,8 @@ class ShareController {
   /**
    * POST: /api/share/mediaitem
    * Create a new media item share
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async createMediaItemShare(req, res) {
+  async createMediaItemShare(req: RequestWithUser, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[ShareController] Non-admin user "${req.user.username}" attempted to create item share`)
       return res.sendStatus(403)
@@ -350,20 +352,24 @@ class ShareController {
       }
 
       // Check that media item exists
-      const mediaItemModel = mediaItemType === 'book' ? Database.bookModel : Database.podcastEpisodeModel
+      const mediaItemModel: ModelStatic<Model> = mediaItemType === 'book' ? Database.bookModel : Database.podcastEpisodeModel
       const mediaItem = await mediaItemModel.findByPk(mediaItemId)
       if (!mediaItem) {
         return res.status(404).send('Media item not found')
       }
 
-      const mediaItemShare = await Database.mediaItemShareModel.create({
-        slug,
-        expiresAt: expiresAt || null,
-        mediaItemId,
-        mediaItemType,
-        userId: req.user.id,
-        isDownloadable
-      })
+      const mediaItemShare = await Database.mediaItemShareModel.create(
+        // NOTE: pash is not set, so the column is null although the MediaItemShare model types it as required (nothing reads it at the moment); expiresAt can be null although the model types it as Date
+        // cast(c): the creation values have no pash and a nullable expiresAt
+        {
+          slug,
+          expiresAt: expiresAt || null,
+          mediaItemId,
+          mediaItemType,
+          userId: req.user.id,
+          isDownloadable
+        } as CreationAttributes<MediaItemShare>
+      )
 
       ShareManager.openMediaItemShare(mediaItemShare)
 
@@ -377,11 +383,8 @@ class ShareController {
   /**
    * DELETE: /api/share/mediaitem/:id
    * Delete media item share
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async deleteMediaItemShare(req, res) {
+  async deleteMediaItemShare(req: RequestWithUser, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[ShareController] Non-admin user "${req.user.username}" attempted to delete item share`)
       return res.sendStatus(403)
@@ -403,4 +406,4 @@ class ShareController {
     }
   }
 }
-module.exports = new ShareController()
+export = new ShareController()

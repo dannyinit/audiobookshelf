@@ -1,18 +1,16 @@
-const { Request, Response, NextFunction } = require('express')
-const Logger = require('../Logger')
-const Database = require('../Database')
+import type { Response, NextFunction } from 'express'
+import Logger = require('../Logger')
+import Database = require('../Database')
+import type { RequestWithUser } from './types'
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- *
- * @typedef RequestEntityObject
- * @property {import('../models/LibraryItem')} libraryItem
- *
- * @typedef {RequestWithUser & RequestEntityObject} RequestWithLibraryItem
- */
+type ApiRouter = import('../routers/ApiRouter')
+import type LibraryItem = require('../models/LibraryItem')
+
+interface RequestEntityObject {
+  libraryItem: LibraryItem.LibraryItemExpanded
+}
+
+type RequestWithLibraryItem = RequestWithUser & RequestEntityObject
 
 class ToolsController {
   constructor() {}
@@ -20,13 +18,8 @@ class ToolsController {
   /**
    * POST: /api/tools/item/:id/encode-m4b
    * Start an audiobook merge to m4b task
-   *
-   * @this import('../routers/ApiRouter')
-   *
-   * @param {RequestWithLibraryItem} req
-   * @param {Response} res
    */
-  async encodeM4b(req, res) {
+  async encodeM4b(this: ApiRouter, req: RequestWithLibraryItem, res: Response) {
     if (req.libraryItem.isMissing || req.libraryItem.isInvalid) {
       Logger.error(`[MiscController] encodeM4b: library item not found or invalid ${req.params.id}`)
       return res.status(404).send('Audiobook not found')
@@ -49,7 +42,8 @@ class ToolsController {
 
     const options = req.query || {}
     Logger.info(`[ToolsController] encodeM4b: Starting audiobook merge for "${req.libraryItem.media.title}" with options: ${JSON.stringify(options)}`)
-    this.abMergeManager.startAudiobookMerge(req.user.id, req.libraryItem, options)
+    // cast(d): req.libraryItem.isBook is checked above (a getter does not narrow mediaType)
+    this.abMergeManager.startAudiobookMerge(req.user.id, req.libraryItem as LibraryItem.BookLibraryItem, options)
 
     res.sendStatus(200)
   }
@@ -57,13 +51,8 @@ class ToolsController {
   /**
    * DELETE: /api/tools/item/:id/encode-m4b
    * Cancel a running m4b merge task
-   *
-   * @this import('../routers/ApiRouter')
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async cancelM4bEncode(req, res) {
+  async cancelM4bEncode(this: ApiRouter, req: RequestWithUser, res: Response) {
     const workerTask = this.abMergeManager.getPendingTaskByLibraryItemId(req.params.id)
     if (!workerTask) return res.sendStatus(404)
 
@@ -75,13 +64,8 @@ class ToolsController {
   /**
    * POST: /api/tools/item/:id/embed-metadata
    * Start audiobook embed task
-   *
-   * @this import('../routers/ApiRouter')
-   *
-   * @param {RequestWithLibraryItem} req
-   * @param {Response} res
    */
-  async embedAudioFileMetadata(req, res) {
+  async embedAudioFileMetadata(this: ApiRouter, req: RequestWithLibraryItem, res: Response) {
     if (req.libraryItem.isMissing || !req.libraryItem.hasAudioTracks || !req.libraryItem.isBook) {
       Logger.error(`[ToolsController] Invalid library item`)
       return res.sendStatus(400)
@@ -96,26 +80,22 @@ class ToolsController {
       forceEmbedChapters: req.query.forceEmbedChapters === '1',
       backup: req.query.backup === '1'
     }
-    this.audioMetadataManager.updateMetadataForItem(req.user.id, req.libraryItem, options)
+    // cast(d): req.libraryItem.isBook is checked above (a getter does not narrow mediaType)
+    this.audioMetadataManager.updateMetadataForItem(req.user.id, req.libraryItem as LibraryItem.BookLibraryItem, options)
     res.sendStatus(200)
   }
 
   /**
    * POST: /api/tools/batch/embed-metadata
    * Start batch audiobook embed task
-   *
-   * @this import('../routers/ApiRouter')
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async batchEmbedMetadata(req, res) {
+  async batchEmbedMetadata(this: ApiRouter, req: RequestWithUser, res: Response) {
     const libraryItemIds = req.body.libraryItemIds || []
     if (!libraryItemIds.length) {
       return res.status(400).send('Invalid request payload')
     }
 
-    const libraryItems = []
+    const libraryItems: LibraryItem.BookLibraryItem[] = []
     for (const libraryItemId of libraryItemIds) {
       const libraryItem = await Database.libraryItemModel.getExpandedById(libraryItemId)
       if (!libraryItem) {
@@ -139,7 +119,8 @@ class ToolsController {
         return res.status(400).send('Library item is already in queue or processing')
       }
 
-      libraryItems.push(libraryItem)
+      // cast(d): libraryItem.isBook is checked above (a getter does not narrow mediaType)
+      libraryItems.push(libraryItem as LibraryItem.BookLibraryItem)
     }
 
     const options = {
@@ -150,13 +131,7 @@ class ToolsController {
     res.sendStatus(200)
   }
 
-  /**
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
-   * @param {NextFunction} next
-   */
-  async middleware(req, res, next) {
+  async middleware(req: RequestWithUser & Partial<RequestEntityObject>, res: Response, next: NextFunction) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[LibraryItemController] Non-root user "${req.user.username}" attempted to access tools route`)
       return res.sendStatus(403)
@@ -177,4 +152,4 @@ class ToolsController {
     next()
   }
 }
-module.exports = new ToolsController()
+export = new ToolsController()

@@ -1,25 +1,32 @@
-const { Request, Response, NextFunction } = require('express')
-const uuidv4 = require('uuid').v4
-const Logger = require('../Logger')
-const Database = require('../Database')
+import type { Response, NextFunction } from 'express'
+import type { BelongsToGetAssociationMixin, CreationAttributes } from 'sequelize'
+import uuid = require('uuid')
+import Logger = require('../Logger')
+import Database = require('../Database')
+import type { RequestWithUser } from './types'
+
+type ApiRouter = import('../routers/ApiRouter')
+type ApiKey = import('../models/ApiKey')
+type User = import('../models/User')
 
 /**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
+ * ApiKey as used here: the model does not declare the getUser mixin of its belongsTo(User) association, and
+ * dataValues.user is set to the loaded user so that toJSON includes it
  */
+type ApiKeyWithUser = ApiKey & {
+  getUser: BelongsToGetAssociationMixin<User>
+  dataValues: ApiKey['dataValues'] & { user: User | null }
+}
+
+const uuidv4 = uuid.v4
 
 class ApiKeyController {
   constructor() {}
 
   /**
    * GET: /api/api-keys
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async getAll(req, res) {
+  async getAll(req: RequestWithUser, res: Response) {
     const apiKeys = await Database.apiKeyModel.findAll({
       include: [
         {
@@ -41,13 +48,8 @@ class ApiKeyController {
 
   /**
    * POST: /api/api-keys
-   *
-   * @this {import('../routers/ApiRouter')}
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async create(req, res) {
+  async create(this: ApiRouter, req: RequestWithUser, res: Response) {
     if (!req.body.name || typeof req.body.name !== 'string') {
       Logger.warn(`[ApiKeyController] create: Invalid name: ${req.body.name}`)
       return res.sendStatus(400)
@@ -71,7 +73,8 @@ class ApiKeyController {
     }
 
     const keyId = uuidv4() // Generate key id ahead of time to use in JWT
-    const apiKey = await Database.apiKeyModel.generateApiKey(this.auth.tokenManager.TokenSecret, keyId, req.body.name, req.body.expiresIn)
+    // Non-null: the token secret is set in TokenManager.initTokenSecret when the server starts
+    const apiKey = await Database.apiKeyModel.generateApiKey(this.auth.tokenManager.TokenSecret!, keyId, req.body.name, req.body.expiresIn)
 
     if (!apiKey) {
       Logger.error(`[ApiKeyController] create: Error generating API key`)
@@ -81,14 +84,19 @@ class ApiKeyController {
     // Calculate expiration time for the api key
     const expiresAt = req.body.expiresIn ? new Date(Date.now() + req.body.expiresIn * 1000) : null
 
-    const apiKeyInstance = await Database.apiKeyModel.create({
-      id: keyId,
-      name: req.body.name,
-      expiresAt,
-      userId: req.body.userId,
-      isActive: !!req.body.isActive,
-      createdByUserId: req.user.id
-    })
+    // cast(d): the ApiKey model does not declare getUser (see ApiKeyWithUser)
+    const apiKeyInstance = (await Database.apiKeyModel.create(
+      // NOTE: permissions is not set, so the column is null although the ApiKey model types it as required (nothing reads it at the moment)
+      // cast(c): the creation values have no permissions
+      {
+        id: keyId,
+        name: req.body.name,
+        expiresAt,
+        userId: req.body.userId,
+        isActive: !!req.body.isActive,
+        createdByUserId: req.user.id
+      } as CreationAttributes<ApiKey>
+    )) as ApiKeyWithUser
     apiKeyInstance.dataValues.user = await apiKeyInstance.getUser({
       attributes: ['id', 'username', 'type']
     })
@@ -105,16 +113,14 @@ class ApiKeyController {
   /**
    * PATCH: /api/api-keys/:id
    * Only isActive and userId can be updated because name and expiresIn are in the JWT
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async update(req, res) {
-    const apiKey = await Database.apiKeyModel.findByPk(req.params.id, {
+  async update(req: RequestWithUser, res: Response) {
+    // cast(d): the ApiKey model does not declare getUser (see ApiKeyWithUser)
+    const apiKey = (await Database.apiKeyModel.findByPk(req.params.id, {
       include: {
         model: Database.userModel
       }
-    })
+    })) as ApiKeyWithUser | null
     if (!apiKey) {
       return res.sendStatus(404)
     }
@@ -172,11 +178,8 @@ class ApiKeyController {
 
   /**
    * DELETE: /api/api-keys/:id
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async delete(req, res) {
+  async delete(req: RequestWithUser, res: Response) {
     const apiKey = await Database.apiKeyModel.findByPk(req.params.id)
     if (!apiKey) {
       return res.sendStatus(404)
@@ -188,13 +191,7 @@ class ApiKeyController {
     return res.sendStatus(200)
   }
 
-  /**
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
-   * @param {NextFunction} next
-   */
-  middleware(req, res, next) {
+  middleware(req: RequestWithUser, res: Response, next: NextFunction) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[ApiKeyController] Non-admin user "${req.user.username}" attempting to access api keys`)
       return res.sendStatus(403)
@@ -204,4 +201,4 @@ class ApiKeyController {
   }
 }
 
-module.exports = new ApiKeyController()
+export = new ApiKeyController()

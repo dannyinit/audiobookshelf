@@ -1,45 +1,55 @@
-const { Request, Response, NextFunction } = require('express')
-const uuidv4 = require('uuid').v4
-const Logger = require('../Logger')
-const SocketAuthority = require('../SocketAuthority')
-const Database = require('../Database')
+import type { Response, NextFunction } from 'express'
+import type { FindOptions } from 'sequelize'
+import uuid = require('uuid')
+import Logger = require('../Logger')
+import SocketAuthority = require('../SocketAuthority')
+import Database = require('../Database')
 
-const { toNumber } = require('../utils/index')
+import utils = require('../utils/index')
+import type { RequestWithUser } from './types'
+import type { RuntimeFindOptions } from '../utils/queries/types'
+
+const uuidv4 = uuid.v4
+const { toNumber } = utils
+
+type ApiRouter = import('../routers/ApiRouter')
+type User = import('../models/User')
+type MediaProgress = import('../models/MediaProgress')
+type OldPlaybackSession = import('../objects/PlaybackSession')
 
 /**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- *
- * @typedef RequestEntityObject
- * @property {import('../models/User')} reqUser
- *
- * @typedef {RequestWithUser & RequestEntityObject} UserControllerRequest
+ * Media progress row loaded in findOne: mediaItem is the book, or the episode with its podcast (only the attributes read)
  */
+type MediaProgressWithMediaItem = MediaProgress & {
+  mediaItem?: { title: string | null; coverPath?: string | null; updatedAt: Date; podcast?: { title: string | null; coverPath: string | null; updatedAt: Date } }
+}
+
+interface RequestEntityObject {
+  reqUser: User
+}
+
+type UserControllerRequest = RequestWithUser & RequestEntityObject
 
 class UserController {
   constructor() {}
 
-  /**
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
-   */
-  async findAll(req, res) {
+  async findAll(req: RequestWithUser, res: Response) {
     if (!req.user.isAdminOrUp) return res.sendStatus(403)
     const hideRootToken = !req.user.isRoot
 
-    const includes = (req.query.include || '').split(',').map((i) => i.trim())
+    // cast(d): query value
+    const includes = ((req.query.include as string | undefined) || '').split(',').map((i) => i.trim())
 
     // Minimal toJSONForBrowser does not include mediaProgress and bookmarks
     const allUsers = await Database.userModel.findAll()
-    const users = allUsers.map((u) => u.toOldJSONForBrowser(hideRootToken, true))
+    const users: (ReturnType<User['toOldJSONForBrowser']> & { latestSession?: OldPlaybackSession | null })[] = allUsers.map((u) => u.toOldJSONForBrowser(hideRootToken, true))
 
     if (includes.includes('latestSession')) {
       for (const user of users) {
-        const userSessions = await Database.getPlaybackSessions({ userId: user.id })
-        user.latestSession = userSessions.sort((a, b) => b.updatedAt - a.updatedAt).shift() || null
+        // cast(d): getPlaybackSessions returns false only before Database.init
+        const userSessions = (await Database.getPlaybackSessions({ userId: user.id })) as OldPlaybackSession[]
+        // Non-null: sessions loaded from the database have updatedAt (both operands)
+        user.latestSession = userSessions.sort((a, b) => b.updatedAt! - a.updatedAt!).shift() || null
       }
     }
 
@@ -52,18 +62,16 @@ class UserController {
    * GET: /api/users/:id
    * Get a single user toJSONForBrowser
    * Media progress items include: `displayTitle`, `displaySubtitle` (for podcasts), `coverPath` and `mediaUpdatedAt`
-   *
-   * @param {UserControllerRequest} req
-   * @param {Response} res
    */
-  async findOne(req, res) {
+  async findOne(req: UserControllerRequest, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`Non-admin user "${req.user.username}" attempted to get user`)
       return res.sendStatus(403)
     }
 
     // Get user media progress with associated mediaItem
-    const mediaProgresses = await Database.mediaProgressModel.findAll({
+    // cast(d): the rows include their book, or episode with its podcast (see MediaProgressWithMediaItem)
+    const mediaProgresses = (await Database.mediaProgressModel.findAll({
       where: {
         userId: req.reqUser.id
       },
@@ -81,10 +89,16 @@ class UserController {
           }
         }
       ]
-    })
+      // cast(b): checked as RuntimeFindOptions (the shapes Sequelize accepts at runtime); its FindOptions type is stricter, and TypeScript does not compare the nested single include object of the literal with it
+    } satisfies RuntimeFindOptions as unknown as FindOptions)) as MediaProgressWithMediaItem[]
 
     const oldMediaProgresses = mediaProgresses.map((mp) => {
-      const oldMediaProgress = mp.getOldMediaProgress()
+      const oldMediaProgress: ReturnType<MediaProgress['getOldMediaProgress']> & {
+        displayTitle?: string | null
+        displaySubtitle?: string | null
+        coverPath?: string | null
+        mediaUpdatedAt?: Date
+      } = mp.getOldMediaProgress()
       oldMediaProgress.displayTitle = mp.mediaItem?.title
       if (mp.mediaItem?.podcast) {
         oldMediaProgress.displaySubtitle = mp.mediaItem.podcast?.title
@@ -107,13 +121,8 @@ class UserController {
   /**
    * POST: /api/users
    * Create a new user
-   *
-   * @this {import('../routers/ApiRouter')}
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async create(req, res) {
+  async create(this: ApiRouter, req: RequestWithUser, res: Response) {
     if (!req.body.username || !req.body.password || typeof req.body.username !== 'string' || typeof req.body.password !== 'string') {
       return res.status(400).send('Username and password are required')
     }
@@ -150,13 +159,15 @@ class UserController {
 
     // Map permissions
     const permissions = Database.userModel.getDefaultPermissionsForUserType(userType)
+    // Same object as permissions, read and written by key
+    const permissionValues: Record<string, unknown> = permissions
     if (req.body.permissions && typeof req.body.permissions === 'object') {
       for (const key in req.body.permissions) {
-        if (permissions[key] !== undefined) {
+        if (permissionValues[key] !== undefined) {
           if (typeof req.body.permissions[key] !== 'boolean') {
             Logger.warn(`[UserController] create: Invalid permission value for key ${key}. Should be boolean`)
           } else {
-            permissions[key] = req.body.permissions[key]
+            permissionValues[key] = req.body.permissions[key]
           }
         } else {
           Logger.warn(`[UserController] create: Invalid permission key: ${key}`)
@@ -196,13 +207,8 @@ class UserController {
   /**
    * PATCH: /api/users/:id
    * Update user
-   *
-   * @this {import('../routers/ApiRouter')}
-   *
-   * @param {UserControllerRequest} req
-   * @param {Response} res
    */
-  async update(req, res) {
+  async update(this: ApiRouter, req: UserControllerRequest, res: Response) {
     const user = req.reqUser
 
     if (user.isRoot && !req.user.isRoot) {
@@ -277,13 +283,16 @@ class UserController {
         ...user.permissions
       }
       const defaultPermissions = Database.userModel.getDefaultPermissionsForUserType(updatePayload.type || user.type || 'user')
+      // Same objects as permissions and defaultPermissions, read and written by key
+      const permissionValues: Record<string, unknown> = permissions
+      const defaultPermissionValues: Record<string, unknown> = defaultPermissions
       for (const key in updatePayload.permissions) {
         // Check that the key is a valid permission key or is included in the default permissions
-        if (permissions[key] !== undefined || defaultPermissions[key] !== undefined) {
+        if (permissionValues[key] !== undefined || defaultPermissionValues[key] !== undefined) {
           if (typeof updatePayload.permissions[key] !== 'boolean') {
             Logger.warn(`[UserController] update: Invalid permission value for key ${key}. Should be boolean`)
-          } else if (permissions[key] !== updatePayload.permissions[key]) {
-            permissions[key] = updatePayload.permissions[key]
+          } else if (permissionValues[key] !== updatePayload.permissions[key]) {
+            permissionValues[key] = updatePayload.permissions[key]
             hasPermissionsUpdates = true
           }
         } else {
@@ -291,11 +300,15 @@ class UserController {
         }
       }
 
-      if (updateItemTagsSelected && updateItemTagsSelected.join(',') !== user.permissions.itemTagsSelected.join(',')) {
+      // NOTE: user.permissions.itemTagsSelected can be undefined (UserPermissions allows it for older users; the User model reads it with || []), then .join throws a TypeError
+      // Non-null: see NOTE above
+      if (updateItemTagsSelected && updateItemTagsSelected.join(',') !== user.permissions.itemTagsSelected!.join(',')) {
         permissions.itemTagsSelected = updateItemTagsSelected
         hasPermissionsUpdates = true
       }
-      if (updateLibrariesAccessible && updateLibrariesAccessible.join(',') !== user.permissions.librariesAccessible.join(',')) {
+      // NOTE: user.permissions.librariesAccessible can be undefined (as itemTagsSelected above), then .join throws a TypeError
+      // Non-null: see NOTE above
+      if (updateLibrariesAccessible && updateLibrariesAccessible.join(',') !== user.permissions.librariesAccessible!.join(',')) {
         permissions.librariesAccessible = updateLibrariesAccessible
         hasPermissionsUpdates = true
       }
@@ -356,11 +369,8 @@ class UserController {
   /**
    * DELETE: /api/users/:id
    * Delete a user
-   *
-   * @param {UserControllerRequest} req
-   * @param {Response} res
    */
-  async delete(req, res) {
+  async delete(req: UserControllerRequest, res: Response) {
     const user = req.reqUser
 
     if (req.user.id === req.params.id) {
@@ -386,9 +396,11 @@ class UserController {
 
     // Set PlaybackSessions userId to null
     const [sessionsUpdated] = await Database.playbackSessionModel.update(
+      // NOTE: the sessions of a deleted user keep a null userId, although the PlaybackSession model types userId as string
+      // cast(c): userId is typed string; see the NOTE above
       {
         userId: null
-      },
+      } as unknown as { userId: string },
       {
         where: {
           userId: user.id
@@ -407,18 +419,16 @@ class UserController {
 
   /**
    * PATCH: /api/users/:id/openid-unlink
-   *
-   * @param {UserControllerRequest} req
-   * @param {Response} res
    */
-  async unlinkFromOpenID(req, res) {
+  async unlinkFromOpenID(req: UserControllerRequest, res: Response) {
     Logger.debug(`[UserController] Unlinking user "${req.reqUser.username}" from OpenID with sub "${req.reqUser.authOpenIDSub}"`)
 
     if (!req.reqUser.authOpenIDSub) {
       return res.sendStatus(200)
     }
 
-    req.reqUser.extraData.authOpenIDSub = null
+    // cast(d): unlinking stores a null sub (the authOpenIDSub getter reads extraData?.authOpenIDSub, so null means no sub), but UserExtraData types it as string; extraData is set, as authOpenIDSub is checked above
+    ;(req.reqUser.extraData as { authOpenIDSub?: string | null }).authOpenIDSub = null
     req.reqUser.changed('extraData', true)
     await req.reqUser.save()
     SocketAuthority.clientEmitter(req.user.id, 'user_updated', req.reqUser.toOldJSONForBrowser())
@@ -427,11 +437,8 @@ class UserController {
 
   /**
    * GET: /api/users/:id/listening-sessions
-   *
-   * @param {UserControllerRequest} req
-   * @param {Response} res
    */
-  async getListeningSessions(req, res) {
+  async getListeningSessions(this: ApiRouter, req: UserControllerRequest, res: Response) {
     var listeningSessions = await this.getUserListeningSessionsHelper(req.params.id)
 
     const itemsPerPage = toNumber(req.query.itemsPerPage, 10) || 10
@@ -462,26 +469,16 @@ class UserController {
 
   /**
    * GET: /api/users/:id/listening-stats
-   *
-   * @this {import('../routers/ApiRouter')}
-   *
-   * @param {UserControllerRequest} req
-   * @param {Response} res
    */
-  async getListeningStats(req, res) {
+  async getListeningStats(this: ApiRouter, req: UserControllerRequest, res: Response) {
     var listeningStats = await this.getUserListeningStatsHelpers(req.params.id)
     res.json(listeningStats)
   }
 
   /**
    * GET: /api/users/online
-   *
-   * @this {import('../routers/ApiRouter')}
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async getOnlineUsers(req, res) {
+  async getOnlineUsers(this: ApiRouter, req: RequestWithUser, res: Response) {
     if (!req.user.isAdminOrUp) {
       return res.sendStatus(403)
     }
@@ -492,13 +489,7 @@ class UserController {
     })
   }
 
-  /**
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
-   * @param {NextFunction} next
-   */
-  async middleware(req, res, next) {
+  async middleware(req: RequestWithUser & { reqUser?: User | null }, res: Response, next: NextFunction) {
     if (!req.user.isAdminOrUp && req.user.id !== req.params.id) {
       return res.sendStatus(403)
     } else if ((req.method == 'PATCH' || req.method == 'POST' || req.method == 'DELETE') && !req.user.isAdminOrUp) {
@@ -515,4 +506,4 @@ class UserController {
     next()
   }
 }
-module.exports = new UserController()
+export = new UserController()

@@ -50,10 +50,13 @@ type OldPlaybackSession = import('../objects/PlaybackSession')
 const Database = DatabaseModule as InitializedDatabase
 
 /**
- * Route handler as the routes register them. The JS controllers type req as their own RequestWithUser, which
- * express's RequestHandler does not accept, so the handler parameters are left open.
+ * Route handler as the routes register them: Express calls it with its request, response and next function.
+ * The controllers type req as the Express request extended with what the auth and controller middleware set
+ * (req.user, req.library, req.libraryItem, ...), which is narrower than Request, so express's RequestHandler
+ * (checked strictly) does not accept them. Declared as a method, whose parameters TypeScript checks bivariantly:
+ * a handler must still take a Request (or an extension of it), a Response and a NextFunction.
  */
-type RouteHandler = (req: never, res: never, next: never) => unknown
+type RouteHandler = { handle(req: express.Request, res: express.Response, next: express.NextFunction): unknown }['handle']
 
 /**
  * Route method (get, post, ...) that takes a path and the handlers
@@ -61,7 +64,8 @@ type RouteHandler = (req: never, res: never, next: never) => unknown
 type RouteMethod = (path: string | RegExp, ...handlers: RouteHandler[]) => unknown
 
 /**
- * express app with the route methods typed as RouteMethod
+ * express app with the route methods typed as RouteMethod. Kept after batch 7 (rule 18): express's own get/post/...
+ * check the handlers with RequestHandler, which rejects every controller handler (req.user is optional there)
  */
 type ApiRouterApp = Omit<express.Express, 'get' | 'post' | 'patch' | 'delete'> & {
   get: RouteMethod
@@ -118,7 +122,7 @@ class ApiRouter {
     this.emailManager = Server.emailManager
     this.apiCacheManager = Server.apiCacheManager
 
-    // Same app; typed so the routes accept the JS controller handlers
+    // Same app; typed so the routes accept the controller handlers (see ApiRouterApp)
     this.router = express() as unknown as ApiRouterApp
     this.router.disable('x-powered-by')
     this.init()
@@ -173,7 +177,8 @@ class ApiRouter {
     this.router.get('/items/:id/download', LibraryItemController.middleware.bind(this), LibraryItemController.download.bind(this))
     this.router.patch('/items/:id/media', LibraryItemController.middleware.bind(this), LibraryItemController.updateMedia.bind(this))
     this.router.get('/items/:id/cover', LibraryItemController.getCover.bind(this))
-    this.router.post('/items/:id/cover', LibraryItemController.middleware.bind(this), LibraryItemController.uploadCover.bind(this))
+    // cast(d): Express passes next as the third argument, which uploadCover takes as updateAndReturnJson; next is a function (truthy), so it behaves as the default true
+    this.router.post('/items/:id/cover', LibraryItemController.middleware.bind(this), LibraryItemController.uploadCover.bind(this) as unknown as RouteHandler)
     this.router.patch('/items/:id/cover', LibraryItemController.middleware.bind(this), LibraryItemController.updateCover.bind(this))
     this.router.delete('/items/:id/cover', LibraryItemController.middleware.bind(this), LibraryItemController.removeCover.bind(this))
     this.router.post('/items/:id/match', LibraryItemController.middleware.bind(this), LibraryItemController.match.bind(this))

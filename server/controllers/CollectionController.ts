@@ -1,23 +1,37 @@
-const { Request, Response, NextFunction } = require('express')
-const Sequelize = require('sequelize')
-const Logger = require('../Logger')
-const SocketAuthority = require('../SocketAuthority')
-const Database = require('../Database')
-const htmlSanitizer = require('../utils/htmlSanitizer')
+import type { Response, NextFunction } from 'express'
+import type { FindOptions, HasManyGetAssociationsMixin } from 'sequelize'
+// sequelize is not used here; the import keeps the require of the JS
+import 'sequelize'
+import Logger = require('../Logger')
+import SocketAuthority = require('../SocketAuthority')
+import Database = require('../Database')
+import htmlSanitizer = require('../utils/htmlSanitizer')
 
-const RssFeedManager = require('../managers/RssFeedManager')
+import RssFeedManager = require('../managers/RssFeedManager')
+import type { RequestWithUser } from './types'
+import type { InitializedDatabase } from '../utils/types'
+import type { RuntimeFindOptions } from '../utils/queries/types'
+
+type Collection = import('../models/Collection')
+type CollectionBook = import('../models/CollectionBook')
+type User = import('../models/User')
+import type Book = require('../models/Book')
 
 /**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- *
- * @typedef RequestEntityObject
- * @property {import('../models/Collection')} collection
- *
- * @typedef {RequestWithUser & RequestEntityObject} CollectionControllerRequest
+ * The collection set by the middleware, as it is at runtime: the model does not declare the getCollectionBooks mixin of
+ * its hasMany(CollectionBook) association, and getOldJsonExpanded is called without a user, which it handles (if (user))
+ * although its parameter is typed User | null
  */
+type CollectionWithMixins = Collection & {
+  getCollectionBooks: HasManyGetAssociationsMixin<CollectionBook>
+  getOldJsonExpanded(user?: User | null, include?: string[]): ReturnType<Collection['getOldJsonExpanded']>
+}
+
+interface RequestEntityObject {
+  collection: CollectionWithMixins
+}
+
+type CollectionControllerRequest = RequestWithUser & RequestEntityObject
 
 class CollectionController {
   constructor() {}
@@ -25,11 +39,8 @@ class CollectionController {
   /**
    * POST: /api/collections
    * Create new collection
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async create(req, res) {
+  async create(req: RequestWithUser, res: Response) {
     const reqBody = req.body || {}
 
     const nameCleaned = htmlSanitizer.stripAllTags(reqBody.name)
@@ -45,7 +56,7 @@ class CollectionController {
       Logger.warn(`[CollectionController] User "${req.user.username}" attempted to create collection in inaccessible library ${reqBody.libraryId}`)
       return res.sendStatus(403)
     }
-    const libraryItemIds = (reqBody.books || []).filter((b) => !!b && typeof b == 'string')
+    const libraryItemIds = (reqBody.books || []).filter((b: unknown) => !!b && typeof b == 'string')
     if (!libraryItemIds.length) {
       return res.status(400).send('Invalid collection data. No books')
     }
@@ -63,10 +74,10 @@ class CollectionController {
       return res.status(400).send('Invalid collection data. Invalid books')
     }
 
-    /** @type {import('../models/Collection')} */
-    let newCollection = null
+    let newCollection: Collection | null = null
 
-    const transaction = await Database.sequelize.transaction()
+    // cast(e): remove when Database.js is converted (sequelize is set by Database.init, which runs before routes are served)
+    const transaction = await (Database as InitializedDatabase).sequelize.transaction()
     try {
       // Create collection
       newCollection = await Database.collectionModel.create(
@@ -79,11 +90,13 @@ class CollectionController {
       )
 
       // Create collectionBooks
-      const collectionBookPayloads = libraryItemIds.map((llid, index) => {
+      const collectionBookPayloads = libraryItemIds.map((llid: string, index: number) => {
         const libraryItem = libraryItems.find((li) => li.id === llid)
         return {
-          collectionId: newCollection.id,
-          bookId: libraryItem.mediaId,
+          // Non-null: newCollection is created above (the callback does not keep the narrowing of the let)
+          collectionId: newCollection!.id,
+          // Non-null: every id was found (libraryItems.length === libraryItemIds.length is checked above)
+          bookId: libraryItem!.mediaId,
           order: index + 1
         }
       })
@@ -107,13 +120,11 @@ class CollectionController {
 
   /**
    * GET: /api/collections
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async findAll(req, res) {
+  async findAll(req: RequestWithUser, res: Response) {
     const collectionsExpanded = await Database.collectionModel.getOldCollectionsJsonExpanded(req.user)
-    const accessibleCollections = collectionsExpanded.filter((c) => req.user.checkCanAccessLibrary(c.libraryId))
+    // Non-null: getOldCollectionsJsonExpanded filters out its null entries (.filter((c) => c)), which TypeScript does not narrow
+    const accessibleCollections = collectionsExpanded.filter((c) => req.user.checkCanAccessLibrary(c!.libraryId))
     res.json({
       collections: accessibleCollections
     })
@@ -121,12 +132,10 @@ class CollectionController {
 
   /**
    * GET: /api/collections/:id
-   *
-   * @param {CollectionControllerRequest} req
-   * @param {Response} res
    */
-  async findOne(req, res) {
-    const includeEntities = (req.query.include || '').split(',')
+  async findOne(req: CollectionControllerRequest, res: Response) {
+    // cast(d): query value
+    const includeEntities = ((req.query.include as string | undefined) || '').split(',')
 
     const collectionExpanded = await req.collection.getOldJsonExpanded(req.user, includeEntities)
     if (!collectionExpanded) {
@@ -140,15 +149,12 @@ class CollectionController {
   /**
    * PATCH: /api/collections/:id
    * Update collection
-   *
-   * @param {CollectionControllerRequest} req
-   * @param {Response} res
    */
-  async update(req, res) {
+  async update(req: CollectionControllerRequest, res: Response) {
     let wasUpdated = false
 
     // Update description and name if defined
-    const collectionUpdatePayload = {}
+    const collectionUpdatePayload: { description?: string | null; name?: string } = {}
     if (req.body.description !== undefined && req.body.description !== req.collection.description) {
       collectionUpdatePayload.description = req.body.description
       wasUpdated = true
@@ -168,16 +174,18 @@ class CollectionController {
     // If books array is passed in then update order in collection
     let collectionBooksUpdated = false
     if (req.body.books?.length) {
-      const collectionBooks = await req.collection.getCollectionBooks({
+      // cast(d): the rows include their book with its library item; CollectionBook does not declare the book association
+      const collectionBooks = (await req.collection.getCollectionBooks({
         include: {
           model: Database.bookModel,
           include: Database.libraryItemModel
         },
         order: [['order', 'ASC']]
-      })
+        // cast(b): checked as RuntimeFindOptions (the shapes Sequelize accepts at runtime); its FindOptions type is stricter, and TypeScript does not compare the nested single include object of the literal with it
+      } satisfies RuntimeFindOptions as unknown as FindOptions)) as (CollectionBook & { book: Book.BookExpandedWithLibraryItem })[]
       collectionBooks.sort((a, b) => {
-        const aIndex = req.body.books.findIndex((lid) => lid === a.book.libraryItem.id)
-        const bIndex = req.body.books.findIndex((lid) => lid === b.book.libraryItem.id)
+        const aIndex = req.body.books.findIndex((lid: string) => lid === a.book.libraryItem.id)
+        const bIndex = req.body.books.findIndex((lid: string) => lid === b.book.libraryItem.id)
         return aIndex - bIndex
       })
       for (let i = 0; i < collectionBooks.length; i++) {
@@ -205,13 +213,8 @@ class CollectionController {
 
   /**
    * DELETE: /api/collections/:id
-   *
-   * @this {import('../routers/ApiRouter')}
-   *
-   * @param {CollectionControllerRequest} req
-   * @param {Response} res
    */
-  async delete(req, res) {
+  async delete(req: CollectionControllerRequest, res: Response) {
     const jsonExpanded = await req.collection.getOldJsonExpanded()
 
     // Close rss feed - remove from db and emit socket event
@@ -227,11 +230,8 @@ class CollectionController {
    * POST: /api/collections/:id/book
    * Add a single book to a collection
    * Req.body { id: <library item id> }
-   *
-   * @param {CollectionControllerRequest} req
-   * @param {Response} res
    */
-  async addBook(req, res) {
+  async addBook(req: CollectionControllerRequest, res: Response) {
     const libraryItem = await Database.libraryItemModel.findByPk(req.body.id, {
       attributes: ['libraryId', 'mediaId']
     })
@@ -264,11 +264,8 @@ class CollectionController {
    * Remove a single book from a collection. Re-order books
    * Users with update permission can remove books from collections
    * TODO: bookId is actually libraryItemId. Clients need updating to use bookId
-   *
-   * @param {CollectionControllerRequest} req
-   * @param {Response} res
    */
-  async removeBook(req, res) {
+  async removeBook(req: CollectionControllerRequest, res: Response) {
     const libraryItem = await Database.libraryItemModel.findByPk(req.params.bookId, {
       attributes: ['mediaId']
     })
@@ -311,13 +308,10 @@ class CollectionController {
    * POST: /api/collections/:id/batch/add
    * Add multiple books to collection
    * Req.body { books: <Array of library item ids> }
-   *
-   * @param {CollectionControllerRequest} req
-   * @param {Response} res
    */
-  async addBatch(req, res) {
+  async addBatch(req: CollectionControllerRequest, res: Response) {
     // filter out invalid libraryItemIds
-    const bookIdsToAdd = (req.body.books || []).filter((b) => !!b && typeof b == 'string')
+    const bookIdsToAdd = (req.body.books || []).filter((b: unknown) => !!b && typeof b == 'string')
     if (!bookIdsToAdd.length) {
       return res.status(400).send('Invalid request body')
     }
@@ -336,11 +330,10 @@ class CollectionController {
     }
 
     // Get collection books already in collection
-    /** @type {import('../models/CollectionBook')[]} */
     const collectionBooks = await req.collection.getCollectionBooks()
 
     let order = collectionBooks.length + 1
-    const collectionBooksToAdd = []
+    const collectionBooksToAdd: { collectionId: string; bookId: string; order: number }[] = []
     let hasUpdated = false
 
     // Check and set new collection books to add
@@ -373,13 +366,10 @@ class CollectionController {
    * POST: /api/collections/:id/batch/remove
    * Remove multiple books from collection
    * Req.body { books: <Array of library item ids> }
-   *
-   * @param {CollectionControllerRequest} req
-   * @param {Response} res
    */
-  async removeBatch(req, res) {
+  async removeBatch(req: CollectionControllerRequest, res: Response) {
     // filter out invalid libraryItemIds
-    const bookIdsToRemove = (req.body.books || []).filter((b) => !!b && typeof b == 'string')
+    const bookIdsToRemove = (req.body.books || []).filter((b: unknown) => !!b && typeof b == 'string')
     if (!bookIdsToRemove.length) {
       return res.status(500).send('Invalid request body')
     }
@@ -395,7 +385,6 @@ class CollectionController {
     })
 
     // Get collection books already in collection
-    /** @type {import('../models/CollectionBook')[]} */
     const collectionBooks = await req.collection.getCollectionBooks({
       order: [['order', 'ASC']]
     })
@@ -424,13 +413,7 @@ class CollectionController {
     res.json(jsonExpanded)
   }
 
-  /**
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
-   * @param {NextFunction} next
-   */
-  async middleware(req, res, next) {
+  async middleware(req: RequestWithUser & { collection?: Collection }, res: Response, next: NextFunction) {
     if (req.params.id) {
       const collection = await Database.collectionModel.findByPk(req.params.id)
       if (!collection) {
@@ -455,4 +438,4 @@ class CollectionController {
     next()
   }
 }
-module.exports = new CollectionController()
+export = new CollectionController()

@@ -1,58 +1,67 @@
-const { Request, Response, NextFunction } = require('express')
-const sequelize = require('sequelize')
-const fs = require('../libs/fsExtra')
-const { createNewSortInstance } = require('../libs/fastSort')
+import type { Response, NextFunction } from 'express'
+import sequelize = require('sequelize')
+import fs = require('../libs/fsExtra')
+import fastSort = require('../libs/fastSort')
 
-const Logger = require('../Logger')
-const SocketAuthority = require('../SocketAuthority')
-const Database = require('../Database')
-const CacheManager = require('../managers/CacheManager')
-const CoverManager = require('../managers/CoverManager')
-const AuthorFinder = require('../finders/AuthorFinder')
+import Logger = require('../Logger')
+import SocketAuthority = require('../SocketAuthority')
+import Database = require('../Database')
+import CacheManager = require('../managers/CacheManager')
+import CoverManager = require('../managers/CoverManager')
+import AuthorFinder = require('../finders/AuthorFinder')
 
-const { reqSupportsWebp, isValidASIN, clampPositiveInt } = require('../utils/index')
+import utils = require('../utils/index')
+import type { RequestWithUser } from './types'
+import type { SortInstance } from '../utils/types'
 
-const naturalSort = createNewSortInstance({
-  comparer: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare
-})
+const { createNewSortInstance } = fastSort
+const { reqSupportsWebp, isValidASIN, clampPositiveInt } = utils
+
+type Author = import('../models/Author')
+import type LibraryItem = require('../models/LibraryItem')
 
 /**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- *
- * @typedef RequestEntityObject
- * @property {import('../models/Author')} author
- *
- * @typedef {RequestWithUser & RequestEntityObject} AuthorControllerRequest
+ * Minified library item with the series that findOne adds to its metadata
  */
+type ItemWithSeries = ReturnType<LibraryItem['toOldJSONMinified']> & {
+  media: { metadata: { series?: { id: string; name: string; nameIgnorePrefix: string; sequence: string | null } } }
+}
+
+interface RequestEntityObject {
+  author: Author
+}
+
+type AuthorControllerRequest = RequestWithUser & RequestEntityObject
+
+// cast(a): the vendored fast-sort has untyped parameters, see SortInstance
+const naturalSort = createNewSortInstance({
+  comparer: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare
+}) as SortInstance
 
 class AuthorController {
   constructor() {}
 
   /**
    * GET: /api/authors/:id
-   *
-   * @param {AuthorControllerRequest} req
-   * @param {Response} res
    */
-  async findOne(req, res) {
-    const include = (req.query.include || '').split(',')
+  async findOne(req: AuthorControllerRequest, res: Response) {
+    // cast(d): query value
+    const include = ((req.query.include as string | undefined) || '').split(',')
 
-    const authorJson = req.author.toOldJSON()
+    const authorJson: ReturnType<Author['toOldJSON']> & { series?: unknown[]; libraryItems?: unknown[] } = req.author.toOldJSON()
 
     // Used on author landing page to include library items and items grouped in series
     if (include.includes('items')) {
-      const libraryItems = await Database.libraryItemModel.getForAuthor(req.author, req.user)
+      // cast(d): getForAuthor returns the author's books, so these are book library items
+      const libraryItems = (await Database.libraryItemModel.getForAuthor(req.author, req.user)) as LibraryItem.BookLibraryItem[]
 
       if (include.includes('series')) {
-        const seriesMap = {}
+        const seriesMap: Record<string, { id: string; name: string; items: ItemWithSeries[] }> = {}
         // Group items into series
         libraryItems.forEach((li) => {
           if (li.media.series?.length) {
             li.media.series.forEach((series) => {
-              const itemWithSeries = li.toOldJSONMinified()
+              const itemWithSeries: ItemWithSeries = li.toOldJSONMinified()
               itemWithSeries.media.metadata.series = {
                 id: series.id,
                 name: series.name,
@@ -74,7 +83,8 @@ class AuthorController {
         })
         // Sort series items
         for (const key in seriesMap) {
-          seriesMap[key].items = naturalSort(seriesMap[key].items).asc((li) => li.media.metadata.series.sequence)
+          // Non-null: every item in seriesMap has its series set above
+          seriesMap[key].items = naturalSort(seriesMap[key].items).asc((li) => li.media.metadata.series!.sequence)
         }
 
         authorJson.series = Object.values(seriesMap)
@@ -89,16 +99,15 @@ class AuthorController {
 
   /**
    * PATCH: /api/authors/:id
-   *
-   * @param {AuthorControllerRequest} req
-   * @param {Response} res
    */
-  async update(req, res) {
+  async update(req: AuthorControllerRequest, res: Response) {
     const keysToUpdate = ['name', 'description', 'asin']
-    const payload = {}
+    // NOTE: name can be null here (the check below accepts null); it is then saved as null although Author.name is typed string
+    const payload: { name?: string; description?: string | null; asin?: string | null; lastFirst?: string | null } = {}
     for (const key in req.body) {
       if (keysToUpdate.includes(key) && (typeof req.body[key] === 'string' || req.body[key] === null)) {
-        payload[key] = req.body[key]
+        // cast(d): keysToUpdate.includes(key) is checked above
+        payload[key as 'name' | 'description' | 'asin'] = req.body[key]
       }
     }
     if (!Object.keys(payload).length) {
@@ -110,7 +119,8 @@ class AuthorController {
 
     const authorNameUpdate = payload.name !== undefined && payload.name !== req.author.name
     if (authorNameUpdate) {
-      payload.lastFirst = Database.authorModel.getLastFirst(payload.name)
+      // Non-null: authorNameUpdate checks payload.name !== undefined
+      payload.lastFirst = Database.authorModel.getLastFirst(payload.name!)
     }
 
     // Check if author name matches another author in the same library and merge the authors
@@ -128,23 +138,28 @@ class AuthorController {
     }
     if (existingAuthor) {
       Logger.info(`[AuthorController] Merging author "${req.author.name}" with "${existingAuthor.name}"`)
-      const bookAuthorsToCreate = []
-      const allItemsWithAuthor = await Database.authorModel.getAllLibraryItemsForAuthor(req.author.id)
+      const bookAuthorsToCreate: { bookId: string; authorId: string }[] = []
+      // cast(d): authors only have books, so these are book library items
+      const allItemsWithAuthor = (await Database.authorModel.getAllLibraryItemsForAuthor(req.author.id)) as LibraryItem.BookLibraryItem[]
 
-      const libraryItems = []
+      const libraryItems: LibraryItem.BookLibraryItem[] = []
       allItemsWithAuthor.forEach((libraryItem) => {
         // Replace old author with merging author for each book
         libraryItem.media.authors = libraryItem.media.authors.filter((au) => au.id !== req.author.id)
+        // cast(d): only id and name of the authors are read afterwards (saveMetadataFile, items_updated)
         libraryItem.media.authors.push({
-          id: existingAuthor.id,
-          name: existingAuthor.name
-        })
+          // Non-null: existingAuthor is checked above (the callback does not keep the narrowing of the let)
+          id: existingAuthor!.id,
+          // Non-null: as above
+          name: existingAuthor!.name
+        } as Author)
 
         libraryItems.push(libraryItem)
 
         bookAuthorsToCreate.push({
           bookId: libraryItem.media.id,
-          authorId: existingAuthor.id
+          // Non-null: as above
+          authorId: existingAuthor!.id
         })
       })
       if (libraryItems.length) {
@@ -189,10 +204,11 @@ class AuthorController {
     if (hasUpdated) {
       let numBooksForAuthor = 0
       if (authorNameUpdate) {
-        const allItemsWithAuthor = await Database.authorModel.getAllLibraryItemsForAuthor(req.author.id)
+        // cast(d): authors only have books, so these are book library items
+        const allItemsWithAuthor = (await Database.authorModel.getAllLibraryItemsForAuthor(req.author.id)) as LibraryItem.BookLibraryItem[]
 
         numBooksForAuthor = allItemsWithAuthor.length
-        const libraryItems = []
+        const libraryItems: LibraryItem.BookLibraryItem[] = []
         // Update author name on all books
         for (const libraryItem of allItemsWithAuthor) {
           libraryItem.media.authors = libraryItem.media.authors.map((au) => {
@@ -226,11 +242,8 @@ class AuthorController {
   /**
    * DELETE: /api/authors/:id
    * Remove author from all books and delete
-   *
-   * @param {AuthorControllerRequest} req
-   * @param {Response} res
    */
-  async delete(req, res) {
+  async delete(req: AuthorControllerRequest, res: Response) {
     Logger.info(`[AuthorController] Removing author "${req.author.name}"`)
 
     if (req.author.imagePath) {
@@ -238,7 +251,8 @@ class AuthorController {
     }
 
     // Load library items so that metadata file can be updated
-    const allItemsWithAuthor = await Database.authorModel.getAllLibraryItemsForAuthor(req.author.id)
+    // cast(d): authors only have books, so these are book library items
+    const allItemsWithAuthor = (await Database.authorModel.getAllLibraryItemsForAuthor(req.author.id)) as LibraryItem.BookLibraryItem[]
     allItemsWithAuthor.forEach((libraryItem) => {
       libraryItem.media.authors = libraryItem.media.authors.filter((au) => au.id !== req.author.id)
     })
@@ -260,11 +274,8 @@ class AuthorController {
   /**
    * POST: /api/authors/:id/image
    * Upload author image from web URL
-   *
-   * @param {AuthorControllerRequest} req
-   * @param {Response} res
    */
-  async uploadImage(req, res) {
+  async uploadImage(req: AuthorControllerRequest, res: Response) {
     if (!req.user.canUpload) {
       Logger.warn(`User "${req.user.username}" attempted to upload an image without permission`)
       return res.sendStatus(403)
@@ -279,7 +290,7 @@ class AuthorController {
     }
 
     Logger.debug(`[AuthorController] Requesting download author image from url "${req.body.url}"`)
-    const result = await AuthorFinder.saveAuthorImage(req.author.id, req.body.url)
+    const result: { path?: string; error?: string } = await AuthorFinder.saveAuthorImage(req.author.id, req.body.url)
 
     if (result?.error) {
       return res.status(400).send(result.error)
@@ -306,11 +317,8 @@ class AuthorController {
   /**
    * DELETE: /api/authors/:id/image
    * Remove author image & delete image file
-   *
-   * @param {AuthorControllerRequest} req
-   * @param {Response} res
    */
-  async deleteImage(req, res) {
+  async deleteImage(req: AuthorControllerRequest, res: Response) {
     if (!req.author.imagePath) {
       Logger.error(`[AuthorController] Author "${req.author.imagePath}" has no imagePath set`)
       return res.status(400).send('Author has no image path set')
@@ -330,11 +338,8 @@ class AuthorController {
 
   /**
    * POST: /api/authors/:id/match
-   *
-   * @param {AuthorControllerRequest} req
-   * @param {Response} res
    */
-  async match(req, res) {
+  async match(req: AuthorControllerRequest, res: Response) {
     let authorData = null
     const region = req.body.region || 'us'
     if (req.body.asin && isValidASIN(req.body.asin.toUpperCase?.())) {
@@ -357,7 +362,7 @@ class AuthorController {
     if (authorData.image && (!req.author.imagePath || hasUpdates)) {
       await CacheManager.purgeImageCache(req.author.id)
 
-      const imageData = await AuthorFinder.saveAuthorImage(req.author.id, authorData.image)
+      const imageData: { path?: string; error?: string } = await AuthorFinder.saveAuthorImage(req.author.id, authorData.image)
       if (imageData?.path) {
         req.author.imagePath = imageData.path
         hasUpdates = true
@@ -384,11 +389,8 @@ class AuthorController {
 
   /**
    * GET: /api/authors/:id/image
-   *
-   * @param {AuthorControllerRequest} req
-   * @param {Response} res
    */
-  async getImage(req, res) {
+  async getImage(req: AuthorControllerRequest, res: Response) {
     const {
       query: { width, height, format, raw }
     } = req
@@ -411,20 +413,17 @@ class AuthorController {
     }
 
     const options = {
-      format: format || (reqSupportsWebp(req) ? 'webp' : 'jpeg'),
-      height: clampPositiveInt(height ? parseInt(height) : null, 4096),
-      width: clampPositiveInt(width ? parseInt(width) : null, 4096)
+      // cast(d): query value
+      format: (format as string | undefined) || (reqSupportsWebp(req) ? 'webp' : 'jpeg'),
+      // cast(d): query value
+      height: clampPositiveInt(height ? parseInt(height as string) : null, 4096),
+      // cast(d): query value
+      width: clampPositiveInt(width ? parseInt(width as string) : null, 4096)
     }
     return CacheManager.handleAuthorCache(res, authorId, options)
   }
 
-  /**
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
-   * @param {NextFunction} next
-   */
-  async middleware(req, res, next) {
+  async middleware(req: RequestWithUser & Partial<RequestEntityObject>, res: Response, next: NextFunction) {
     const author = await Database.authorModel.findByPk(req.params.id)
     if (!author) return res.sendStatus(404)
     if (!req.user.checkCanAccessLibrary(author.libraryId)) return res.sendStatus(404)
@@ -441,4 +440,4 @@ class AuthorController {
     next()
   }
 }
-module.exports = new AuthorController()
+export = new AuthorController()

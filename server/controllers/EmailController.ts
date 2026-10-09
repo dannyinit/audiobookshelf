@@ -1,25 +1,19 @@
-const { Request, Response, NextFunction } = require('express')
-const Logger = require('../Logger')
-const SocketAuthority = require('../SocketAuthority')
-const Database = require('../Database')
+import type { Response, NextFunction } from 'express'
+import Logger = require('../Logger')
+import SocketAuthority = require('../SocketAuthority')
+import Database = require('../Database')
+import type { RequestWithUser } from './types'
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- */
+type ApiRouter = import('../routers/ApiRouter')
+type Book = import('../models/Book')
 
 class EmailController {
   constructor() {}
 
   /**
    * GET: /api/emails/settings
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  getSettings(req, res) {
+  getSettings(req: RequestWithUser, res: Response) {
     res.json({
       settings: Database.emailSettings
     })
@@ -27,11 +21,8 @@ class EmailController {
 
   /**
    * PATCH: /api/emails/settings
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async updateSettings(req, res) {
+  async updateSettings(req: RequestWithUser, res: Response) {
     const updated = Database.emailSettings.update(req.body)
     if (updated) {
       await Database.updateSetting(Database.emailSettings)
@@ -43,23 +34,15 @@ class EmailController {
 
   /**
    * POST: /api/emails/test
-   *
-   * @this {import('../routers/ApiRouter')}
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async sendTest(req, res) {
+  async sendTest(this: ApiRouter, req: RequestWithUser, res: Response) {
     this.emailManager.sendTest(res)
   }
 
   /**
    * POST: /api/emails/ereader-devices
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async updateEReaderDevices(req, res) {
+  async updateEReaderDevices(req: RequestWithUser, res: Response) {
     if (!req.body.ereaderDevices || !Array.isArray(req.body.ereaderDevices)) {
       return res.status(400).send('Invalid payload. ereaderDevices array required')
     }
@@ -89,11 +72,8 @@ class EmailController {
    * POST: /api/emails/send-ebook-to-device
    * Send ebook to device
    * User must have access to device and library item
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async sendEBookToDevice(req, res) {
+  async sendEBookToDevice(this: ApiRouter, req: RequestWithUser, res: Response) {
     Logger.debug(`[EmailController] Send ebook to device requested by user "${req.user.username}" for libraryItemId=${req.body.libraryItemId}, deviceName=${req.body.deviceName}`)
 
     const device = Database.emailSettings.getEReaderDevice(req.body.deviceName)
@@ -116,7 +96,8 @@ class EmailController {
       return res.sendStatus(403)
     }
 
-    const ebookFile = libraryItem.media.ebookFile
+    // cast(d): only Book media has ebookFile; for a podcast the JS reads undefined (404 below)
+    const ebookFile = (libraryItem.media as Book).ebookFile
     if (!ebookFile) {
       return res.status(404).send('Ebook file not found')
     }
@@ -124,13 +105,7 @@ class EmailController {
     this.emailManager.sendEBookToDevice(ebookFile, device, res)
   }
 
-  /**
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
-   * @param {NextFunction} next
-   */
-  adminMiddleware(req, res, next) {
+  adminMiddleware(req: RequestWithUser, res: Response, next: NextFunction) {
     if (!req.user.isAdminOrUp) {
       return res.sendStatus(404)
     }
@@ -138,4 +113,4 @@ class EmailController {
     next()
   }
 }
-module.exports = new EmailController()
+export = new EmailController()

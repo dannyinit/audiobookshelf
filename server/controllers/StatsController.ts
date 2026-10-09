@@ -1,14 +1,8 @@
-const { Request, Response, NextFunction } = require('express')
-const Logger = require('../Logger')
+import type { Response, NextFunction } from 'express'
+import Logger = require('../Logger')
 
-const adminStats = require('../utils/queries/adminStats')
-
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- */
+import adminStats = require('../utils/queries/adminStats')
+import type { RequestWithUser } from './types'
 
 class StatsController {
   constructor() {}
@@ -16,11 +10,8 @@ class StatsController {
   /**
    * GET: /api/stats/server
    * Currently not in use
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async getServerStats(req, res) {
+  async getServerStats(req: RequestWithUser, res: Response) {
     Logger.debug('[StatsController] getServerStats')
     const totalSize = await adminStats.getTotalSize()
     const numAudioFiles = await adminStats.getNumAudioFiles()
@@ -43,11 +34,8 @@ class StatsController {
 
   /**
    * GET: /api/stats/year/:year
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async getAdminStatsForYear(req, res) {
+  async getAdminStatsForYear(req: RequestWithUser, res: Response) {
     const year = Number(req.params.year)
     if (isNaN(year) || year < 2000 || year > 9999) {
       Logger.error(`[StatsController] Invalid year "${year}"`)
@@ -57,13 +45,7 @@ class StatsController {
     res.json(stats)
   }
 
-  /**
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
-   * @param {NextFunction} next
-   */
-  async middleware(req, res, next) {
+  async middleware(req: RequestWithUser, res: Response, next: NextFunction) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[StatsController] Non-admin user "${req.user.username}" attempted to access stats route`)
       return res.sendStatus(403)
@@ -72,4 +54,4 @@ class StatsController {
     next()
   }
 }
-module.exports = new StatsController()
+export = new StatsController()

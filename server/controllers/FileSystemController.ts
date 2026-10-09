@@ -1,33 +1,25 @@
-const { Request, Response } = require('express')
-const Path = require('path')
-const Logger = require('../Logger')
-const fs = require('../libs/fsExtra')
-const { toNumber } = require('../utils/index')
-const fileUtils = require('../utils/fileUtils')
-const Database = require('../Database')
+import type { Response } from 'express'
+import Path = require('path')
+import Logger = require('../Logger')
+import fs = require('../libs/fsExtra')
+import utils = require('../utils/index')
+import fileUtils = require('../utils/fileUtils')
+import Database = require('../Database')
+import type { RequestWithUser } from './types'
 
-/**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
- */
+const { toNumber } = utils
 
 class FileSystemController {
   constructor() {}
 
-  /**
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
-   */
-  async getPaths(req, res) {
+  async getPaths(req: RequestWithUser, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[FileSystemController] Non-admin user "${req.user.username}" attempting to get filesystem paths`)
       return res.sendStatus(403)
     }
 
-    const relpath = req.query.path
+    // cast(d): query value
+    const relpath = req.query.path as string | undefined
     const level = toNumber(req.query.level, 0)
 
     // Validate path. Must be absolute
@@ -37,7 +29,7 @@ class FileSystemController {
     }
     Logger.debug(`[FileSystemController] Getting file paths at ${relpath || 'root'} (${level})`)
 
-    let directories = []
+    let directories: { path: string; dirname: string; level: number }[] = []
 
     // Windows returns drives first
     if (global.isWin) {
@@ -78,11 +70,8 @@ class FileSystemController {
 
   /**
    * POST: /api/filesystem/pathexists
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async checkPathExists(req, res) {
+  async checkPathExists(req: RequestWithUser, res: Response) {
     if (!req.user.canUpload) {
       Logger.error(`[FileSystemController] User "${req.user.username}" without upload permissions attempting to check path exists`)
       return res.sendStatus(403)
@@ -133,7 +122,7 @@ class FileSystemController {
     const cleanedDirectory = directory.split('/').filter(Boolean).join('/')
     if (cleanedDirectory.includes('/')) {
       // Can only be 2 levels deep
-      const possiblePaths = []
+      const possiblePaths: string[] = []
       const subdir = Path.dirname(directory)
       possiblePaths.push(fileUtils.filePathToPOSIX(Path.join(folderPath, subdir)))
       if (subdir.includes('/')) {
@@ -159,4 +148,4 @@ class FileSystemController {
     })
   }
 }
-module.exports = new FileSystemController()
+export = new FileSystemController()

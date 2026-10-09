@@ -1,45 +1,60 @@
-const Path = require('path')
-const { Request, Response, NextFunction } = require('express')
-const Logger = require('../Logger')
-const Database = require('../Database')
-const { toNumber, isUUID } = require('../utils/index')
-const { getAudioMimeTypeFromExtname, encodeUriPath } = require('../utils/fileUtils')
-const { PlayMethod } = require('../utils/constants')
+import Path = require('path')
+import type { Request, Response, NextFunction } from 'express'
+import type { FindAndCountOptions } from 'sequelize'
+import Logger = require('../Logger')
+import Database = require('../Database')
+import utils = require('../utils/index')
+import fileUtils = require('../utils/fileUtils')
+import constants = require('../utils/constants')
 
-const ShareManager = require('../managers/ShareManager')
+import ShareManager = require('../managers/ShareManager')
+import type { RequestWithUser } from './types'
+import type { RuntimeFindOptions } from '../utils/queries/types'
+
+const { toNumber, isUUID } = utils
+const { getAudioMimeTypeFromExtname, encodeUriPath } = fileUtils
+const { PlayMethod } = constants
+
+type ApiRouter = import('../routers/ApiRouter')
+type PublicRouter = import('../routers/PublicRouter')
+type User = import('../models/User')
+type PlaybackSession = import('../objects/PlaybackSession')
+type PlaybackSessionModel = import('../models/PlaybackSession')
+type LibraryItem = import('../models/LibraryItem')
 
 /**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
+ * PlaybackSession row loaded with its user (the model does not declare the user association)
  */
+type PlaybackSessionWithUser = PlaybackSessionModel & { user?: User | null }
+
+type PlaybackSessionRequest = RequestWithUser & { playbackSession: PlaybackSession }
+
+interface BatchDeleteReqBody {
+  sessions: string[]
+}
 
 class SessionController {
   constructor() {}
 
   /**
    * GET: /api/sessions
-   *
-   * @this import('../routers/ApiRouter')
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async getAllWithUserData(req, res) {
+  async getAllWithUserData(req: RequestWithUser, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[SessionController] getAllWithUserData: Non-admin user "${req.user.username}" requested all session data`)
       return res.sendStatus(404)
     }
     // Validate "user" query
-    let userId = req.query.user
+    // cast(d): query value
+    let userId: string | null | undefined = req.query.user as string | undefined
     if (userId && !isUUID(userId)) {
       Logger.warn(`[SessionController] Invalid "user" query string "${userId}"`)
       userId = null
     }
     // Validate "sort" query
     const validSortOrders = ['displayTitle', 'duration', 'playMethod', 'startTime', 'currentTime', 'timeListening', 'updatedAt', 'createdAt']
-    let orderKey = req.query.sort || 'updatedAt'
+    // cast(d): query value
+    let orderKey = (req.query.sort as string | undefined) || 'updatedAt'
     if (!validSortOrders.includes(orderKey)) {
       Logger.warn(`[SessionController] Invalid "sort" query string "${orderKey}" (Must be one of "${validSortOrders.join('|')}")`)
       orderKey = 'updatedAt'
@@ -57,7 +72,7 @@ class SessionController {
       page = 0
     }
 
-    let where = null
+    let where: { userId: string } | null = null
 
     if (userId) {
       where = {
@@ -65,7 +80,8 @@ class SessionController {
       }
     }
 
-    const { rows, count } = await Database.playbackSessionModel.findAndCountAll({
+    // cast(d): the rows include the user, which the PlaybackSession model does not declare
+    const { rows, count } = (await Database.playbackSessionModel.findAndCountAll({
       where,
       include: [
         {
@@ -79,7 +95,8 @@ class SessionController {
       order: [[orderKey, orderDesc]],
       limit: itemsPerPage,
       offset: itemsPerPage * page
-    })
+      // cast(b): checked as RuntimeFindOptions (the shapes Sequelize accepts at runtime); its FindAndCountOptions type does not accept a null where
+    } satisfies RuntimeFindOptions as FindAndCountOptions)) as { rows: PlaybackSessionWithUser[]; count: number }
 
     // Map playback sessions to old playback sessions
     const sessions = rows.map((session) => {
@@ -97,7 +114,14 @@ class SessionController {
       }
     })
 
-    const payload = {
+    const payload: {
+      total: number
+      numPages: number
+      page: number
+      itemsPerPage: number
+      sessions: unknown[]
+      userId?: string
+    } = {
       total: count,
       numPages: Math.ceil(count / itemsPerPage),
       page,
@@ -113,13 +137,8 @@ class SessionController {
 
   /**
    * GET: /api/sessions/open
-   *
-   * @this {import('../routers/ApiRouter')}
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async getOpenSessions(req, res) {
+  async getOpenSessions(this: ApiRouter, req: RequestWithUser, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[SessionController] getOpenSessions: Non-admin user "${req.user.username}" requested open session data`)
       return res.sendStatus(404)
@@ -143,39 +162,26 @@ class SessionController {
 
   /**
    * GET: /api/session/:id
-   *
-   * @this {import('../routers/ApiRouter')}
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async getOpenSession(req, res) {
-    const libraryItem = await Database.libraryItemModel.getExpandedById(req.playbackSession.libraryItemId)
-    const sessionForClient = req.playbackSession.toJSONForClient(libraryItem)
+  async getOpenSession(req: PlaybackSessionRequest, res: Response) {
+    // Non-null: open sessions are started for a library item
+    const libraryItem = await Database.libraryItemModel.getExpandedById(req.playbackSession.libraryItemId!)
+    // cast(d): toJSONForClient handles a null library item (libraryItem?.), but its parameter is typed LibraryItem | undefined
+    const sessionForClient = req.playbackSession.toJSONForClient(libraryItem as LibraryItem | undefined)
     res.json(sessionForClient)
   }
 
   /**
    * POST: /api/session/:id/sync
-   *
-   * @this {import('../routers/ApiRouter')}
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  sync(req, res) {
+  sync(this: ApiRouter, req: PlaybackSessionRequest, res: Response) {
     this.playbackSessionManager.syncSessionRequest(req.user, req.playbackSession, req.body, res)
   }
 
   /**
    * POST: /api/session/:id/close
-   *
-   * @this {import('../routers/ApiRouter')}
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  close(req, res) {
+  close(this: ApiRouter, req: PlaybackSessionRequest, res: Response) {
     let syncData = req.body
     if (syncData && !Object.keys(syncData).length) syncData = null
     this.playbackSessionManager.closeSessionRequest(req.user, req.playbackSession, syncData, res)
@@ -183,15 +189,11 @@ class SessionController {
 
   /**
    * DELETE: /api/session/:id
-   *
-   * @this {import('../routers/ApiRouter')}
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async delete(req, res) {
+  async delete(this: ApiRouter, req: PlaybackSessionRequest, res: Response) {
     // if session is open then remove it
-    const openSession = this.playbackSessionManager.getSession(req.playbackSession.id)
+    // Non-null: sessions loaded from the database have an id
+    const openSession = this.playbackSessionManager.getSession(req.playbackSession.id!)
     if (openSession) {
       await this.playbackSessionManager.removeSession(req.playbackSession.id)
     }
@@ -202,15 +204,8 @@ class SessionController {
 
   /**
    * POST: /api/sessions/batch/delete
-   * @this import('../routers/ApiRouter')
-   *
-   * @typedef batchDeleteReqBody
-   * @property {string[]} sessions
-   *
-   * @param {Request<{}, {}, batchDeleteReqBody, {}> & RequestUserObject} req
-   * @param {Response} res
    */
-  async batchDelete(req, res) {
+  async batchDelete(this: ApiRouter, req: Request<{}, {}, BatchDeleteReqBody, {}> & { user: User }, res: Response) {
     if (!req.user.isAdminOrUp) {
       Logger.error(`[SessionController] Non-admin user "${req.user.username}" attempted to batch delete sessions`)
       return res.sendStatus(403)
@@ -245,39 +240,25 @@ class SessionController {
 
   /**
    * POST: /api/session/local
-   *
-   * @this {import('../routers/ApiRouter')}
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  syncLocal(req, res) {
+  syncLocal(this: ApiRouter, req: RequestWithUser, res: Response) {
     this.playbackSessionManager.syncLocalSessionRequest(req, res)
   }
 
   /**
    * POST: /api/session/local-all
-   *
-   * @this {import('../routers/ApiRouter')}
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  syncLocalSessions(req, res) {
+  syncLocalSessions(this: ApiRouter, req: RequestWithUser, res: Response) {
     this.playbackSessionManager.syncLocalSessionsRequest(req, res)
   }
 
   /**
    * GET: /public/session/:id/track/:index
    * While a session is open, this endpoint can be used to stream the audio track
-   *
-   * @this {import('../routers/PublicRouter')}
-   *
-   * @param {Request} req
-   * @param {Response} res
    */
-  async getTrack(req, res) {
-    const audioTrackIndex = toNumber(req.params.index, null)
+  async getTrack(this: PublicRouter, req: Request, res: Response) {
+    // cast(d): toNumber returns the fallback as is (null here), but its fallback is typed number
+    const audioTrackIndex = (toNumber as (val: unknown, fallback: number | null) => number | null)(req.params.index, null)
     if (audioTrackIndex === null) {
       Logger.error(`[SessionController] Invalid audio track index "${req.params.index}"`)
       return res.sendStatus(400)
@@ -312,8 +293,11 @@ class SessionController {
       return res.sendStatus(500)
     }
 
-    const user = await Database.userModel.getUserById(playbackSession.userId)
-    Logger.debug(`[SessionController] Serving audio track ${audioTrack.index} for session "${req.params.id}" belonging to user "${user.username}"`)
+    // Non-null: open sessions belong to a user
+    const user = await Database.userModel.getUserById(playbackSession.userId!)
+    // NOTE: getUserById returns null when the user was deleted while the session is open; user.username then throws a TypeError
+    // Non-null: see NOTE above
+    Logger.debug(`[SessionController] Serving audio track ${audioTrack.index} for session "${req.params.id}" belonging to user "${user!.username}"`)
 
     if (global.XAccel) {
       const encodedURI = encodeUriPath(global.XAccel + audioTrack.metadata.path)
@@ -329,13 +313,7 @@ class SessionController {
     res.sendFile(audioTrack.metadata.path)
   }
 
-  /**
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
-   * @param {NextFunction} next
-   */
-  openSessionMiddleware(req, res, next) {
+  openSessionMiddleware(this: ApiRouter, req: RequestWithUser & { playbackSession?: PlaybackSession }, res: Response, next: NextFunction) {
     var playbackSession = this.playbackSessionManager.getSession(req.params.id)
     if (!playbackSession) return res.sendStatus(404)
 
@@ -348,13 +326,7 @@ class SessionController {
     next()
   }
 
-  /**
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
-   * @param {NextFunction} next
-   */
-  async middleware(req, res, next) {
+  async middleware(req: RequestWithUser & { playbackSession?: PlaybackSession }, res: Response, next: NextFunction) {
     const playbackSession = await Database.getPlaybackSession(req.params.id)
     if (!playbackSession) {
       Logger.error(`[SessionController] Unable to find playback session with id=${req.params.id}`)
@@ -373,4 +345,4 @@ class SessionController {
     next()
   }
 }
-module.exports = new SessionController()
+export = new SessionController()

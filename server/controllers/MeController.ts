@@ -1,40 +1,42 @@
-const { Request, Response } = require('express')
-const { Op } = require('sequelize')
-const Logger = require('../Logger')
-const SocketAuthority = require('../SocketAuthority')
-const Database = require('../Database')
-const { sort } = require('../libs/fastSort')
-const { toNumber, isNullOrNaN, isUUID } = require('../utils/index')
-const userStats = require('../utils/queries/userStats')
-const parseUserAgent = require('../utils/parsers/parseUserAgent')
+import type { Response } from 'express'
+import sequelize = require('sequelize')
+import Logger = require('../Logger')
+import SocketAuthority = require('../SocketAuthority')
+import Database = require('../Database')
+import fastSort = require('../libs/fastSort')
+import utils = require('../utils/index')
+import userStats = require('../utils/queries/userStats')
+import parseUserAgent = require('../utils/parsers/parseUserAgent')
+import type { RequestWithUser } from './types'
+
+const { Op } = sequelize
+const { sort } = fastSort
+const { toNumber, isNullOrNaN, isUUID } = utils
+
+type ApiRouter = import('../routers/ApiRouter')
+type LibraryItem = import('../models/LibraryItem')
+type Podcast = import('../models/Podcast')
+type PodcastEpisode = import('../models/PodcastEpisode')
 
 /**
- * @typedef RequestUserObject
- * @property {import('../models/User')} user
- *
- * @typedef {Request & RequestUserObject} RequestWithUser
+ * Minified library item in progress, as getAllLibraryItemsInProgress returns it
  */
+type ItemInProgress = ReturnType<LibraryItem['toOldJSONMinified']> & { recentEpisode?: ReturnType<PodcastEpisode['toOldJSON']>; progressLastUpdate: number }
 
 class MeController {
   constructor() {}
 
   /**
    * GET: /api/me
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  getCurrentUser(req, res) {
+  getCurrentUser(req: RequestWithUser, res: Response) {
     res.json(req.user.toOldJSONForBrowser())
   }
 
   /**
    * GET: /api/me/sessions
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async getSessions(req, res) {
+  async getSessions(req: RequestWithUser, res: Response) {
     const page = Math.max(0, toNumber(req.query.page, 0))
     const itemsPerPage = Math.max(1, toNumber(req.query.itemsPerPage, 10))
 
@@ -73,11 +75,8 @@ class MeController {
 
   /**
    * DELETE: /api/me/sessions/:id
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async deleteSession(req, res) {
+  async deleteSession(req: RequestWithUser, res: Response) {
     if (req.user.isGuest) {
       return res.sendStatus(403)
     }
@@ -105,33 +104,24 @@ class MeController {
 
   /**
    * GET: /api/me/progress
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  getAllMediaProgress(req, res) {
+  getAllMediaProgress(req: RequestWithUser, res: Response) {
     const mediaProgress = req.user.mediaProgresses?.map((mp) => mp.getOldMediaProgress()) || []
     res.json({ mediaProgress })
   }
 
   /**
    * GET: /api/me/bookmarks
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  getAllBookmarks(req, res) {
+  getAllBookmarks(req: RequestWithUser, res: Response) {
     const bookmarks = req.user.bookmarks?.map((bookmark) => ({ ...bookmark })) || []
     res.json({ bookmarks })
   }
 
   /**
    * GET: /api/me/bookmarks/:libraryItemId
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async getBookmarksForLibraryItem(req, res) {
+  async getBookmarksForLibraryItem(req: RequestWithUser, res: Response) {
     const libraryItem = await Database.libraryItemModel.getExpandedById(req.params.libraryItemId)
     if (!libraryItem) {
       return res.sendStatus(404)
@@ -148,13 +138,8 @@ class MeController {
 
   /**
    * GET: /api/me/listening-sessions
-   *
-   * @this import('../routers/ApiRouter')
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async getListeningSessions(req, res) {
+  async getListeningSessions(this: ApiRouter, req: RequestWithUser, res: Response) {
     const listeningSessions = await this.getUserListeningSessionsHelper(req.user.id)
 
     const itemsPerPage = toNumber(req.query.itemsPerPage, 10) || 10
@@ -176,13 +161,8 @@ class MeController {
 
   /**
    * GET: /api/me/item/listening-sessions/:libraryItemId/:episodeId
-   *
-   * @this import('../routers/ApiRouter')
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async getItemListeningSessions(req, res) {
+  async getItemListeningSessions(this: ApiRouter, req: RequestWithUser, res: Response) {
     const libraryItem = await Database.libraryItemModel.getExpandedById(req.params.libraryItemId)
     const episode = await Database.podcastEpisodeModel.findByPk(req.params.episodeId)
 
@@ -219,24 +199,16 @@ class MeController {
 
   /**
    * GET: /api/me/listening-stats
-   *
-   * @this import('../routers/ApiRouter')
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async getListeningStats(req, res) {
+  async getListeningStats(this: ApiRouter, req: RequestWithUser, res: Response) {
     const listeningStats = await this.getUserListeningStatsHelpers(req.user.id)
     res.json(listeningStats)
   }
 
   /**
    * GET: /api/me/progress/:id/:episodeId?
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async getMediaProgress(req, res) {
+  async getMediaProgress(req: RequestWithUser, res: Response) {
     const mediaProgress = req.user.getOldMediaProgress(req.params.id, req.params.episodeId || null)
     if (!mediaProgress) {
       return res.sendStatus(404)
@@ -246,11 +218,8 @@ class MeController {
 
   /**
    * DELETE: /api/me/progress/:id
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async removeMediaProgress(req, res) {
+  async removeMediaProgress(req: RequestWithUser, res: Response) {
     // Verify the media progress belongs to the current user
     const mediaProgress = req.user.mediaProgresses.find((mp) => mp.id === req.params.id)
     if (!mediaProgress) {
@@ -268,11 +237,8 @@ class MeController {
   /**
    * PATCH: /api/me/progress/:libraryItemId/:episodeId?
    * TODO: Update to use mediaItemId and mediaItemType
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async createUpdateMediaProgress(req, res) {
+  async createUpdateMediaProgress(req: RequestWithUser, res: Response) {
     const progressUpdatePayload = {
       ...req.body,
       libraryItemId: req.params.libraryItemId,
@@ -290,11 +256,8 @@ class MeController {
   /**
    * PATCH: /api/me/progress/batch/update
    * TODO: Update to use mediaItemId and mediaItemType
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async batchUpdateMediaProgress(req, res) {
+  async batchUpdateMediaProgress(req: RequestWithUser, res: Response) {
     const itemProgressPayloads = req.body
     if (!itemProgressPayloads?.length) {
       return res.status(400).send('Missing request payload')
@@ -320,11 +283,8 @@ class MeController {
 
   /**
    * POST: /api/me/item/:id/bookmark
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async createBookmark(req, res) {
+  async createBookmark(req: RequestWithUser, res: Response) {
     const libraryItem = await Database.libraryItemModel.getExpandedById(req.params.id)
     if (!libraryItem) {
       return res.sendStatus(404)
@@ -353,11 +313,8 @@ class MeController {
 
   /**
    * PATCH: /api/me/item/:id/bookmark
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async updateBookmark(req, res) {
+  async updateBookmark(req: RequestWithUser, res: Response) {
     const libraryItem = await Database.libraryItemModel.getExpandedById(req.params.id)
     if (!libraryItem) {
       return res.sendStatus(404)
@@ -391,11 +348,8 @@ class MeController {
 
   /**
    * DELETE: /api/me/item/:id/bookmark/:time
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async removeBookmark(req, res) {
+  async removeBookmark(req: RequestWithUser, res: Response) {
     const libraryItem = await Database.libraryItemModel.getExpandedById(req.params.id)
     if (!libraryItem) {
       return res.sendStatus(404)
@@ -429,13 +383,8 @@ class MeController {
    * Guest users cannot change password.
    *
    * Invalidates all other JWT sessions for the user. If using x-refresh-token, returns new tokens for the current session.
-   *
-   * @this import('../routers/ApiRouter')
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async updatePassword(req, res) {
+  async updatePassword(this: ApiRouter, req: RequestWithUser, res: Response) {
     if (req.user.isGuest) {
       Logger.error(`[MeController] Guest user "${req.user.username}" attempted to change password`)
       return res.sendStatus(403)
@@ -478,26 +427,27 @@ class MeController {
    * Pull items in progress for all libraries
    * Used in Android Auto in progress list since there is no easy library selection
    * TODO: Update to use mediaItemId and mediaItemType. Use sort & limit in query
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async getAllLibraryItemsInProgress(req, res) {
-    const limit = !isNaN(req.query.limit) ? Number(req.query.limit) || 25 : 25
+  async getAllLibraryItemsInProgress(req: RequestWithUser, res: Response) {
+    // cast(d): isNaN coerces its argument (the query value is a string)
+    const limit = !isNaN(req.query.limit as unknown as number) ? Number(req.query.limit) || 25 : 25
 
-    const mediaProgressesInProgress = req.user.mediaProgresses.filter((mp) => !mp.isFinished && (mp.currentTime > 0 || mp.ebookProgress > 0))
+    // Non-null: a null ebookProgress compares as 0 here (null > 0 is false)
+    const mediaProgressesInProgress = req.user.mediaProgresses.filter((mp) => !mp.isFinished && (mp.currentTime > 0 || mp.ebookProgress! > 0))
 
     const libraryItemsIds = [...new Set(mediaProgressesInProgress.map((mp) => mp.extraData?.libraryItemId).filter((id) => id))]
-    const libraryItems = await Database.libraryItemModel.findAllExpandedWhere({ id: libraryItemsIds })
+    // cast(d): the filter above removes the undefined ids
+    const libraryItems = await Database.libraryItemModel.findAllExpandedWhere({ id: libraryItemsIds as string[] })
 
-    let itemsInProgress = []
+    let itemsInProgress: ItemInProgress[] = []
 
     for (const mediaProgress of mediaProgressesInProgress) {
       const oldMediaProgress = mediaProgress.getOldMediaProgress()
       const libraryItem = libraryItems.find((li) => li.id === oldMediaProgress.libraryItemId)
       if (libraryItem) {
         if (oldMediaProgress.episodeId && libraryItem.isPodcast) {
-          const episode = libraryItem.media.podcastEpisodes.find((ep) => ep.id === oldMediaProgress.episodeId)
+          // cast(d): libraryItem.isPodcast is checked above (a getter does not narrow mediaType)
+          const episode = (libraryItem.media as Podcast).podcastEpisodes.find((ep) => ep.id === oldMediaProgress.episodeId)
           if (episode) {
             const libraryItemWithEpisode = {
               ...libraryItem.toOldJSONMinified(),
@@ -516,7 +466,7 @@ class MeController {
     }
 
     itemsInProgress = sort(itemsInProgress)
-      .desc((li) => li.progressLastUpdate)
+      .desc((li: ItemInProgress) => li.progressLastUpdate)
       .slice(0, limit)
     res.json({
       libraryItems: itemsInProgress
@@ -525,11 +475,8 @@ class MeController {
 
   /**
    * GET: /api/me/series/:id/remove-from-continue-listening
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async removeSeriesFromContinueListening(req, res) {
+  async removeSeriesFromContinueListening(req: RequestWithUser, res: Response) {
     if (!(await Database.seriesModel.checkExistsById(req.params.id))) {
       Logger.error(`[MeController] removeSeriesFromContinueListening: Series ${req.params.id} not found`)
       return res.sendStatus(404)
@@ -544,11 +491,8 @@ class MeController {
 
   /**
    * GET: api/me/series/:id/readd-to-continue-listening
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async readdSeriesFromContinueListening(req, res) {
+  async readdSeriesFromContinueListening(req: RequestWithUser, res: Response) {
     if (!(await Database.seriesModel.checkExistsById(req.params.id))) {
       Logger.error(`[MeController] readdSeriesFromContinueListening: Series ${req.params.id} not found`)
       return res.sendStatus(404)
@@ -563,11 +507,8 @@ class MeController {
 
   /**
    * GET: api/me/progress/:id/remove-from-continue-listening
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async removeItemFromContinueListening(req, res) {
+  async removeItemFromContinueListening(req: RequestWithUser, res: Response) {
     const mediaProgress = req.user.mediaProgresses.find((mp) => mp.id === req.params.id)
     if (!mediaProgress) {
       return res.sendStatus(404)
@@ -588,11 +529,8 @@ class MeController {
 
   /**
    * POST: /api/me/ereader-devices
-   *
-   * @param {RequestWithUser} req
-   * @param {Response} res
    */
-  async updateUserEReaderDevices(req, res) {
+  async updateUserEReaderDevices(req: RequestWithUser, res: Response) {
     if (!req.body.ereaderDevices || !Array.isArray(req.body.ereaderDevices)) {
       return res.status(400).send('Invalid payload. ereaderDevices array required')
     }
@@ -640,11 +578,8 @@ class MeController {
 
   /**
    * GET: /api/me/stats/year/:year
-   *
-   * @param {import('express').Request} req
-   * @param {import('express').Response} res
    */
-  async getStatsForYear(req, res) {
+  async getStatsForYear(req: RequestWithUser, res: Response) {
     const year = Number(req.params.year)
     if (isNaN(year) || year < 2000 || year > 9999) {
       Logger.error(`[MeController] Invalid year "${year}"`)
@@ -654,4 +589,4 @@ class MeController {
     res.json(data)
   }
 }
-module.exports = new MeController()
+export = new MeController()
