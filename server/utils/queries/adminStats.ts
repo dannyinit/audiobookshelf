@@ -4,10 +4,10 @@ import PlaybackSession = require('../../models/PlaybackSession')
 import fsExtraModule = require('../../libs/fsExtra')
 import Book = require('../../models/Book')
 import LibraryItem = require('../../models/LibraryItem')
-import type { FsExtra, PlaybackMediaMetadata, InitializedDatabase } from '../types'
+import type { FsExtra, PlaybackMediaMetadata } from '../types'
 
-// cast(d): Database.js is still JS; sequelize is null until Database.init, which runs before any query
-const Database = DatabaseModule as InitializedDatabase
+// Same module object (kept as an alias so the compiled module is unchanged)
+const Database = DatabaseModule
 // The inferred type of the vendored fs-extra lacks the fs methods it adds at runtime
 const fsExtra = fsExtraModule as unknown as FsExtra
 

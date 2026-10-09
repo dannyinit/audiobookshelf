@@ -28,7 +28,6 @@ import type PodcastEpisode = require('../models/PodcastEpisode')
 import type CronManager = require('./CronManager')
 import type { LibraryFileObject, RssPodcastEpisode } from '../models/types'
 import type MediaProbeData = require('../scanner/MediaProbeData')
-import type { InitializedDatabase } from '../utils/types'
 const { getPodcastFeed } = podcastUtils
 const { removeFile, downloadFile, sanitizeFilename, filePathToPOSIX, getFileTimestampsWithIno } = fileUtils
 const { levenshteinDistance } = utils
@@ -598,8 +597,7 @@ class PodcastManager {
       }
 
       let newLibraryItem: LibraryItem | null = null
-      // cast(e): sequelize is null until Database.init, which runs before podcasts are imported; remove when Database.js is converted
-      const transaction = await (Database as InitializedDatabase).sequelize.transaction()
+      const transaction = await Database.sequelize.transaction()
       try {
         // NOTE: getFileTimestampsWithIno returns false when stat fails; the library item is then created with ino, mtime, ctime and birthtime undefined (or 0)
         // cast(c): read as in the JS (see NOTE above)

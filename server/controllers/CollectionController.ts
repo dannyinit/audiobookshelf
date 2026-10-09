@@ -9,7 +9,6 @@ import htmlSanitizer = require('../utils/htmlSanitizer')
 
 import RssFeedManager = require('../managers/RssFeedManager')
 import type { RequestWithUser } from './types'
-import type { InitializedDatabase } from '../utils/types'
 import type { RuntimeFindOptions } from '../utils/queries/types'
 
 type Collection = import('../models/Collection')
@@ -76,8 +75,7 @@ class CollectionController {
 
     let newCollection: Collection | null = null
 
-    // cast(e): remove when Database.js is converted (sequelize is set by Database.init, which runs before routes are served)
-    const transaction = await (Database as InitializedDatabase).sequelize.transaction()
+    const transaction = await Database.sequelize.transaction()
     try {
       // Create collection
       newCollection = await Database.collectionModel.create(

@@ -3,7 +3,6 @@ import Logger = require('../Logger')
 import Database = require('../Database')
 import type { Request, Response, NextFunction } from 'express'
 import type { SequelizeHooks } from 'sequelize/types/hooks'
-import type { InitializedDatabase } from '../utils/types'
 const { LRUCache } = lruCache
 
 /**
@@ -45,8 +44,7 @@ class ApiCacheManager {
     this.ttlOptions = ttlOptions
   }
 
-  // cast(e): sequelize is null until Database.init, which runs before init is called; remove when Database.js is converted
-  init(database = Database as InitializedDatabase) {
+  init(database = Database) {
     let hooks: (keyof SequelizeHooks)[] = ['afterCreate', 'afterUpdate', 'afterDestroy', 'afterBulkCreate', 'afterBulkUpdate', 'afterBulkDestroy', 'afterUpsert']
     hooks.forEach((hook) => database.sequelize.addHook(hook, (model: HookTarget) => this.clear(model, hook)))
   }

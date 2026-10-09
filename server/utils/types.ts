@@ -5,7 +5,6 @@
 import type * as fsPromises from 'fs/promises'
 import type * as fsSync from 'fs'
 type ServerSettingsModel = import('../objects/settings/ServerSettings')
-import type { ModelRegistry, ModelsSequelize } from '../models/types'
 
 /**
  * Methods the vendored fs-extra (server/libs/fsExtra) adds on top of node fs (only the ones used)
@@ -96,13 +95,6 @@ export interface ZipArchive {
 export type ArchiverFactory = (format: 'zip', options: { zlib?: { level: number } }) => ZipArchive
 
 type DatabaseInstance = typeof import('../Database')
-
-/**
- * server/Database after Database.init has run. Database.js (still JS) sets sequelize to null in the constructor
- * and to the Sequelize instance in init, so it is typed `Sequelize | null`; code that only runs after init
- * (routes, library queries, migrations called from init) uses this type. `models` is the getter for sequelize.models.
- */
-export type InitializedDatabase = DatabaseInstance & { sequelize: ModelsSequelize; models: ModelRegistry }
 
 /**
  * Filter menu data for a library, cached on Database.libraryFilterData

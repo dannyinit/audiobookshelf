@@ -9,11 +9,10 @@ import BookSeries = require('../../models/BookSeries')
 import Book = require('../../models/Book')
 import Feed = require('../../models/Feed')
 import type { FindAndCountOptions } from 'sequelize'
-import type { InitializedDatabase } from '../types'
 import type { FilteredLibraryItem, QueryInclude, QueryOrderItem, RuntimeFindOptions, UserPermissions, WhereItem } from './types'
 
-// cast(d): Database.js is still JS; sequelize is null until Database.init, which runs before any query
-const Database = DatabaseModule as InitializedDatabase
+// Same module object (kept as an alias so the compiled module is unchanged)
+const Database = DatabaseModule
 
 /**
  * Series with its book_series rows (each with the included book and libraryItem) and optional feeds

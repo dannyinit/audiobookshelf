@@ -9,12 +9,11 @@ import Podcast = require('../../models/Podcast')
 import PodcastEpisode = require('../../models/PodcastEpisode')
 import LibraryItem = require('../../models/LibraryItem')
 import type { CountOptions, FindOptions, Model, ModelStatic, WhereAttributeHash, Order, IncludeOptions } from 'sequelize'
-import type { InitializedDatabase } from '../types'
 import type { FilteredLibraryItem, MediaGroupQuery, QueryReplacements, RuntimeFindOptions, UserPermissionPodcastWhere, UserPermissions, WhereItem } from './types'
 const { profile } = profiler
 
-// cast(d): Database.js is still JS; sequelize is null until Database.init, which runs before any query
-const Database = DatabaseModule as InitializedDatabase
+// Same module object (kept as an alias so the compiled module is unchanged)
+const Database = DatabaseModule
 
 const countCache = new Map<string, number>()
 

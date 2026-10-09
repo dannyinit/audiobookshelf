@@ -39,15 +39,15 @@ import ApiKeyController = require('../controllers/ApiKeyController')
 import type { FindOptions } from 'sequelize'
 import type Server = require('../Server')
 import type { DateAndTime } from '../objects/types'
-import type { FsExtra, InitializedDatabase } from '../utils/types'
+import type { FsExtra } from '../utils/types'
 // Typed views of the untyped vendored fs-extra and date-and-time
 const fs = fsExtra as unknown as FsExtra
 const date = dateAndTime as unknown as DateAndTime
 
 type OldPlaybackSession = import('../objects/PlaybackSession')
 
-// cast(d): Database.js is still JS; sequelize is null until Database.init, which runs before routes are served
-const Database = DatabaseModule as InitializedDatabase
+// Same module object (kept as an alias so the compiled module is unchanged)
+const Database = DatabaseModule
 
 /**
  * Route handler as the routes register them: Express calls it with its request, response and next function.

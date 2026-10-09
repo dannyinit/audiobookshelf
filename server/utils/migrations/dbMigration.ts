@@ -6,7 +6,8 @@ import fsExtra = require('../../libs/fsExtra')
 import oldDbFiles = require('./oldDbFiles')
 import parseNameString = require('../parsers/parseNameString')
 import type { CreationAttributes, Model, ModelStatic, QueryInterface } from 'sequelize'
-import type { FsExtra, InitializedDatabase } from '../types'
+import type { FsExtra } from '../types'
+import type DatabaseModule = require('../../Database')
 import type { ModelRegistry } from '../../models/types'
 const { DataTypes } = sequelize
 const uuidv4 = uuid.v4
@@ -1504,7 +1505,7 @@ async function migrationPatchNewColumns(queryInterface: QueryInterface) {
 /**
  * Migration from 2.3.0 to 2.3.1 - old library item ids
  */
-async function handleOldLibraryItems(ctx: InitializedDatabase) {
+async function handleOldLibraryItems(ctx: typeof DatabaseModule) {
   // sequelize.models, keyed by model name
   const models = ctx.models
   // Entities of the old library items db
@@ -1568,7 +1569,7 @@ async function handleOldLibraryItems(ctx: InitializedDatabase) {
 /**
  * Migration from 2.3.0 to 2.3.1 - updating oldLibraryId
  */
-async function handleOldLibraries(ctx: InitializedDatabase) {
+async function handleOldLibraries(ctx: typeof DatabaseModule) {
   // sequelize.models, keyed by model name
   const models = ctx.models
   // Entities of the old libraries db
@@ -1607,7 +1608,7 @@ async function handleOldLibraries(ctx: InitializedDatabase) {
 /**
  * Migration from 2.3.0 to 2.3.1 - fixing librariesAccessible and bookmarks
  */
-async function handleOldUsers(ctx: InitializedDatabase) {
+async function handleOldUsers(ctx: typeof DatabaseModule) {
   // sequelize.models, keyed by model name
   const models = ctx.models
   const usersNew = await ctx.userModel.findAll({
@@ -1683,7 +1684,7 @@ async function handleOldUsers(ctx: InitializedDatabase) {
 /**
  * Migration from 2.3.0 to 2.3.1
  */
-const migrationPatch = async (ctx: InitializedDatabase) => {
+const migrationPatch = async (ctx: typeof DatabaseModule) => {
   const queryInterface = ctx.sequelize.getQueryInterface()
   const librariesTableDescription = await queryInterface.describeTable('libraries')
 
@@ -1724,7 +1725,7 @@ const migrationPatch = async (ctx: InitializedDatabase) => {
  * Migration from 2.3.3 to 2.3.4
  * Populating the size column on libraryItem
  */
-async function migrationPatch2LibraryItems(ctx: InitializedDatabase, offset = 0): Promise<void> {
+async function migrationPatch2LibraryItems(ctx: typeof DatabaseModule, offset = 0): Promise<void> {
   // sequelize.models, keyed by model name
   const models = ctx.models
   const libraryItems = await models.libraryItem.findAll({
@@ -1767,7 +1768,7 @@ async function migrationPatch2LibraryItems(ctx: InitializedDatabase, offset = 0)
  * Migration from 2.3.3 to 2.3.4
  * Populating the duration & titleIgnorePrefix column on book
  */
-async function migrationPatch2Books(ctx: InitializedDatabase, offset = 0): Promise<void> {
+async function migrationPatch2Books(ctx: typeof DatabaseModule, offset = 0): Promise<void> {
   // sequelize.models, keyed by model name
   const models = ctx.models
   const books = await models.book.findAll({
@@ -1815,7 +1816,7 @@ async function migrationPatch2Books(ctx: InitializedDatabase, offset = 0): Promi
  * Migration from 2.3.3 to 2.3.4
  * Populating the titleIgnorePrefix column on podcast
  */
-async function migrationPatch2Podcasts(ctx: InitializedDatabase, offset = 0): Promise<void> {
+async function migrationPatch2Podcasts(ctx: typeof DatabaseModule, offset = 0): Promise<void> {
   // sequelize.models, keyed by model name
   const models = ctx.models
   const podcasts = await models.podcast.findAll({
@@ -1851,7 +1852,7 @@ async function migrationPatch2Podcasts(ctx: InitializedDatabase, offset = 0): Pr
  * Migration from 2.3.3 to 2.3.4
  * Populating the nameIgnorePrefix column on series
  */
-async function migrationPatch2Series(ctx: InitializedDatabase, offset = 0): Promise<void> {
+async function migrationPatch2Series(ctx: typeof DatabaseModule, offset = 0): Promise<void> {
   // sequelize.models, keyed by model name
   const models = ctx.models
   const allSeries = await models.series.findAll({
@@ -1886,7 +1887,7 @@ async function migrationPatch2Series(ctx: InitializedDatabase, offset = 0): Prom
  * Migration from 2.3.3 to 2.3.4
  * Populating the lastFirst column on author
  */
-async function migrationPatch2Authors(ctx: InitializedDatabase, offset = 0): Promise<void> {
+async function migrationPatch2Authors(ctx: typeof DatabaseModule, offset = 0): Promise<void> {
   // sequelize.models, keyed by model name
   const models = ctx.models
   const authors = await models.author.findAll({
@@ -1923,7 +1924,7 @@ async function migrationPatch2Authors(ctx: InitializedDatabase, offset = 0): Pro
  * Migration from 2.3.3 to 2.3.4
  * Populating the createdAt column on bookAuthor
  */
-async function migrationPatch2BookAuthors(ctx: InitializedDatabase, offset = 0): Promise<void> {
+async function migrationPatch2BookAuthors(ctx: typeof DatabaseModule, offset = 0): Promise<void> {
   // sequelize.models, keyed by model name
   const models = ctx.models
   const bookAuthors = await models.bookAuthor.findAll({
@@ -1958,7 +1959,7 @@ async function migrationPatch2BookAuthors(ctx: InitializedDatabase, offset = 0):
  * Migration from 2.3.3 to 2.3.4
  * Populating the createdAt column on bookSeries
  */
-async function migrationPatch2BookSeries(ctx: InitializedDatabase, offset = 0): Promise<void> {
+async function migrationPatch2BookSeries(ctx: typeof DatabaseModule, offset = 0): Promise<void> {
   // sequelize.models, keyed by model name
   const models = ctx.models
   const allBookSeries = await models.bookSeries.findAll({
@@ -1993,7 +1994,7 @@ async function migrationPatch2BookSeries(ctx: InitializedDatabase, offset = 0): 
  * Migration from 2.3.3 to 2.3.4
  * Adding coverPath column to Feed model
  */
-const migrationPatch2 = async (ctx: InitializedDatabase) => {
+const migrationPatch2 = async (ctx: typeof DatabaseModule) => {
   const queryInterface = ctx.sequelize.getQueryInterface()
   const feedTableDescription = await queryInterface.describeTable('feeds')
   const authorsTableDescription = await queryInterface.describeTable('authors')

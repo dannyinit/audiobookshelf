@@ -15,12 +15,11 @@ import Author = require('../../models/Author')
 import Series = require('../../models/Series')
 import LibraryItem = require('../../models/LibraryItem')
 import type { CountOptions, FindAndCountOptions, FindOptions } from 'sequelize'
-import type { InitializedDatabase } from '../types'
 import type { FilteredLibraryItem, QueryInclude, QueryOrderItem, QueryReplacements, RuntimeFindOptions, UserPermissionBookWhere, UserPermissions, WhereItem } from './types'
 const { profile } = profiler
 
-// cast(d): Database.js is still JS; sequelize is null until Database.init, which runs before any query
-const Database = DatabaseModule as InitializedDatabase
+// Same module object (kept as an alias so the compiled module is unchanged)
+const Database = DatabaseModule
 
 const countCache = new Map<string, number>()
 

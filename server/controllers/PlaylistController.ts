@@ -4,7 +4,6 @@ import SocketAuthority = require('../SocketAuthority')
 import Database = require('../Database')
 import htmlSanitizer = require('../utils/htmlSanitizer')
 import type { RequestWithUser } from './types'
-import type { InitializedDatabase } from '../utils/types'
 
 type Playlist = import('../models/Playlist')
 type Book = import('../models/Book')
@@ -97,8 +96,7 @@ class PlaylistController {
       }
     }
 
-    // cast(e): remove when Database.js is converted (sequelize is set by Database.init, which runs before routes are served)
-    const transaction = await (Database as InitializedDatabase).sequelize.transaction()
+    const transaction = await Database.sequelize.transaction()
     try {
       // Create playlist
       const newPlaylist = await Database.playlistModel.create(
@@ -534,8 +532,7 @@ class PlaylistController {
       return res.status(400).send('Collection has no books')
     }
 
-    // cast(e): remove when Database.js is converted (sequelize is set by Database.init, which runs before routes are served)
-    const transaction = await (Database as InitializedDatabase).sequelize.transaction()
+    const transaction = await Database.sequelize.transaction()
     try {
       const playlist = await Database.playlistModel.create(
         {

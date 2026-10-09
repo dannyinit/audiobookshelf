@@ -23,7 +23,7 @@ Goal: convert every first-party .js file under server/ and index.js to TypeScrip
 | 6 | server/scanner | 13 | done |
 | 7 | server/controllers (remaining 22) | 22 | done: 20 converted, 2 skipped (LibraryController, LibraryItemController; see Skipped files) |
 | 8 | server/migrations | 15 | done: 15 converted, none skipped |
-| 9 | server top-level files (Logger, Database, Auth, SocketAuthority, Watcher, Server) and index.js | 7 | done: 7 converted, none skipped |
+| 9 | server top-level files (Logger, Database, Auth, SocketAuthority, Watcher, Server) and index.js | 7 | done: 7 converted, none skipped; 9b done (InitializedDatabase removed) |
 | 10 | Packaging: package.json scripts, Dockerfile and anything else that references a .js entry point | 0 | todo |
 
 Already done in Phase 2: server/finders, server/providers, server/controllers/SearchController.
@@ -357,6 +357,25 @@ Each has a `NOTE:` comment at the line.
 - Whole server (all .ts under server/ except libs and .d.ts, plus index.ts): before the batch 683 `as`, 160 `as unknown as`, 209 `!` (184 files); now 746 `as`, 172 `as unknown as`, 281 `!` (191 files).
 - Result: `npm run build:server` (clean build) reports 0 `error TS`; `npm test` 356 passing, 0 failing.
 
+### Batch 9b: remove InitializedDatabase (item 2 of the batch 11 checklist; no file converted or skipped)
+- Smoke test after the batch 9 commit (3b5baef7, clean build 0 `error TS`, 356 passing), same setup as in the Batch 9 Log, this time with the log level set to debug through PATCH /api/settings (`logLevel: 1`, 200): /status 200, /init 200, /login 200, wrong password 401, /api/libraries, /api/me, /api/users 200, create library 200, scan 200 with 2 items; watcher: the new Author Three/Book Three folder gave 3 items, and the log shows `[Watcher] File Added ...book3.mp3`, `Modified file in library "Smoke Books" ... relPath "/Author Three/Book Three/book3.mp3"`, `File finished adding`, then `[LibraryScanner] Folder scan results { 'Author Three/Book Three': 1 }`; metadata/logs/daily and logs/scans written; socket (raw handshake, socket.io-client not installed): `init` received after `auth`; only ERROR: the wrong password.
+- Counts before (all .ts under server/ except libs and .d.ts, plus index.ts, 191 files): 746 `as`, 172 `as unknown as`, 281 `!`. `grep -rn InitializedDatabase server`: 47 matches; `grep -rn "cast(e)" server`: 8.
+- Counts after: 729 `as`, 172 `as unknown as`, 241 `!`. `grep -rn InitializedDatabase server`: 0; `grep -rn "cast(e)" server`: 0.
+- Database typing: `sequelize` is no longer a `ModelsSequelize | null` field; it is an accessor pair in the interface merged with the class (get `ModelsSequelize`, set `ModelsSequelize | null`), next to the three settings objects (batch 9), with a comment that these fields are null until init and are read only after it. A plain `declare sequelize: ModelsSequelize` (rule 12) is not possible: the JavaScript assigns null in the constructor (and the compiled constructor must keep that assignment), and rule 15 bans `null as unknown as T`. The accessor pair is type-only (no field, nothing emitted). With it, `models` (`this.sequelize?.models || {}`) is typed `ModelRegistry` without a cast (the `{}` fallback is only reached before init), and the model getters, `Database.sequelize` and `Database.models` are usable after init everywhere. The methods that can run before init keep their `if (!this.sequelize)` checks unchanged (rule 15 asks for `T | null` when the JS checks for null; here the user's instruction for 9b, typing the init-only fields as set with a comment, is followed, and the read type assumes init has run).
+- Removed (17 `as`, 40 `!`, 0 added):
+  - The 8 `cast(e)` (`(Database as InitializedDatabase).x` became `Database.x`): CollectionController 1, PlaylistController 2, PodcastController 1, PodcastManager 1, ShareManager 2 (`.models`), ApiCacheManager 1 (`init(database = Database as InitializedDatabase)` became `init(database = Database)`).
+  - The 6 module-level casts (tag d) in ApiRouter, libraryItemsBookFilters, libraryItemsPodcastFilters, seriesFilters, userStats, adminStats: `const Database = DatabaseModule as InitializedDatabase` became `const Database = DatabaseModule` (the alias is kept, with a comment, so the compiled modules stay unchanged; batch 3b replaced such aliases with a direct import, which changes the compiled require line).
+  - Database: `dbMigration.migrationPatch(this as InitializedDatabase)` / `migrationPatch2(...)` became `(this)` (2, tag d), and the `{}` fallback cast in `models` (1, tag d).
+  - The 39 `this.sequelize!` in Database and `Database.sequelize!` in Server.cleanUserData (their comments too).
+  - dbMigration: the 12 `ctx: InitializedDatabase` parameters are `ctx: typeof DatabaseModule` (`import type DatabaseModule = require('../../Database')`, elided; the same form absMetadataMigration uses).
+  - server/utils/types.ts: `InitializedDatabase` and its comment are removed (and the now unused `ModelRegistry` / `ModelsSequelize` import); `DatabaseInstance` stays, `TextSearchQuery` uses it.
+- Casts by tag removed: e 8, d 9. No new kind of cast, no new type, no index signature.
+- Files changed: server/Database.ts, Server.ts, controllers/CollectionController.ts, PlaylistController.ts, PodcastController.ts, managers/ApiCacheManager.ts, PodcastManager.ts, ShareManager.ts, routers/ApiRouter.ts, utils/migrations/dbMigration.ts, utils/queries/adminStats.ts, libraryItemsBookFilters.ts, libraryItemsPodcastFilters.ts, seriesFilters.ts, userStats.ts, utils/types.ts and this file.
+- Compiled JS: clean build, every compiled file of dist-server (except server/libs) printed with the TypeScript printer (comments and parentheses removed) and compared with the clean build of the batch 9 commit: no differences, no file added or removed.
+- Prettier: the batch 9 files pass `prettier --check` except two lines kept on purpose without prettier's leading `;` (Database `buildModels`, the first `(require('./models/User') as ...)` line; Auth, the `(req.session as ...)[sessionKey].code_verifier = ...` line): both are the first statement of a block, where TypeScript emits the `;` as an empty statement, so the compiled JS would change. (dbMigration and libraryItemsBookFilters were already not prettier-clean before this batch.)
+- No bugs found, no tests changed.
+- Result: `npm run build:server` (clean build) reports 0 `error TS`; `npm test` 356 passing, 0 failing.
+
 ## Extra rules
 9. If a file cannot be typed cleanly without changing behaviour, first use the smallest possible `as` with a one-line comment and a line in the Bugs section. If that still fails, leave the file as .js, list it under Skipped with the reason, and move on.
 10. You may add missing @types packages to devDependencies in package.json (for example express, passport, cookie-parser). Mention them in the Log.
@@ -410,7 +429,7 @@ These rules apply from batch 3 onward. Where they conflict with rule 4 or rule 9
 ### Added to "Known deviations to clean up at the end" (from batch 3b)
 
 - (Done in batch 3c, see "Batch 3c" in the Log.) server/utils/queries/types.ts `QueryFindOptions` was kept in batch 3b because libraryItemsBookFilters and libraryItemsPodcastFilters build their find options with values that Sequelize accepts at runtime but its types reject; batch 3c replaced it with `RuntimeFindOptions`, derived from Sequelize's FindOptions with only those options relaxed, without rewriting the queries.
-- server/utils/types.ts `InitializedDatabase`: Database.js types `sequelize` as `Sequelize | null`; 6 files cast the required Database once to this type. Remove it when Database is converted (batch 9), together with the JSDoc added to Database.js for `libraryFilterData` and `getPlaybackSessions`.
+- (Done in batch 9b, see "Batch 9b" in the Log.) server/utils/types.ts `InitializedDatabase`: Database.js types `sequelize` as `Sequelize | null`; 6 files cast the required Database once to this type. Remove it when Database is converted (batch 9), together with the JSDoc added to Database.js for `libraryFilterData` and `getPlaybackSessions` (that JSDoc became the TypeScript types in batch 9).
 - Two `undefined as unknown as number` casts in models/LibraryItem.ts `getForAuthor` (batch 3a, the libraryFilters parameters are typed `number`) are still there.
 
 ### Log
@@ -422,6 +441,7 @@ These rules apply from batch 3 onward. Where they conflict with rule 4 or rule 9
 - 2026-10-10: Batch 7 done: 20 of 22 controllers converted, LibraryController and LibraryItemController skipped (rule 17, see Skipped files); exception 5 to rule 17 (query values) recorded; ApiRouterApp kept, RouteHandler typed without `never` (item 4 of the final cleanup). See "Batch 7" in the Log above.
 - 2026-10-10: Batch 8 done: all 15 migrations converted, none skipped; only exception 1 used (6); the migration context type is a declaration file (server/migrations/types.d.ts) because a types.ts would be emitted as a .js migration. See "Batch 8" in the Log above.
 - 2026-10-10: Batch 9 done: the 7 top-level files (Logger, Database, Auth, SocketAuthority, Watcher, Server, index) converted, none skipped; exceptions 1 (2) and 5 (1) used; index.js references listed for batch 10 (the Dockerfile COPY lines break). See "Batch 9" in the Log above.
+- 2026-10-10: Batch 9b done: InitializedDatabase and the 8 `cast(e)` are removed (item 2 of the final cleanup); Database types its init-only `sequelize` as set (accessor pair, null only before init). See "Batch 9b" in the Log above.
 
 ### Clarification of rule 17 (2026-10-09, after batch 3a)
 
@@ -438,7 +458,7 @@ A "kind" of cast means casts to the same target type (for example all `as number
 Open items collected from the type quality audit and from batches 3a and 3b. Each item is done only when its check passes. If time or usage runs out, do items 1 and 3 first.
 
 1. (done in batch 3c) QueryFindOptions (server/utils/queries/types.ts): replace it with one shared type built from Sequelize's own option types (take FindOptions, omit where, attributes, limit, include, order and distinct, and add them back with the shapes Sequelize accepts at runtime: where, attributes and limit may be null; include may be a single object or an array; order items may be a literal; distinct allowed). Do not rewrite the queries. Check: no match for QueryFindOptions in server/, 0 error TS, 356 passing, compiled JS unchanged apart from comments.
-2. InitializedDatabase and every `cast(e)`: remove them when Database.js is converted (batch 9). Check: no match for InitializedDatabase and no match for `cast(e)` in server/.
+2. (done in batch 9b) InitializedDatabase and every `cast(e)`: remove them when Database.js is converted (batch 9). Check: no match for InitializedDatabase and no match for `cast(e)` in server/.
 3. Replace the 8 `null as unknown as T` casts and the `undefined as unknown as number` casts (LibraryItem.ts:604) with honest types (`T | null`, optional parameters). Check: no match for `null as unknown as` and `undefined as unknown as`. New type errors may reveal bugs (for example OidcAuthStrategy.verifyCallback reads user.isActive on null); list them in Bugs, do not fix them.
 4. (done in batch 7) ApiRouter.ts: RouteHandler has `never` parameters; remove after batch 7 (rule 18). Check: no `never` parameter types left in the route handler types. ApiRouterApp is still needed (see the Batch 7 Log).
 5. FilteredLibraryItem has an index signature `[key: string]: unknown`, and req.query is cast to all-string shapes in places (rule 15). List the remaining ones and fix what can be fixed without rewriting expressions.

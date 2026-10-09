@@ -16,7 +16,6 @@ import htmlSanitizer = require('../utils/htmlSanitizer')
 import Scanner = require('../scanner/Scanner')
 import CoverManager = require('../managers/CoverManager')
 import type { RequestWithUser } from './types'
-import type { InitializedDatabase } from '../utils/types'
 
 const { getPodcastFeed, findMatchingEpisodes } = podcastUtils
 const { getFileTimestampsWithIno, filePathToPOSIX, isSameOrSubPath } = fileUtils
@@ -122,8 +121,7 @@ class PodcastController {
     if (relPath.startsWith('/')) relPath = relPath.slice(1)
 
     let newLibraryItem: LibraryItem.PodcastLibraryItem | null = null
-    // cast(e): remove when Database.js is converted (sequelize is set by Database.init, which runs before routes are served)
-    const transaction = await (Database as InitializedDatabase).sequelize.transaction()
+    const transaction = await Database.sequelize.transaction()
     try {
       const podcast = await Database.podcastModel.createFromRequest(payload.media, transaction)
 

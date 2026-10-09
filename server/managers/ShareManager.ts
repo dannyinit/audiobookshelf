@@ -5,7 +5,6 @@ import LongTimeout = require('../utils/longTimeout')
 import utils = require('../utils/index')
 import type MediaItemShare = require('../models/MediaItemShare')
 import type PlaybackSession = require('../objects/PlaybackSession')
-import type { InitializedDatabase } from '../utils/types'
 const { elapsedPretty } = utils
 
 interface OpenMediaItemShareObject {
@@ -82,8 +81,7 @@ class ShareManager {
    * Remove expired & schedule active
    */
   async loadMediaItemShares() {
-    // cast(e): Database.models is empty until Database.init, which runs before init is called; remove when Database.js is converted
-    const mediaItemShares = await (Database as InitializedDatabase).models.mediaItemShare.findAll()
+    const mediaItemShares = await Database.models.mediaItemShare.findAll()
 
     for (const mediaItemShare of mediaItemShares) {
       if (mediaItemShare.expiresAt && mediaItemShare.expiresAt.valueOf() < Date.now()) {
@@ -148,8 +146,7 @@ class ShareManager {
   }
 
   destroyMediaItemShare(mediaItemShareId: string) {
-    // cast(e): Database.models is empty until Database.init, which runs before shares are used; remove when Database.js is converted
-    return (Database as InitializedDatabase).models.mediaItemShare.destroy({ where: { id: mediaItemShareId } })
+    return Database.models.mediaItemShare.destroy({ where: { id: mediaItemShareId } })
   }
 
   /**

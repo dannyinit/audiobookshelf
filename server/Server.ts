@@ -583,8 +583,7 @@ class Server {
     // Remove series from hide from continue listening that no longer exist
     try {
       // cast(b): the rows are User instances built from the raw query: extraData is the JSON string and the aggregated column is in dataValues
-      // sequelize is set by Database.init (called by init before this)
-      const users = (await Database.sequelize!.query(`SELECT u.id, u.username, u.extraData, json_group_array(value) AS seriesIdsToRemove FROM users u, json_each(u.extraData->"seriesHideFromContinueListening") LEFT JOIN series se ON se.id = value WHERE se.id IS NULL GROUP BY u.id;`, {
+      const users = (await Database.sequelize.query(`SELECT u.id, u.username, u.extraData, json_group_array(value) AS seriesIdsToRemove FROM users u, json_each(u.extraData->"seriesHideFromContinueListening") LEFT JOIN series se ON se.id = value WHERE se.id IS NULL GROUP BY u.id;`, {
         model: Database.userModel,
         type: Sequelize.QueryTypes.SELECT
       })) as unknown as (Omit<User, 'extraData' | 'dataValues'> & { extraData: string; dataValues: { seriesIdsToRemove: string } })[]
