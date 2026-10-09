@@ -1,11 +1,8 @@
 import Sequelize = require('sequelize')
-import DatabaseModule = require('../../Database')
+import Database = require('../../Database')
 import BookAuthor = require('../../models/BookAuthor')
 import Author = require('../../models/Author')
-import type { TextSearchQuery, TypedDatabase } from '../types'
-
-// Same object; typed so the model static query methods can be called
-const Database = DatabaseModule as TypedDatabase
+import type { TextSearchQuery } from '../types'
 
 export = {
   /**

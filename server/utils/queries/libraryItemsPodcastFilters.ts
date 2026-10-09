@@ -9,12 +9,12 @@ import Podcast = require('../../models/Podcast')
 import PodcastEpisode = require('../../models/PodcastEpisode')
 import LibraryItem = require('../../models/LibraryItem')
 import type { CountOptions, FindOptions, Model, ModelStatic, WhereOptions, Order, IncludeOptions } from 'sequelize'
-import type { TypedDatabase } from '../types'
+import type { InitializedDatabase } from '../types'
 import type { FilteredLibraryItem, MediaGroupQuery, QueryFindOptions, QueryReplacements, UserPermissionPodcastWhere, UserPermissions, WhereItem } from './types'
 const { profile } = profiler
 
-// Same object; typed so the model static query methods can be called
-const Database = DatabaseModule as TypedDatabase
+// cast(d): Database.js is still JS; sequelize is null until Database.init, which runs before any query
+const Database = DatabaseModule as InitializedDatabase
 
 const countCache = new Map<string, number>()
 

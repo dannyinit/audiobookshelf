@@ -17,7 +17,7 @@ Goal: convert every first-party .js file under server/ and index.js to TypeScrip
 | --- | --- | --- | --- |
 | 1 | server/utils (all subfolders) | 46 | done |
 | 2 | server/objects (all subfolders) | 18 | done |
-| 3 | server/models | 25 | 3a done, 3b pending |
+| 3 | server/models | 25 | 3a done, 3b done (QueryFindOptions kept, see Known deviations) |
 | 4 | server/auth and server/routers | 6 | done |
 | 5 | server/managers | 18 | todo |
 | 6 | server/scanner | 13 | todo |
@@ -133,6 +133,23 @@ Each has a `NOTE:` comment at the line.
 - Compared the compiled output of all 25 models and the 8 changed outside files with the compiled output at HEAD (comments stripped, printed with the TypeScript printer); the only differences are the ones listed above. A server smoke test (start with an empty config, /init, /login, wrong password, /api/libraries, /api/me, create library) works.
 - Result: `npm run build:server` reports 0 `error TS`; `npm test` 356 passing, 0 failing.
 
+### Batch 3b: remove model workarounds (files from batches 1, 2 and 4, no file converted or skipped)
+- Counts before (all .ts files under server/ except server/libs, 115 files, TypeScript AST; `as const` not counted): 392 `as`, 135 `as unknown as`, 19 non-null `!`. Matches of `grep -rn <name> server --include=*.ts --exclude-dir=libs`: `TypedDatabase` 49, `ApiDatabase` 2, `PatchModels` 20, `QueryFindOptions` 31, `as unknown as LibraryItem['media']` 12.
+- Counts after: 391 `as`, 108 `as unknown as`, 19 `!`. Matches: `TypedDatabase` 0, `ApiDatabase` 0, `PatchModels` 0, `QueryFindOptions` 31 (kept, see below), `as unknown as LibraryItem['media']` 0.
+- `TypedDatabase` (utils/types.ts, with `SequelizeModelClass` and `DatabaseModelKey`) is removed. Since batch 3a the model getters of Database.js (`Database.bookModel`, ...) are `typeof Book` etc., which are real `ModelStatic`s, so no cast is needed for the static query methods. TokenManager, libraryHelpers, authorFilters, libraryItemFilters and libraryFilters now use the required Database directly (`import Database = require(...)`, no alias and no cast).
+- What TypedDatabase also covered comes from Database.js, which is still JS (batch 9):
+  - `sequelize` is `Sequelize | null` (null until `Database.init`). The files that use `Database.sequelize` (ApiRouter, adminStats, userStats, seriesFilters, libraryItemsBookFilters, libraryItemsPodcastFilters) cast the required Database once to the new `InitializedDatabase` (utils/types.ts: `typeof Database & { sequelize: ModelsSequelize; models: ModelRegistry }`, the 3a types), cast d. Without it every use (23) would need a `!`. The dbMigration patches and absMetadataMigration, which Database.init calls with `this`, take `ctx: InitializedDatabase` / `Database: typeof DatabaseModule` parameters (no cast).
+  - `libraryFilterData` and `getPlaybackSessions`: typed with JSDoc in server/Database.js (outside the batch, rule 2; comments only, the compiled JS is unchanged): `@type {Object<string, LibraryFilterData>}` and `@param {WhereOptions<PlaybackSession> | null} [where]`, `@returns {false | ReturnType<PlaybackSession.getOldPlaybackSessions>}`.
+- `ApiDatabase` (ApiRouter) is removed. ApiRouter uses `InitializedDatabase` (one plain `as` instead of `as unknown as`); `getUserListeningSessionsHelper` and `getUserItemListeningSessionsHelper` cast the `getPlaybackSessions` result to `OldPlaybackSession[]` (cast d, it returns false only before init; this was hidden in ApiDatabase before).
+- `PatchModels` (dbMigration) is removed: the 10 `ctx.models as unknown as PatchModels` casts are gone (`ctx.models` is `ModelRegistry` through `InitializedDatabase`), the 7 bulkCreate casts (batch 3a, cast b) now name `ModelRegistry['x']`, and the two loop casts that added `author` / `series` to the bookAuthor / bookSeries rows are gone (BookAuthor and BookSeries declare those associations).
+- `as unknown as LibraryItem['media']` (12): removed. 8 were not needed with the 3a types (libraryItemFilters 5, libraryFilters 1, libraryItemsBookFilters 2). In `getLibraryItemsForCollection` the rows are typed `Book[]` by `findAll` (authors and series are included), so the `books as BookRow[]` cast is gone too. The other 3 in libraryItemsBookFilters (`getFilteredLibraryItems`, `getContinueSeriesLibraryItems`, `search`) assign a `BookRow` whose `series` and `authors` the code has just set from `bookSeries` / `bookAuthors`; they are `book as Book` (cast d).
+- absMetadataMigration (noted for 3b in the 3a log): the `mtime` / `ctime` casts (`as unknown as Date`) and the `getLibraryItemsIncrement` typed view (`as unknown as { ... }`) are gone; the 3a model types accept them.
+- `QueryFindOptions` is NOT removed (see Known deviations): replacing it with `FindOptions` / `FindAndCountOptions` / `IncludeOptions` (tried on libraryItemsBookFilters, reverted) gives 19 type errors in that file alone, all values Sequelize accepts at runtime but its v6.35 types reject: a single nested include object (`include: { model }`; `IncludeOptions.include` only takes an array; 9 in that file, plus libraryItemsPodcastFilters, seriesFilters, libraryFilters, userStats), null `where` / `attributes` / `limit`, `[literal]` order items, `distinct` on `findAll`. Removing it would need either more than 10 casts of the same kind (rule 17) or a replacement type that relaxes the same options under another name, or rewriting the expressions (for example wrapping nested includes in arrays).
+- Casts added (rule 17): 11 `as`, 0 `as unknown as`, 0 `!`; all tag d (a 0, b 0, c 0, d 11). By target type: `InitializedDatabase` 6, `Book` 3, `OldPlaybackSession[]` 2. Casts removed: 12 `as` and 27 `as unknown as` (TypedDatabase 9 + 2, media 12, PatchModels 10 + 2 loop casts, absMetadataMigration 3, `books as BookRow[]` 1).
+- Compiled JS: compared all compiled server files with the build before the change (comments stripped, parentheses removed, printed with the TypeScript printer). Only 5 files differ, all in the same way: TokenManager, libraryHelpers, authorFilters, libraryItemFilters, libraryFilters: `const DatabaseModule = require("<path>/Database")` and `const Database = DatabaseModule;` became `const Database = require("<path>/Database")` (same object, the require stays in the same place). The unused `import LibraryItem` in libraryItemFilters (type-only, elided) was removed. Everything else, including Database.js, is unchanged apart from comments and parentheses.
+- No bugs found, no tests changed.
+- Result: `npm run build:server` reports 0 `error TS`; `npm test` 356 passing, 0 failing.
+
 ## Extra rules
 9. If a file cannot be typed cleanly without changing behaviour, first use the smallest possible `as` with a one-line comment and a line in the Bugs section. If that still fails, leave the file as .js, list it under Skipped with the reason, and move on.
 10. You may add missing @types packages to devDependencies in package.json (for example express, passport, cookie-parser). Mention them in the Log.
@@ -143,7 +160,7 @@ Each has a `NOTE:` comment at the line.
 - The Phase 2 finders and providers (server/finders, server/providers) have the same class field issue: fields declared without an initialiser compile to `field;` lines (already present at 9c4185a0, for example `baseUrl;` in Audnexus and OpenLibrary). Mark them `declare` (rule 12).
 
 ## Skipped files
-(none yet; batches 1, 2, 3a and 4 skipped nothing)
+(none yet; batches 1, 2, 3a, 3b and 4 skipped nothing)
 
 ## Rules added after the type quality audit (2026-10-09)
 
@@ -181,9 +198,16 @@ These rules apply from batch 3 onward. Where they conflict with rule 4 or rule 9
 - Casts of req.query to all-string shapes.
 - About 450 casts in Phase 2 and batches 1 to 4 have no reason tag.
 
+### Added to "Known deviations to clean up at the end" (from batch 3b)
+
+- server/utils/queries/types.ts `QueryFindOptions` (with `QueryInclude`, `QueryOrderItem`) is kept: libraryItemsBookFilters and libraryItemsPodcastFilters build their find options with values that Sequelize accepts at runtime but its types reject (single nested include objects, null where/attributes/limit, `[literal]` order items, `distinct` on findAll); see "Batch 3b" in the Log. Removing it needs a decision: rewrite those expressions (behaviour-neutral in Sequelize, but changes the compiled JS) or allow a type derived from the Sequelize option types that relaxes only those options.
+- server/utils/types.ts `InitializedDatabase`: Database.js types `sequelize` as `Sequelize | null`; 6 files cast the required Database once to this type. Remove it when Database is converted (batch 9), together with the JSDoc added to Database.js for `libraryFilterData` and `getPlaybackSessions`.
+- Two `undefined as unknown as number` casts in models/LibraryItem.ts `getForAuthor` (batch 3a, the libraryFilters parameters are typed `number`) are still there.
+
 ### Log
 - 2026-10-09: Type quality audit finished (a4-context/phase3-evidence/audit/4-type-audit.md). Rules 13 to 18 added.
 - 2026-10-09: Batch 3a (server/models) done under rules 13 to 18; see "Batch 3a" in the Log above. Batch 3b is pending.
+- 2026-10-09: Batch 3b done: TypedDatabase, ApiDatabase, PatchModels and the `as unknown as LibraryItem['media']` casts are removed; QueryFindOptions is kept (Known deviations). See "Batch 3b" in the Log above.
 
 ### Clarification of rule 17 (2026-10-09, after batch 3a)
 

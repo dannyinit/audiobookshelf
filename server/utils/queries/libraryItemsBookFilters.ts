@@ -15,12 +15,12 @@ import Author = require('../../models/Author')
 import Series = require('../../models/Series')
 import LibraryItem = require('../../models/LibraryItem')
 import type { CountOptions, FindAndCountOptions, FindOptions } from 'sequelize'
-import type { TypedDatabase } from '../types'
+import type { InitializedDatabase } from '../types'
 import type { FilteredLibraryItem, QueryFindOptions, QueryInclude, QueryOrderItem, QueryReplacements, UserPermissionBookWhere, UserPermissions, WhereItem } from './types'
 const { profile } = profiler
 
-// Same object; typed so the model static query methods can be called
-const Database = DatabaseModule as TypedDatabase
+// cast(d): Database.js is still JS; sequelize is null until Database.init, which runs before any query
+const Database = DatabaseModule as InitializedDatabase
 
 const countCache = new Map<string, number>()
 
@@ -770,8 +770,8 @@ export = {
       }
 
 
-      // The book with its series and authors set as the expanded media
-      libraryItem.media = book as unknown as LibraryItem['media']
+      // cast(d): series and authors were set from bookSeries and bookAuthors above
+      libraryItem.media = book as Book
 
       return libraryItem
     })
@@ -919,8 +919,7 @@ export = {
         if (libraryItem.feeds?.length) {
           libraryItem.rssFeed = libraryItem.feeds[0]
         }
-        // The book with its series and authors set as the expanded media
-        libraryItem.media = book as unknown as LibraryItem['media']
+        libraryItem.media = book
         return libraryItem
       })
       .filter((s): s is FilteredLibraryItem => !!s)
@@ -1110,8 +1109,8 @@ export = {
       delete book.bookAuthors
 
 
-      // The book with its series and authors set as the expanded media
-      libraryItem.media = book as unknown as LibraryItem['media']
+      // cast(d): series and authors were set from bookSeries and bookAuthors above
+      libraryItem.media = book as Book
 
       if (libraryItem.feeds?.length) {
         libraryItem.rssFeed = libraryItem.feeds[0]
@@ -1162,12 +1161,11 @@ export = {
     })
 
     // libraryItem is included above
-    return (books as BookRow[]).map((book) => {
+    return books.map((book) => {
       // libraryItem is a required include
       const libraryItem = book.libraryItem as FilteredLibraryItem
       delete book.libraryItem
-      // The book with its series and authors set as the expanded media
-      libraryItem.media = book as unknown as LibraryItem['media']
+      libraryItem.media = book
       return libraryItem
     })
   },
@@ -1265,8 +1263,8 @@ export = {
       delete book.bookAuthors
 
 
-      // The book with its series and authors set as the expanded media
-      libraryItem.media = book as unknown as LibraryItem['media']
+      // cast(d): series and authors were set from bookSeries and bookAuthors above
+      libraryItem.media = book as Book
       itemMatches.push({
         libraryItem: libraryItem.toOldJSONExpanded()
       })
@@ -1363,8 +1361,7 @@ export = {
       const books = series.bookSeries.map((bs) => {
         // libraryItem is included above
         const libraryItem = bs.book.libraryItem as FilteredLibraryItem
-        // The book is set as the media; authors and series are set below
-        libraryItem.media = bs.book as unknown as LibraryItem['media']
+        libraryItem.media = bs.book
         // media is the book set above
         ;(libraryItem.media as BookExpanded).authors = []
         // media is the book set above

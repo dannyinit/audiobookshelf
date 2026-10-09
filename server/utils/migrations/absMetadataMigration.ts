@@ -4,7 +4,8 @@ import fsExtraModule = require('../../libs/fsExtra')
 import fileUtils = require('../fileUtils')
 import LibraryFile = require('../../objects/files/LibraryFile')
 import LibraryItem = require('../../models/LibraryItem')
-import type { FsExtra, TypedDatabase } from '../types'
+import type DatabaseModule = require('../../Database')
+import type { FsExtra } from '../types'
 
 // The inferred type of the vendored fs-extra lacks the fs methods it adds at runtime
 const fsExtra = fsExtraModule as unknown as FsExtra
@@ -49,10 +50,8 @@ async function writeMetadataFileForItem(libraryItem: LibraryItem): Promise<boole
   // Update library item timestamps and total size
   const libraryItemDirTimestamps = await fileUtils.getFileTimestampsWithIno(libraryItem.path)
   if (libraryItemDirTimestamps) {
-    // The DATE column accepts epoch ms
-    libraryItem.mtime = libraryItemDirTimestamps.mtimeMs as unknown as Date
-    // The DATE column accepts epoch ms
-    libraryItem.ctime = libraryItemDirTimestamps.ctimeMs as unknown as Date
+    libraryItem.mtime = libraryItemDirTimestamps.mtimeMs
+    libraryItem.ctime = libraryItemDirTimestamps.ctimeMs
     let size = 0
     libraryItem.libraryFiles.forEach((lf) => size += (!isNaN(lf.metadata.size) ? Number(lf.metadata.size) : 0))
     libraryItem.size = size
@@ -65,9 +64,8 @@ async function writeMetadataFileForItem(libraryItem: LibraryItem): Promise<boole
   })
 }
 
-async function runMigration(Database: TypedDatabase, offset = 0, totalCreated = 0): Promise<number> {
-  // The JS model infers the where parameter as null from its default value
-  const libraryItemModel = Database.libraryItemModel as unknown as { getLibraryItemsIncrement(offset: number, limit: number, where?: Record<string, unknown> | null): Promise<LibraryItem[]> }
+async function runMigration(Database: typeof DatabaseModule, offset = 0, totalCreated = 0): Promise<number> {
+  const libraryItemModel = Database.libraryItemModel
   const libraryItems = await libraryItemModel.getLibraryItemsIncrement(offset, 500, { isMissing: false })
   if (!libraryItems.length) return totalCreated
 
@@ -83,7 +81,7 @@ async function runMigration(Database: TypedDatabase, offset = 0, totalCreated = 
   return runMigration(Database, offset + libraryItems.length, totalCreated + numCreated)
 }
 
-const migrate = async (Database: TypedDatabase) => {
+const migrate = async (Database: typeof DatabaseModule) => {
   Logger.info(`[absMetadataMigration] Starting metadata.json migration`)
   const totalCreated = await runMigration(Database)
   Logger.info(`[absMetadataMigration] Finished metadata.json migration (${totalCreated} files created)`)

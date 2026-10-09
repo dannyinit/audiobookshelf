@@ -1,6 +1,6 @@
 import Sequelize = require('sequelize')
 import Logger = require('../../Logger')
-import DatabaseModule = require('../../Database')
+import Database = require('../../Database')
 import libraryItemsBookFilters = require('./libraryItemsBookFilters')
 import libraryItemsPodcastFilters = require('./libraryItemsPodcastFilters')
 import fastSort = require('../../libs/fastSort')
@@ -14,13 +14,10 @@ import Series = require('../../models/Series')
 import BookSeries = require('../../models/BookSeries')
 import Feed = require('../../models/Feed')
 import type { CountOptions, FindAndCountOptions, FindOptions } from 'sequelize'
-import type { LibraryFilterData, SortInstance, TypedDatabase } from '../types'
+import type { LibraryFilterData, SortInstance } from '../types'
 import type { FilteredLibraryItem, QueryInclude, WhereItem, UserPermissions } from './types'
 const { createNewSortInstance } = fastSort
 const { profile } = profiler
-
-// Same object; typed so the model static query methods can be called
-const Database = DatabaseModule as TypedDatabase
 
 // The vendored fast-sort has untyped parameters, see SortInstance
 const naturalSort = createNewSortInstance({
@@ -349,8 +346,7 @@ export = {
           delete bs.book.libraryItem
           bs.book.authors = [] // Not needed
           bs.book.series = [] // Not needed
-          // The book is the media of its library item
-          libraryItem.media = bs.book as unknown as LibraryItem['media']
+          libraryItem.media = bs.book
           const oldLibraryItem: ShelfLibraryItemJson = libraryItem.toOldJSONMinified()
           return oldLibraryItem
         })

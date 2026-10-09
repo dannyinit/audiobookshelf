@@ -39,20 +39,15 @@ import ApiKeyController = require('../controllers/ApiKeyController')
 import type { FindOptions } from 'sequelize'
 import type Server = require('../Server')
 import type { DateAndTime } from '../objects/types'
-import type { FsExtra, TypedDatabase } from '../utils/types'
+import type { FsExtra, InitializedDatabase } from '../utils/types'
 // Typed views of the untyped vendored fs-extra and date-and-time
 const fs = fsExtra as unknown as FsExtra
 const date = dateAndTime as unknown as DateAndTime
 
 type OldPlaybackSession = import('../objects/PlaybackSession')
 
-/**
- * Database typed for the queries here: sequelize static query methods on the models, and getPlaybackSessions
- * (Database.init has run before routes are served, so it returns the sessions and never false)
- */
-type ApiDatabase = TypedDatabase & { getPlaybackSessions(where: object): Promise<OldPlaybackSession[]> }
-// Same object; typed for the queries here
-const Database = DatabaseModule as unknown as ApiDatabase
+// cast(d): Database.js is still JS; sequelize is null until Database.init, which runs before routes are served
+const Database = DatabaseModule as InitializedDatabase
 
 /**
  * Route handler as the routes register them. The JS controllers type req as their own RequestWithUser, which
@@ -594,13 +589,15 @@ class ApiRouter {
   }
 
   async getUserListeningSessionsHelper(userId: string) {
-    const userSessions = await Database.getPlaybackSessions({ userId })
+    // cast(d): getPlaybackSessions returns false only before Database.init, which runs before routes are served
+    const userSessions = (await Database.getPlaybackSessions({ userId })) as OldPlaybackSession[]
     // Stored sessions always have updatedAt
     return userSessions.sort((a, b) => (b.updatedAt as number) - (a.updatedAt as number))
   }
 
   async getUserItemListeningSessionsHelper(userId: string, mediaItemId: string) {
-    const userSessions = await Database.getPlaybackSessions({ userId, mediaItemId })
+    // cast(d): getPlaybackSessions returns false only before Database.init, which runs before routes are served
+    const userSessions = (await Database.getPlaybackSessions({ userId, mediaItemId })) as OldPlaybackSession[]
     // Stored sessions always have updatedAt
     return userSessions.sort((a, b) => (b.updatedAt as number) - (a.updatedAt as number))
   }

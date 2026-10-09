@@ -6,7 +6,8 @@ import fsExtra = require('../../libs/fsExtra')
 import oldDbFiles = require('./oldDbFiles')
 import parseNameString = require('../parsers/parseNameString')
 import type { CreationAttributes, Model, ModelStatic, QueryInterface } from 'sequelize'
-import type { FsExtra, TypedDatabase } from '../types'
+import type { FsExtra, InitializedDatabase } from '../types'
+import type { ModelRegistry } from '../../models/types'
 const { DataTypes } = sequelize
 const uuidv4 = uuid.v4
 
@@ -313,22 +314,6 @@ type NewLibraryItemRecord = NewRecord & {
  * sequelize.models, keyed by model name
  */
 type DatabaseModels = Record<string, ModelStatic<Model>>
-
-/**
- * The models used by the 2.3.0+ and 2.3.3+ migration patches (sequelize.models, keyed by model name)
- */
-interface PatchModels {
-  libraryItem: TypedDatabase['libraryItemModel']
-  podcastEpisode: TypedDatabase['podcastEpisodeModel']
-  library: TypedDatabase['libraryModel']
-  mediaProgress: TypedDatabase['mediaProgressModel']
-  book: TypedDatabase['bookModel']
-  podcast: TypedDatabase['podcastModel']
-  series: TypedDatabase['seriesModel']
-  author: TypedDatabase['authorModel']
-  bookAuthor: TypedDatabase['bookAuthorModel']
-  bookSeries: TypedDatabase['bookSeriesModel']
-}
 
 const oldDbIdMap: {
   users: Record<string, string>
@@ -1519,9 +1504,9 @@ async function migrationPatchNewColumns(queryInterface: QueryInterface) {
 /**
  * Migration from 2.3.0 to 2.3.1 - old library item ids
  */
-async function handleOldLibraryItems(ctx: TypedDatabase) {
+async function handleOldLibraryItems(ctx: InitializedDatabase) {
   // sequelize.models, keyed by model name
-  const models = ctx.models as unknown as PatchModels
+  const models = ctx.models
   // Entities of the old library items db
   const oldLibraryItems = (await oldDbFiles.loadOldData('libraryItems')) as OldLibraryItem[]
   const libraryItems = await models.libraryItem.findAllExpandedWhere()
@@ -1565,14 +1550,14 @@ async function handleOldLibraryItems(ctx: TypedDatabase) {
 
   if (bulkUpdateEpisodes.length) {
     // cast(b): bulkCreate with updateOnDuplicate only writes the listed columns of existing rows; its types expect complete new rows
-    await models.podcastEpisode.bulkCreate(bulkUpdateEpisodes as unknown as CreationAttributes<InstanceType<PatchModels['podcastEpisode']>>[], {
+    await models.podcastEpisode.bulkCreate(bulkUpdateEpisodes as unknown as CreationAttributes<InstanceType<ModelRegistry['podcastEpisode']>>[], {
       updateOnDuplicate: ['extraData']
     })
   }
 
   if (bulkUpdateItems.length) {
     // cast(b): bulkCreate with updateOnDuplicate only writes the listed columns of existing rows; its types expect complete new rows
-    await models.libraryItem.bulkCreate(bulkUpdateItems as unknown as CreationAttributes<InstanceType<PatchModels['libraryItem']>>[], {
+    await models.libraryItem.bulkCreate(bulkUpdateItems as unknown as CreationAttributes<InstanceType<ModelRegistry['libraryItem']>>[], {
       updateOnDuplicate: ['extraData']
     })
   }
@@ -1583,9 +1568,9 @@ async function handleOldLibraryItems(ctx: TypedDatabase) {
 /**
  * Migration from 2.3.0 to 2.3.1 - updating oldLibraryId
  */
-async function handleOldLibraries(ctx: TypedDatabase) {
+async function handleOldLibraries(ctx: InitializedDatabase) {
   // sequelize.models, keyed by model name
-  const models = ctx.models as unknown as PatchModels
+  const models = ctx.models
   // Entities of the old libraries db
   const oldLibraries = (await oldDbFiles.loadOldData('libraries')) as OldLibrary[]
   const libraries = await models.library.getAllWithFolders()
@@ -1622,9 +1607,9 @@ async function handleOldLibraries(ctx: TypedDatabase) {
 /**
  * Migration from 2.3.0 to 2.3.1 - fixing librariesAccessible and bookmarks
  */
-async function handleOldUsers(ctx: TypedDatabase) {
+async function handleOldUsers(ctx: InitializedDatabase) {
   // sequelize.models, keyed by model name
-  const models = ctx.models as unknown as PatchModels
+  const models = ctx.models
   const usersNew = await ctx.userModel.findAll({
     include: models.mediaProgress
   })
@@ -1698,7 +1683,7 @@ async function handleOldUsers(ctx: TypedDatabase) {
 /**
  * Migration from 2.3.0 to 2.3.1
  */
-const migrationPatch = async (ctx: TypedDatabase) => {
+const migrationPatch = async (ctx: InitializedDatabase) => {
   const queryInterface = ctx.sequelize.getQueryInterface()
   const librariesTableDescription = await queryInterface.describeTable('libraries')
 
@@ -1739,9 +1724,9 @@ const migrationPatch = async (ctx: TypedDatabase) => {
  * Migration from 2.3.3 to 2.3.4
  * Populating the size column on libraryItem
  */
-async function migrationPatch2LibraryItems(ctx: TypedDatabase, offset = 0): Promise<void> {
+async function migrationPatch2LibraryItems(ctx: InitializedDatabase, offset = 0): Promise<void> {
   // sequelize.models, keyed by model name
-  const models = ctx.models as unknown as PatchModels
+  const models = ctx.models
   const libraryItems = await models.libraryItem.findAll({
     limit: 500,
     offset
@@ -1767,7 +1752,7 @@ async function migrationPatch2LibraryItems(ctx: TypedDatabase, offset = 0): Prom
   if (bulkUpdateItems.length) {
     Logger.info(`[dbMigration] Migration patch 2.3.3+ - patching ${bulkUpdateItems.length} library items`)
     // cast(b): bulkCreate with updateOnDuplicate only writes the listed columns of existing rows; its types expect complete new rows
-    await models.libraryItem.bulkCreate(bulkUpdateItems as unknown as CreationAttributes<InstanceType<PatchModels['libraryItem']>>[], {
+    await models.libraryItem.bulkCreate(bulkUpdateItems as unknown as CreationAttributes<InstanceType<ModelRegistry['libraryItem']>>[], {
       updateOnDuplicate: ['size']
     })
   }
@@ -1782,9 +1767,9 @@ async function migrationPatch2LibraryItems(ctx: TypedDatabase, offset = 0): Prom
  * Migration from 2.3.3 to 2.3.4
  * Populating the duration & titleIgnorePrefix column on book
  */
-async function migrationPatch2Books(ctx: TypedDatabase, offset = 0): Promise<void> {
+async function migrationPatch2Books(ctx: InitializedDatabase, offset = 0): Promise<void> {
   // sequelize.models, keyed by model name
-  const models = ctx.models as unknown as PatchModels
+  const models = ctx.models
   const books = await models.book.findAll({
     limit: 500,
     offset
@@ -1815,7 +1800,7 @@ async function migrationPatch2Books(ctx: TypedDatabase, offset = 0): Promise<voi
   if (bulkUpdateItems.length) {
     Logger.info(`[dbMigration] Migration patch 2.3.3+ - patching ${bulkUpdateItems.length} books`)
     // cast(b): bulkCreate with updateOnDuplicate only writes the listed columns of existing rows; its types expect complete new rows
-    await models.book.bulkCreate(bulkUpdateItems as unknown as CreationAttributes<InstanceType<PatchModels['book']>>[], {
+    await models.book.bulkCreate(bulkUpdateItems as unknown as CreationAttributes<InstanceType<ModelRegistry['book']>>[], {
       updateOnDuplicate: ['duration', 'titleIgnorePrefix']
     })
   }
@@ -1830,9 +1815,9 @@ async function migrationPatch2Books(ctx: TypedDatabase, offset = 0): Promise<voi
  * Migration from 2.3.3 to 2.3.4
  * Populating the titleIgnorePrefix column on podcast
  */
-async function migrationPatch2Podcasts(ctx: TypedDatabase, offset = 0): Promise<void> {
+async function migrationPatch2Podcasts(ctx: InitializedDatabase, offset = 0): Promise<void> {
   // sequelize.models, keyed by model name
-  const models = ctx.models as unknown as PatchModels
+  const models = ctx.models
   const podcasts = await models.podcast.findAll({
     limit: 500,
     offset
@@ -1851,7 +1836,7 @@ async function migrationPatch2Podcasts(ctx: TypedDatabase, offset = 0): Promise<
   if (bulkUpdateItems.length) {
     Logger.info(`[dbMigration] Migration patch 2.3.3+ - patching ${bulkUpdateItems.length} podcasts`)
     // cast(b): bulkCreate with updateOnDuplicate only writes the listed columns of existing rows; its types expect complete new rows
-    await models.podcast.bulkCreate(bulkUpdateItems as unknown as CreationAttributes<InstanceType<PatchModels['podcast']>>[], {
+    await models.podcast.bulkCreate(bulkUpdateItems as unknown as CreationAttributes<InstanceType<ModelRegistry['podcast']>>[], {
       updateOnDuplicate: ['titleIgnorePrefix']
     })
   }
@@ -1866,9 +1851,9 @@ async function migrationPatch2Podcasts(ctx: TypedDatabase, offset = 0): Promise<
  * Migration from 2.3.3 to 2.3.4
  * Populating the nameIgnorePrefix column on series
  */
-async function migrationPatch2Series(ctx: TypedDatabase, offset = 0): Promise<void> {
+async function migrationPatch2Series(ctx: InitializedDatabase, offset = 0): Promise<void> {
   // sequelize.models, keyed by model name
-  const models = ctx.models as unknown as PatchModels
+  const models = ctx.models
   const allSeries = await models.series.findAll({
     limit: 500,
     offset
@@ -1886,7 +1871,7 @@ async function migrationPatch2Series(ctx: TypedDatabase, offset = 0): Promise<vo
   if (bulkUpdateItems.length) {
     Logger.info(`[dbMigration] Migration patch 2.3.3+ - patching ${bulkUpdateItems.length} series`)
     // cast(b): bulkCreate with updateOnDuplicate only writes the listed columns of existing rows; its types expect complete new rows
-    await models.series.bulkCreate(bulkUpdateItems as unknown as CreationAttributes<InstanceType<PatchModels['series']>>[], {
+    await models.series.bulkCreate(bulkUpdateItems as unknown as CreationAttributes<InstanceType<ModelRegistry['series']>>[], {
       updateOnDuplicate: ['nameIgnorePrefix']
     })
   }
@@ -1901,9 +1886,9 @@ async function migrationPatch2Series(ctx: TypedDatabase, offset = 0): Promise<vo
  * Migration from 2.3.3 to 2.3.4
  * Populating the lastFirst column on author
  */
-async function migrationPatch2Authors(ctx: TypedDatabase, offset = 0): Promise<void> {
+async function migrationPatch2Authors(ctx: InitializedDatabase, offset = 0): Promise<void> {
   // sequelize.models, keyed by model name
-  const models = ctx.models as unknown as PatchModels
+  const models = ctx.models
   const authors = await models.author.findAll({
     limit: 500,
     offset
@@ -1923,7 +1908,7 @@ async function migrationPatch2Authors(ctx: TypedDatabase, offset = 0): Promise<v
   if (bulkUpdateItems.length) {
     Logger.info(`[dbMigration] Migration patch 2.3.3+ - patching ${bulkUpdateItems.length} authors`)
     // cast(b): bulkCreate with updateOnDuplicate only writes the listed columns of existing rows; its types expect complete new rows
-    await models.author.bulkCreate(bulkUpdateItems as unknown as CreationAttributes<InstanceType<PatchModels['author']>>[], {
+    await models.author.bulkCreate(bulkUpdateItems as unknown as CreationAttributes<InstanceType<ModelRegistry['author']>>[], {
       updateOnDuplicate: ['lastFirst']
     })
   }
@@ -1938,9 +1923,9 @@ async function migrationPatch2Authors(ctx: TypedDatabase, offset = 0): Promise<v
  * Migration from 2.3.3 to 2.3.4
  * Populating the createdAt column on bookAuthor
  */
-async function migrationPatch2BookAuthors(ctx: TypedDatabase, offset = 0): Promise<void> {
+async function migrationPatch2BookAuthors(ctx: InitializedDatabase, offset = 0): Promise<void> {
   // sequelize.models, keyed by model name
-  const models = ctx.models as unknown as PatchModels
+  const models = ctx.models
   const bookAuthors = await models.bookAuthor.findAll({
     include: {
       model: models.author
@@ -1951,8 +1936,7 @@ async function migrationPatch2BookAuthors(ctx: TypedDatabase, offset = 0): Promi
   if (!bookAuthors.length) return
 
   const bulkUpdateItems = []
-  // author is included above
-  for (const bookAuthor of bookAuthors as (InstanceType<PatchModels['bookAuthor']> & { author?: { createdAt?: Date } })[]) {
+  for (const bookAuthor of bookAuthors) {
     if (bookAuthor.author?.createdAt) {
       const dateString = bookAuthor.author.createdAt.toISOString().replace('T', ' ').replace('Z', '')
       bulkUpdateItems.push(`("${bookAuthor.id}","${dateString}")`)
@@ -1974,9 +1958,9 @@ async function migrationPatch2BookAuthors(ctx: TypedDatabase, offset = 0): Promi
  * Migration from 2.3.3 to 2.3.4
  * Populating the createdAt column on bookSeries
  */
-async function migrationPatch2BookSeries(ctx: TypedDatabase, offset = 0): Promise<void> {
+async function migrationPatch2BookSeries(ctx: InitializedDatabase, offset = 0): Promise<void> {
   // sequelize.models, keyed by model name
-  const models = ctx.models as unknown as PatchModels
+  const models = ctx.models
   const allBookSeries = await models.bookSeries.findAll({
     include: {
       model: models.series
@@ -1987,8 +1971,7 @@ async function migrationPatch2BookSeries(ctx: TypedDatabase, offset = 0): Promis
   if (!allBookSeries.length) return
 
   const bulkUpdateItems = []
-  // series is included above
-  for (const bookSeries of allBookSeries as (InstanceType<PatchModels['bookSeries']> & { series?: { createdAt?: Date } })[]) {
+  for (const bookSeries of allBookSeries) {
     if (bookSeries.series?.createdAt) {
       const dateString = bookSeries.series.createdAt.toISOString().replace('T', ' ').replace('Z', '')
       bulkUpdateItems.push(`("${bookSeries.id}","${dateString}")`)
@@ -2010,7 +1993,7 @@ async function migrationPatch2BookSeries(ctx: TypedDatabase, offset = 0): Promis
  * Migration from 2.3.3 to 2.3.4
  * Adding coverPath column to Feed model
  */
-const migrationPatch2 = async (ctx: TypedDatabase) => {
+const migrationPatch2 = async (ctx: InitializedDatabase) => {
   const queryInterface = ctx.sequelize.getQueryInterface()
   const feedTableDescription = await queryInterface.describeTable('feeds')
   const authorsTableDescription = await queryInterface.describeTable('authors')

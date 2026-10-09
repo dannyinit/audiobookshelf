@@ -5,7 +5,7 @@
 import type * as fsPromises from 'fs/promises'
 import type * as fsSync from 'fs'
 type ServerSettingsModel = import('../objects/settings/ServerSettings')
-import type { Model, ModelStatic, Sequelize } from 'sequelize'
+import type { ModelRegistry, ModelsSequelize } from '../models/types'
 
 /**
  * Methods the vendored fs-extra (server/libs/fsExtra) adds on top of node fs (only the ones used)
@@ -77,31 +77,14 @@ export interface ZipArchive {
  */
 export type ArchiverFactory = (format: 'zip', options: { zlib?: { level: number } }) => ZipArchive
 
-/**
- * A JS model class (server/models) with the sequelize static query methods.
- * The JS models override Model.init with a different signature, so TypeScript does not accept them as ModelStatic
- * and rejects calls to the static query methods (findAll, findByPk, count, ...). This intersection restores them.
- */
-export type SequelizeModelClass<C extends abstract new (...args: never) => Model> = C & ModelStatic<InstanceType<C>>
-
 type DatabaseInstance = typeof import('../Database')
 
 /**
- * Keys of the Database model getters (userModel, bookModel, ...)
+ * server/Database after Database.init has run. Database.js (still JS) sets sequelize to null in the constructor
+ * and to the Sequelize instance in init, so it is typed `Sequelize | null`; code that only runs after init
+ * (routes, library queries, migrations called from init) uses this type. `models` is the getter for sequelize.models.
  */
-type DatabaseModelKey = { [K in keyof DatabaseInstance & string]: K extends `${string}Model` ? (DatabaseInstance[K] extends abstract new (...args: never) => Model ? K : never) : never }[keyof DatabaseInstance & string]
-
-/**
- * server/Database with its model getters typed as SequelizeModelClass. Files cast the required Database to this type
- */
-export type TypedDatabase = Omit<DatabaseInstance, DatabaseModelKey | 'sequelize' | 'libraryFilterData'> & {
-  readonly [K in DatabaseModelKey]: DatabaseInstance[K] extends abstract new (...args: never) => Model ? SequelizeModelClass<DatabaseInstance[K]> : never
-} & {
-  /** Set by Database.init, which runs before any query */
-  sequelize: Sequelize
-  /** Cached filter data per library id (see queries/libraryFilters getFilterData) */
-  libraryFilterData: Record<string, LibraryFilterData>
-}
+export type InitializedDatabase = DatabaseInstance & { sequelize: ModelsSequelize; models: ModelRegistry }
 
 /**
  * Filter menu data for a library, cached on Database.libraryFilterData

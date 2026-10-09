@@ -1,15 +1,13 @@
 import fastSort = require('../libs/fastSort')
-import DatabaseModule = require('../Database')
+import Database = require('../Database')
 import Logger = require('../Logger')
 import utils = require('../utils/index')
 import LibraryItem = require('../models/LibraryItem')
 import User = require('../models/User')
 import Library = require('../models/Library')
-import type { SortByObject, SortInstance, TypedDatabase } from './types'
+import type { SortByObject, SortInstance } from './types'
 const { createNewSortInstance } = fastSort
 
-// Same object; typed so the model static query methods can be called
-const Database = DatabaseModule as TypedDatabase
 const { getTitlePrefixAtEnd, isNullOrNaN, getTitleIgnorePrefix } = utils
 // The vendored fast-sort has untyped parameters, see SortInstance
 const naturalSort = createNewSortInstance({

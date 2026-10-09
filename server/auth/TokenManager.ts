@@ -1,7 +1,7 @@
 import sequelize = require('sequelize')
 import uuid = require('uuid')
 
-import DatabaseModule = require('../Database')
+import Database = require('../Database')
 import Logger = require('../Logger')
 
 import requestIp = require('../libs/requestIp')
@@ -10,12 +10,9 @@ import requestUtils = require('../utils/requestUtils')
 import type { Request, Response } from 'express'
 import type Session = require('../models/Session')
 import type User = require('../models/User')
-import type { TypedDatabase } from '../utils/types'
 import type { JwtPayload, PassportDone } from './types'
 const { Op } = sequelize
 const { isRequestSecure } = requestUtils
-// Same object; typed so the sequelize static query methods on the models are accepted
-const Database = DatabaseModule as unknown as TypedDatabase
 
 /**
  * Session row with the refresh token columns (the JS Session model does not declare refreshToken)

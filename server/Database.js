@@ -20,6 +20,7 @@ class Database {
     this.settings = []
 
     // Cached library filter data
+    /** @type {Object<string, import('./utils/types').LibraryFilterData>} */
     this.libraryFilterData = {}
 
     /** @type {import('./objects/settings/ServerSettings')} */
@@ -436,6 +437,10 @@ class Database {
     return this.models.setting.updateSettingObj(settings.toJSON())
   }
 
+  /**
+   * @param {import('sequelize').WhereOptions<import('./models/PlaybackSession')> | null} [where]
+   * @returns {false | ReturnType<typeof import('./models/PlaybackSession').getOldPlaybackSessions>}
+   */
   getPlaybackSessions(where = null) {
     if (!this.sequelize) return false
     return this.models.playbackSession.getOldPlaybackSessions(where)

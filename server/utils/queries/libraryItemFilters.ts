@@ -1,17 +1,13 @@
 import Sequelize = require('sequelize')
-import DatabaseModule = require('../../Database')
+import Database = require('../../Database')
 import libraryItemsBookFilters = require('./libraryItemsBookFilters')
 import libraryItemsPodcastFilters = require('./libraryItemsPodcastFilters')
 import User = require('../../models/User')
 import Library = require('../../models/Library')
 import Book = require('../../models/Book')
 import Podcast = require('../../models/Podcast')
-import LibraryItem = require('../../models/LibraryItem')
-import type { TypedDatabase } from '../types'
-import type { FilteredLibraryItem } from './types'
 
-// Same object; typed so the model static query methods can be called
-const Database = DatabaseModule as TypedDatabase
+import type { FilteredLibraryItem } from './types'
 
 /**
  * Book or podcast loaded with its libraryItem
@@ -56,8 +52,7 @@ export = {
     // libraryItem is included above
     for (const book of booksWithTag as MediaWithLibraryItem[]) {
       const libraryItem = book.libraryItem
-      // The book is the media of its library item
-      libraryItem.media = book as unknown as LibraryItem['media']
+      libraryItem.media = book
       libraryItems.push(libraryItem)
     }
     const podcastsWithTag = await Database.podcastModel.findAll({
@@ -79,8 +74,7 @@ export = {
     // libraryItem is included above
     for (const podcast of podcastsWithTag as MediaWithLibraryItem[]) {
       const libraryItem = podcast.libraryItem
-      // The podcast is the media of its library item
-      libraryItem.media = podcast as unknown as LibraryItem['media']
+      libraryItem.media = podcast
       libraryItems.push(libraryItem)
     }
     return libraryItems
@@ -119,8 +113,7 @@ export = {
     // libraryItem is included above
     for (const book of booksWithGenre as MediaWithLibraryItem[]) {
       const libraryItem = book.libraryItem
-      // The book is the media of its library item
-      libraryItem.media = book as unknown as LibraryItem['media']
+      libraryItem.media = book
       libraryItems.push(libraryItem)
     }
     const podcastsWithGenre = await Database.podcastModel.findAll({
@@ -142,8 +135,7 @@ export = {
     // libraryItem is included above
     for (const podcast of podcastsWithGenre as MediaWithLibraryItem[]) {
       const libraryItem = podcast.libraryItem
-      // The podcast is the media of its library item
-      libraryItem.media = podcast as unknown as LibraryItem['media']
+      libraryItem.media = podcast
       libraryItems.push(libraryItem)
     }
     return libraryItems
@@ -183,8 +175,7 @@ export = {
     // libraryItem is included above
     for (const book of booksWithGenre as MediaWithLibraryItem[]) {
       const libraryItem = book.libraryItem
-      // The book is the media of its library item
-      libraryItem.media = book as unknown as LibraryItem['media']
+      libraryItem.media = book
       libraryItems.push(libraryItem)
     }
     return libraryItems
