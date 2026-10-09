@@ -38,9 +38,9 @@ class Setting extends Model<InferAttributes<Setting>, InferCreationAttributes<Se
   }
 
   /**
-   * The settings object is stored as is; the JSON column serializes it with its toJSON
+   * The settings JSON (toJSON of a settings object, which Database.updateSetting passes) is stored as is
    */
-  static updateSettingObj(setting: oldEmailSettings | oldServerSettings | oldNotificationSettings) {
+  static updateSettingObj(setting: SettingValue) {
     return this.upsert({
       key: setting.id,
       value: setting

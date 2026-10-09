@@ -41,6 +41,10 @@ declare global {
   var PodcastDownloadTimeout: number
   var MaxFailedEpisodeChecks: number
   var XAccel: string | undefined
+  /** Install source (--source / SOURCE, e.g. docker or debian), set by Server */
+  var Source: string
+  /** ALLOW_CORS=1, set by Server */
+  var AllowCors: boolean
   /** Directory of index.js / prod.js (set there) */
   var appRoot: string
 

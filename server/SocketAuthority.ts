@@ -1,42 +1,60 @@
-const SocketIO = require('socket.io')
-const Logger = require('./Logger')
-const Database = require('./Database')
-const TokenManager = require('./auth/TokenManager')
-const CoverSearchManager = require('./managers/CoverSearchManager')
-const { LogLevel } = require('./utils/constants')
+import SocketIO = require('socket.io')
+import Logger = require('./Logger')
+import Database = require('./Database')
+import TokenManager = require('./auth/TokenManager')
+import CoverSearchManager = require('./managers/CoverSearchManager')
+import constants = require('./utils/constants')
+import type User = require('./models/User')
+import type LibraryItem = require('./models/LibraryItem')
+import type Server = require('./Server')
+const { LogLevel } = constants
+
+interface SocketClient {
+  /** socket id */
+  id: string
+  socket: SocketIO.Socket
+  connected_at: number
+  /** Set when the socket authenticates (auth event) */
+  user?: User
+}
+
+type CoverSearchParams = Parameters<typeof CoverSearchManager.startSearch>[1]
 
 /**
- * @typedef SocketClient
- * @property {string} id socket id
- * @property {SocketIO.Socket} socket
- * @property {number} connected_at
- * @property {import('./models/User')} user
+ * search_covers event payload
  */
+type CoverSearchPayload = CoverSearchParams & { requestId: string }
 
 class SocketAuthority {
+  declare Server: Server | null
+  declare socketIoServers: SocketIO.Server[]
+  declare clients: Record<string, SocketClient>
+
   constructor() {
     this.Server = null
     this.socketIoServers = []
 
-    /** @type {Object.<string, SocketClient>} */
     this.clients = {}
   }
 
   /**
    * returns an array of User.toJSONForPublic with `connections` for the # of socket connections
    *  a user can have many socket connections
-   * @returns {object[]}
    */
   getUsersOnline() {
-    const onlineUsersMap = {}
+    const onlineUsersMap: Record<string, ReturnType<User['toJSONForPublic']> & { connections: number }> = {}
     Object.values(this.clients)
       .filter((c) => c.user)
       .forEach((client) => {
-        if (onlineUsersMap[client.user.id]) {
-          onlineUsersMap[client.user.id].connections++
+        // filtered on user above
+        if (onlineUsersMap[client.user!.id]) {
+          // filtered on user above
+          onlineUsersMap[client.user!.id].connections++
         } else {
-          onlineUsersMap[client.user.id] = {
-            ...client.user.toJSONForPublic(this.Server.playbackSessionManager.sessions),
+          // filtered on user above
+          onlineUsersMap[client.user!.id] = {
+            // filtered on user above; Server is set by initialize before any socket connects
+            ...client.user!.toJSONForPublic(this.Server!.playbackSessionManager.sessions),
             connections: 1
           }
         }
@@ -44,20 +62,21 @@ class SocketAuthority {
     return Object.values(onlineUsersMap)
   }
 
-  getClientsForUser(userId) {
+  getClientsForUser(userId: string | null) {
     return Object.values(this.clients).filter((c) => c.user?.id === userId)
   }
 
   /**
    * Emits event to all authorized clients
-   * @param {string} evt
-   * @param {any} [data]
-   * @param {Function} [filter] optional filter function to only send event to specific users
+   * @param evt
+   * @param [data]
+   * @param [filter] optional filter function to only send event to specific users
    */
-  emitter(evt, data, filter = null) {
+  emitter(evt: string, data?: unknown, filter: ((user: User) => boolean) | null = null) {
     for (const socketId in this.clients) {
       if (this.clients[socketId].user) {
-        if (filter && !filter(this.clients[socketId].user)) continue
+        // checked just above
+        if (filter && !filter(this.clients[socketId].user!)) continue
 
         this.clients[socketId].socket.emit(evt, data)
       }
@@ -65,7 +84,7 @@ class SocketAuthority {
   }
 
   // Emits event to all clients for a specific user
-  clientEmitter(userId, evt, data) {
+  clientEmitter(userId: string | null, evt: string, data?: unknown) {
     const clients = this.getClientsForUser(userId)
     if (!clients.length) {
       return Logger.debug(`[SocketAuthority] clientEmitter - no clients found for user ${userId}`)
@@ -78,7 +97,7 @@ class SocketAuthority {
   }
 
   // Emits event to all admin user clients
-  adminEmitter(evt, data) {
+  adminEmitter(evt: string, data?: unknown) {
     for (const socketId in this.clients) {
       if (this.clients[socketId].user?.isAdminOrUp) {
         this.clients[socketId].socket.emit(evt, data)
@@ -86,7 +105,7 @@ class SocketAuthority {
     }
   }
 
-  requireAdminSocket(socket, eventName) {
+  requireAdminSocket(socket: SocketIO.Socket, eventName: string) {
     const client = this.clients[socket.id]
     if (client?.user?.isAdminOrUp) return true
 
@@ -98,10 +117,10 @@ class SocketAuthority {
    * Emits event with library item to all clients that can access the library item
    * Note: Emits toOldJSONExpanded()
    *
-   * @param {string} evt
-   * @param {import('./models/LibraryItem')} libraryItem
+   * @param evt
+   * @param libraryItem
    */
-  libraryItemEmitter(evt, libraryItem) {
+  libraryItemEmitter(evt: string, libraryItem: LibraryItem) {
     for (const socketId in this.clients) {
       if (this.clients[socketId].user?.checkCanAccessLibraryItem(libraryItem)) {
         this.clients[socketId].socket.emit(evt, libraryItem.toOldJSONExpanded())
@@ -113,13 +132,14 @@ class SocketAuthority {
    * Emits event with library items to all clients that can access the library items
    * Note: Emits toOldJSONExpanded()
    *
-   * @param {string} evt
-   * @param {import('./models/LibraryItem')[]} libraryItems
+   * @param evt
+   * @param libraryItems
    */
-  libraryItemsEmitter(evt, libraryItems) {
+  libraryItemsEmitter(evt: string, libraryItems: LibraryItem[]) {
     for (const socketId in this.clients) {
       if (this.clients[socketId].user) {
-        const libraryItemsAccessibleToUser = libraryItems.filter((li) => this.clients[socketId].user.checkCanAccessLibraryItem(li))
+        // checked just above
+        const libraryItemsAccessibleToUser = libraryItems.filter((li) => this.clients[socketId].user!.checkCanAccessLibraryItem(li))
         if (libraryItemsAccessibleToUser.length) {
           this.clients[socketId].socket.emit(
             evt,
@@ -132,13 +152,11 @@ class SocketAuthority {
 
   /**
    * Closes the Socket.IO server and disconnect all clients
-   *
-   * @param {Function} callback
    */
   async close() {
     Logger.info('[SocketAuthority] closing...')
     const closePromises = this.socketIoServers.map((io) => {
-      return new Promise((resolve) => {
+      return new Promise<void>((resolve) => {
         Logger.info(`[SocketAuthority] Closing Socket.IO server: ${io.path}`)
         io.close(() => {
           Logger.info(`[SocketAuthority] Socket.IO server closed: ${io.path}`)
@@ -151,7 +169,7 @@ class SocketAuthority {
     this.socketIoServers = []
   }
 
-  initialize(Server) {
+  initialize(Server: Server) {
     this.Server = Server
 
     const socketIoOptions = {
@@ -161,15 +179,21 @@ class SocketAuthority {
       }
     }
 
-    const ioServer = new SocketIO.Server(Server.server, socketIoOptions)
-    ioServer.path = '/socket.io'
+    // server is created in Server.start before it calls initialize
+    const ioServer = new SocketIO.Server(Server.server!, socketIoOptions)
+    // NOTE: this shadows the socket.io Server path() method on the instance with a string (only read in log messages here); see Bugs
+    // cast(c): path is a method in socket.io's types
+    ;(ioServer as unknown as { path: string }).path = '/socket.io'
     this.socketIoServers.push(ioServer)
 
     if (global.RouterBasePath) {
       // open a separate socket.io server for the router base path, keeping the original server open for legacy clients
       const ioBasePath = `${global.RouterBasePath}/socket.io`
-      const ioBasePathServer = new SocketIO.Server(Server.server, { ...socketIoOptions, path: ioBasePath })
-      ioBasePathServer.path = ioBasePath
+      // server is created in Server.start before it calls initialize
+      const ioBasePathServer = new SocketIO.Server(Server.server!, { ...socketIoOptions, path: ioBasePath })
+      // NOTE: as above, shadows the path() method; see Bugs
+      // cast(c): path is a method in socket.io's types
+      ;(ioBasePathServer as unknown as { path: string }).path = ioBasePath
       this.socketIoServers.push(ioBasePathServer)
     }
 
@@ -180,7 +204,8 @@ class SocketAuthority {
           socket,
           connected_at: Date.now()
         }
-        socket.sheepClient = this.clients[socket.id]
+        // cast(d): expando property on the socket (not read anywhere)
+        ;(socket as SocketIO.Socket & { sheepClient?: SocketClient }).sheepClient = this.clients[socket.id]
 
         Logger.info(`[SocketAuthority] Socket Connected to ${io.path}`, socket.id)
 
@@ -221,7 +246,8 @@ class SocketAuthority {
             delete this.clients[socket.id]
           } else {
             Logger.debug('[SocketAuthority] User Offline ' + _client.user.username)
-            this.adminEmitter('user_offline', _client.user.toJSONForPublic(this.Server.playbackSessionManager.sessions))
+            // Server is set by initialize before any socket connects
+            this.adminEmitter('user_offline', _client.user.toJSONForPublic(this.Server!.playbackSessionManager.sessions))
 
             const disconnectTime = Date.now() - _client.connected_at
             Logger.info(`[SocketAuthority] Socket ${socket.id} disconnected from client "${_client.user.username}" after ${disconnectTime}ms (Reason: ${reason})`)
@@ -239,7 +265,7 @@ class SocketAuthority {
         socket.on('message_all_users', (payload) => {
           // admin user can send a message to all authenticated users
           //   displays on the web app as a toast
-          const client = this.clients[socket.id] || {}
+          const client: Partial<SocketClient> = this.clients[socket.id] || {}
           if (client.user?.isAdminOrUp) {
             this.emitter('admin_message', payload.message || '')
           } else {
@@ -247,8 +273,8 @@ class SocketAuthority {
           }
         })
         socket.on('ping', () => {
-          const client = this.clients[socket.id] || {}
-          const user = client.user || {}
+          const client: Partial<SocketClient> = this.clients[socket.id] || {}
+          const user: Partial<User> = client.user || {}
           Logger.debug(`[SocketAuthority] Received ping from socket ${user.username || 'No User'}`)
           socket.emit('pong')
         })
@@ -263,10 +289,10 @@ class SocketAuthority {
    * Sends event 'init' to the socket. For admins this contains an array of users online.
    * For failed authentication it sends event 'auth_failed' with a message
    *
-   * @param {SocketIO.Socket} socket
-   * @param {string} token JWT
+   * @param socket
+   * @param token JWT
    */
-  async authenticateSocket(socket, token) {
+  async authenticateSocket(socket: SocketIO.Socket, token: string) {
     // we don't use passport to authenticate the jwt we get over the socket connection.
     // it's easier to directly verify/decode it.
     const token_data = TokenManager.validateAccessToken(token)
@@ -281,7 +307,8 @@ class SocketAuthority {
 
     if (token_data.type === 'api') {
       // Api key based authentication
-      const apiKey = await Database.apiKeyModel.getById(token_data.keyId)
+      // cast(d): api key tokens are signed with a keyId
+      const apiKey = await Database.apiKeyModel.getById(token_data.keyId as string)
 
       if (!apiKey?.isActive) {
         Logger.error('Cannot validate socket - API key not found or inactive')
@@ -313,7 +340,8 @@ class SocketAuthority {
       }
 
       // get the user via the id from the decoded jwt.
-      user = await Database.userModel.getUserByIdOrOldId(token_data.userId)
+      // cast(d): isBearerAccessTokenPayload checked that userId is set
+      user = await Database.userModel.getUserByIdOrOldId(token_data.userId as string)
       if (!user) {
         // user not found
         Logger.error('Cannot validate socket - invalid token')
@@ -345,13 +373,15 @@ class SocketAuthority {
     }
 
     client.user = user
-    this.adminEmitter('user_online', client.user.toJSONForPublic(this.Server.playbackSessionManager.sessions))
+    // Server is set by initialize before any socket connects
+    this.adminEmitter('user_online', client.user.toJSONForPublic(this.Server!.playbackSessionManager.sessions))
 
     // Update user lastSeen without firing sequelize bulk update hooks
-    user.lastSeen = Date.now()
+    // cast(b): the DATE column accepts epoch ms (Sequelize converts it); the model types lastSeen as the Date it reads
+    user.lastSeen = Date.now() as unknown as Date
     await user.save({ hooks: false })
 
-    const initialPayload = {
+    const initialPayload: { userId: string; username: string; usersOnline?: ReturnType<SocketAuthority['getUsersOnline']> } = {
       userId: client.user.id,
       username: client.user.username
     }
@@ -361,17 +391,18 @@ class SocketAuthority {
     client.socket.emit('init', initialPayload)
   }
 
-  cancelScan(id) {
+  cancelScan(id: string) {
     Logger.debug('[SocketAuthority] Cancel scan', id)
-    this.Server.cancelLibraryScan(id)
+    // Server is set by initialize before any socket connects
+    this.Server!.cancelLibraryScan(id)
   }
 
   /**
    * Handle cover search request via WebSocket
-   * @param {SocketIO.Socket} socket
-   * @param {Object} payload
+   * @param socket
+   * @param payload
    */
-  async handleCoverSearch(socket, payload) {
+  async handleCoverSearch(socket: SocketIO.Socket, payload: CoverSearchPayload) {
     const client = this.clients[socket.id]
     if (!client?.user) {
       Logger.error('[SocketAuthority] Unauthorized cover search request')
@@ -396,7 +427,7 @@ class SocketAuthority {
     Logger.info(`[SocketAuthority] User ${client.user.username} initiated cover search ${requestId}`)
 
     // Callback for streaming results to client
-    const onResult = (result) => {
+    const onResult = (result: Parameters<Parameters<typeof CoverSearchManager.startSearch>[2]>[0]) => {
       socket.emit('cover_search_result', {
         requestId,
         provider: result.provider,
@@ -412,7 +443,7 @@ class SocketAuthority {
     }
 
     // Callback for provider errors
-    const onError = (provider, errorMessage) => {
+    const onError = (provider: string, errorMessage?: string) => {
       socket.emit('cover_search_provider_error', {
         requestId,
         provider,
@@ -432,10 +463,10 @@ class SocketAuthority {
 
   /**
    * Handle cancel cover search request
-   * @param {SocketIO.Socket} socket
-   * @param {string} requestId
+   * @param socket
+   * @param requestId
    */
-  handleCancelCoverSearch(socket, requestId) {
+  handleCancelCoverSearch(socket: SocketIO.Socket, requestId: string) {
     const client = this.clients[socket.id]
     if (!client?.user) {
       Logger.error('[SocketAuthority] Unauthorized cancel cover search request')
@@ -452,13 +483,13 @@ class SocketAuthority {
 
   /**
    * Cancel all cover searches associated with a socket (called on disconnect)
-   * @param {string} socketId
+   * @param socketId
    */
-  cancelSocketCoverSearches(socketId) {
+  cancelSocketCoverSearches(socketId: string) {
     // Get all active search request IDs and cancel those that might belong to this socket
     // Since we don't track socket-to-request mapping, we log this for debugging
     // The client will handle reconnection gracefully
     Logger.debug(`[SocketAuthority] Socket ${socketId} disconnected, any active searches will timeout`)
   }
 }
-module.exports = new SocketAuthority()
+export = new SocketAuthority()

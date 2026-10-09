@@ -1,50 +1,88 @@
-const Path = require('path')
-const Sequelize = require('sequelize')
-const express = require('express')
-const http = require('http')
-const util = require('util')
-const fs = require('./libs/fsExtra')
-const fileUpload = require('./libs/expressFileupload')
-const cookieParser = require('cookie-parser')
-const axios = require('axios')
+import Path = require('path')
+import Sequelize = require('sequelize')
+import express = require('express')
+import http = require('http')
+import util = require('util')
+import fs = require('./libs/fsExtra')
+import fileUpload = require('./libs/expressFileupload')
+import cookieParser = require('cookie-parser')
+import axios from 'axios'
 
-const { version } = require('../package.json')
+import packageJson = require('../package.json')
 
 // Utils
-const is = require('./libs/requestIp/isJs')
-const fileUtils = require('./utils/fileUtils')
-const { toNumber } = require('./utils/index')
-const { getRequestOrigin } = require('./utils/requestUtils')
-const Logger = require('./Logger')
+import isModule = require('./libs/requestIp/isJs')
+import fileUtils = require('./utils/fileUtils')
+import utils = require('./utils/index')
+import requestUtils = require('./utils/requestUtils')
+import Logger = require('./Logger')
 
-const Auth = require('./Auth')
-const Watcher = require('./Watcher')
-const Database = require('./Database')
-const SocketAuthority = require('./SocketAuthority')
+import Auth = require('./Auth')
+import Watcher = require('./Watcher')
+import Database = require('./Database')
+import SocketAuthority = require('./SocketAuthority')
 
-const ApiRouter = require('./routers/ApiRouter')
-const HlsRouter = require('./routers/HlsRouter')
-const PublicRouter = require('./routers/PublicRouter')
+import ApiRouter = require('./routers/ApiRouter')
+import HlsRouter = require('./routers/HlsRouter')
+import PublicRouter = require('./routers/PublicRouter')
 
-const LogManager = require('./managers/LogManager')
-const EmailManager = require('./managers/EmailManager')
-const AbMergeManager = require('./managers/AbMergeManager')
-const CacheManager = require('./managers/CacheManager')
-const BackupManager = require('./managers/BackupManager')
-const PlaybackSessionManager = require('./managers/PlaybackSessionManager')
-const PodcastManager = require('./managers/PodcastManager')
-const AudioMetadataMangaer = require('./managers/AudioMetadataManager')
-const RssFeedManager = require('./managers/RssFeedManager')
-const CronManager = require('./managers/CronManager')
-const ApiCacheManager = require('./managers/ApiCacheManager')
-const BinaryManager = require('./managers/BinaryManager')
-const ShareManager = require('./managers/ShareManager')
-const LibraryScanner = require('./scanner/LibraryScanner')
+import LogManager = require('./managers/LogManager')
+import EmailManager = require('./managers/EmailManager')
+import AbMergeManager = require('./managers/AbMergeManager')
+import CacheManager = require('./managers/CacheManager')
+import BackupManager = require('./managers/BackupManager')
+import PlaybackSessionManager = require('./managers/PlaybackSessionManager')
+import PodcastManager = require('./managers/PodcastManager')
+import AudioMetadataMangaer = require('./managers/AudioMetadataManager')
+import RssFeedManager = require('./managers/RssFeedManager')
+import CronManager = require('./managers/CronManager')
+import ApiCacheManager = require('./managers/ApiCacheManager')
+import BinaryManager = require('./managers/BinaryManager')
+import ShareManager = require('./managers/ShareManager')
+import LibraryScanner = require('./scanner/LibraryScanner')
 
 //Import the main Passport and Express-Session library
-const passport = require('passport')
-const expressSession = require('express-session')
-const MemoryStore = require('./libs/memorystore')
+import passport = require('passport')
+import expressSession = require('express-session')
+import MemoryStore = require('./libs/memorystore')
+import type { Request, Response, NextFunction } from 'express'
+import type User = require('./models/User')
+import type ServerSettings = require('./objects/settings/ServerSettings')
+const { version } = packageJson
+const { toNumber } = utils
+const { getRequestOrigin } = requestUtils
+
+/**
+ * The vendored is.js (server/libs/requestIp/isJs) is a minified UMD bundle that TypeScript cannot type (only the check used here)
+ */
+interface IsJs {
+  ipv6(value: string): boolean
+}
+// cast(a): typed view of the minified vendored is.js (see IsJs)
+const is = isModule as unknown as IsJs
+
+/**
+ * The Next.js app of the experimental React client, loaded at runtime from REACT_CLIENT_PATH (only what is used here)
+ */
+interface NextApp {
+  getRequestHandler(): (req: Request, res: Response) => unknown
+  prepare(): Promise<void>
+  server?: { server?: { nextConfig?: { basePath?: unknown } } }
+}
+
+/**
+ * Payload of GET /status
+ */
+interface StatusPayload {
+  app: string
+  serverVersion: string
+  isInit: boolean
+  language: ServerSettings['language']
+  authMethods: ServerSettings['authActiveAuthMethods']
+  authFormData: ServerSettings['authFormData']
+  ConfigPath?: string
+  MetadataPath?: string
+}
 
 /**
  * `next()` for a custom server is a NextCustomServer wrapper. After prepare(),
@@ -52,14 +90,31 @@ const MemoryStore = require('./libs/memorystore')
  * one more `.server` down. Older react clients have no basePath and must keep
  * Express-stripped URLs.
  */
-function getPreparedNextBasePath(nextApp) {
+function getPreparedNextBasePath(nextApp: NextApp) {
   const nodeServer = nextApp.server?.server
   const basePath = nodeServer?.nextConfig?.basePath
   return typeof basePath === 'string' ? basePath : ''
 }
 
 class Server {
-  constructor(SOURCE, PORT, HOST, CONFIG_PATH, METADATA_PATH, ROUTER_BASE_PATH) {
+  declare Port: string | number
+  declare Host: string | undefined
+  declare auth: Auth
+  declare emailManager: EmailManager
+  declare backupManager: BackupManager
+  declare abMergeManager: AbMergeManager
+  declare playbackSessionManager: PlaybackSessionManager
+  declare podcastManager: PodcastManager
+  declare audioMetadataManager: AudioMetadataMangaer
+  declare cronManager: CronManager
+  declare apiCacheManager: ApiCacheManager
+  declare binaryManager: BinaryManager
+  declare apiRouter: ApiRouter
+  declare hlsRouter: HlsRouter
+  declare publicRouter: PublicRouter
+  declare server: http.Server | null
+
+  constructor(SOURCE: string, PORT: string | number, HOST: string | undefined, CONFIG_PATH: string, METADATA_PATH: string, ROUTER_BASE_PATH: string) {
     this.Port = PORT
     this.Host = HOST
     global.Source = SOURCE
@@ -135,16 +190,16 @@ class Server {
   /**
    * Middleware to check if the current request is authenticated
    *
-   * @param {import('express').Request} req
-   * @param {import('express').Response} res
-   * @param {import('express').NextFunction} next
+   * @param req
+   * @param res
+   * @param next
    */
-  authMiddleware(req, res, next) {
+  authMiddleware(req: Request, res: Response, next: NextFunction) {
     // ask passportjs if the current request is authenticated
     this.auth.isAuthenticated(req, res, next)
   }
 
-  cancelLibraryScan(libraryId) {
+  cancelLibraryScan(libraryId: string) {
     LibraryScanner.setCancelLibraryScan(libraryId)
   }
 
@@ -179,7 +234,8 @@ class Server {
     // Create or set JWT secret in token manager
     await this.auth.tokenManager.initTokenSecret()
 
-    await Logger.logManager.init()
+    // logManager is set in the constructor
+    await Logger.logManager!.init()
 
     await this.cleanUserData() // Remove invalid user item progress
     await CacheManager.ensureCachePaths()
@@ -270,7 +326,8 @@ class Server {
           res.header('Access-Control-Allow-Origin', req.get('origin'))
           res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS')
           res.header('Access-Control-Allow-Headers', '*')
-          res.header('Access-Control-Allow-Credentials', true)
+          // cast(b): express converts header values with String(); its types only take strings
+          res.header('Access-Control-Allow-Credentials', true as unknown as string)
           if (req.method === 'OPTIONS') {
             return res.sendStatus(200)
           }
@@ -285,14 +342,16 @@ class Server {
     // enable express-session
     app.use(
       expressSession({
-        secret: this.auth.tokenManager.TokenSecret,
+        // set by initTokenSecret in init (before start creates the app)
+        secret: this.auth.tokenManager.TokenSecret!,
         resave: false,
         saveUninitialized: false,
         cookie: {
           // also send the cookie if were are not on https (not every use has https)
           secure: false
         },
-        store: new MemoryStore(86400000, 86400000, 1000)
+        // cast(a): the vendored memorystore is a Store subclass whose JSDoc types its callbacks as Function
+        store: new MemoryStore(86400000, 86400000, 1000) as expressSession.Store
       })
     )
     // init passport.js
@@ -309,7 +368,8 @@ class Server {
       const urlStartsWithRouterBasePath = req.url.startsWith(global.RouterBasePath)
       const { origin } = getRequestOrigin(req)
       const prefix = urlStartsWithRouterBasePath ? global.RouterBasePath : ''
-      req.originalHostPrefix = `${origin}${prefix}`
+      // cast(d): this middleware sets originalHostPrefix on every request (the rss feed reads it, see RssFeedManager.getFeed)
+      ;(req as typeof req & { originalHostPrefix: string }).originalHostPrefix = `${origin}${prefix}`
       if (!urlStartsWithRouterBasePath) {
         req.url = `${global.RouterBasePath}${req.url}`
       }
@@ -323,19 +383,21 @@ class Server {
     // Skip file upload parsing for internal-api routes (Next.js proxies read multipart bodies).
     router.use(
       /^(?!\/internal-api).*/,
+      // cast(a): the vendored express-fileupload's JSDoc types the middleware as Function
       fileUpload({
         defCharset: 'utf8',
         defParamCharset: 'utf8',
         useTempFiles: true,
         tempFileDir: Path.join(global.MetadataPath, 'tmp')
-      })
+      }) as express.RequestHandler
     )
     router.use(express.urlencoded({ extended: true, limit: '5mb' }))
 
     // Skip JSON parsing for internal-api routes
     router.use(/^(?!\/internal-api).*/, express.json({ limit: '10mb' }))
 
-    router.use('/api', this.auth.ifAuthNeeded(this.authMiddleware.bind(this)), this.apiRouter.router)
+    // cast(b): the api router is an express() app typed with relaxed route methods (see ApiRouterApp in ApiRouter)
+    router.use('/api', this.auth.ifAuthNeeded(this.authMiddleware.bind(this)), this.apiRouter.router as express.Express)
     router.use('/hls', this.hlsRouter.router)
     router.use('/public', this.publicRouter.router)
 
@@ -345,7 +407,8 @@ class Server {
     // RSS Feed temp route
     router.get('/feed/:slug', (req, res) => {
       Logger.info(`[Server] Requesting rss feed ${req.params.slug}`)
-      RssFeedManager.getFeed(req, res)
+      // cast(d): originalHostPrefix is set by the base path middleware above
+      RssFeedManager.getFeed(req as typeof req & { originalHostPrefix: string }, res)
     })
     router.get('/feed/:slug/cover*', (req, res) => {
       RssFeedManager.getFeedCover(req, res)
@@ -368,7 +431,7 @@ class Server {
     router.get('/status', (req, res) => {
       // status check for client to see if server has been initialized
       // server has been initialized if a root user exists
-      const payload = {
+      const payload: StatusPayload = {
         app: 'audiobookshelf',
         serverVersion: version,
         isInit: Database.hasRootUser,
@@ -423,7 +486,8 @@ class Server {
       // This is for using the experimental Next.js client
       Logger.info(`Using React client at ${ReactClientPath}`)
       const nextPath = Path.join(ReactClientPath, 'node_modules/next')
-      const next = require(nextPath)
+      // cast(a): the Next.js package is required at runtime from REACT_CLIENT_PATH; require() is typed any
+      const next = require(nextPath) as (options: { dev: boolean; dir: string }) => NextApp
       const nextApp = next({ dev: Logger.isDev, dir: ReactClientPath })
       const handle = nextApp.getRequestHandler()
       await nextApp.prepare()
@@ -456,7 +520,8 @@ class Server {
         Logger.info(`Listening on unix socket ${sockPath}`)
       })
     } else {
-      this.server.listen(this.Port, this.Host, () => {
+      // cast(d): Node accepts the port as a string (index.js passes the --port / PORT string) and converts it; @types/node types it as a number
+      this.server.listen(this.Port as number, this.Host, () => {
         if (this.Host) Logger.info(`Listening on http://${is.ipv6(this.Host) ? `[${this.Host}]` : this.Host}:${this.Port}`)
         else Logger.info(`Listening on port :${this.Port}`)
       })
@@ -466,13 +531,15 @@ class Server {
     SocketAuthority.initialize(this)
   }
 
-  async initializeServer(req, res) {
+  async initializeServer(req: Request, res: Response) {
     Logger.info(`[Server] Initializing new server`)
     const newRoot = req.body.newRoot
     const rootUsername = newRoot.username || 'root'
     const rootPash = newRoot.password ? await this.auth.localAuthStrategy.hashPassword(newRoot.password) : ''
     if (!rootPash) Logger.warn(`[Server] Creating root user with no password`)
-    await Database.createRootUser(rootUsername, rootPash, this.auth)
+    // NOTE: hashPassword resolves null when bcrypt fails; the root user is then created with a null password (logged as "no password"); see Bugs
+    // cast(c): createRootUser takes the hash as a string
+    await Database.createRootUser(rootUsername, rootPash as string, this.auth)
 
     res.sendStatus(200)
   }
@@ -515,10 +582,12 @@ class Server {
 
     // Remove series from hide from continue listening that no longer exist
     try {
-      const users = await Database.sequelize.query(`SELECT u.id, u.username, u.extraData, json_group_array(value) AS seriesIdsToRemove FROM users u, json_each(u.extraData->"seriesHideFromContinueListening") LEFT JOIN series se ON se.id = value WHERE se.id IS NULL GROUP BY u.id;`, {
+      // cast(b): the rows are User instances built from the raw query: extraData is the JSON string and the aggregated column is in dataValues
+      // sequelize is set by Database.init (called by init before this)
+      const users = (await Database.sequelize!.query(`SELECT u.id, u.username, u.extraData, json_group_array(value) AS seriesIdsToRemove FROM users u, json_each(u.extraData->"seriesHideFromContinueListening") LEFT JOIN series se ON se.id = value WHERE se.id IS NULL GROUP BY u.id;`, {
         model: Database.userModel,
         type: Sequelize.QueryTypes.SELECT
-      })
+      })) as unknown as (Omit<User, 'extraData' | 'dataValues'> & { extraData: string; dataValues: { seriesIdsToRemove: string } })[]
       for (const user of users) {
         const extraData = JSON.parse(user.extraData)
         const existingSeriesIds = extraData.seriesHideFromContinueListening
@@ -526,7 +595,7 @@ class Server {
         Logger.info(`[Server] Found ${seriesIdsToRemove.length} non-existent series in seriesHideFromContinueListening for user "${user.username}" - Removing (${seriesIdsToRemove.join(',')})`)
         const newExtraData = {
           ...extraData,
-          seriesHideFromContinueListening: existingSeriesIds.filter((s) => !seriesIdsToRemove.includes(s))
+          seriesHideFromContinueListening: existingSeriesIds.filter((s: string) => !seriesIdsToRemove.includes(s))
         }
         await user.update({ extraData: newExtraData })
       }
@@ -545,8 +614,9 @@ class Server {
     Logger.info('[Server] Watcher Closed')
     await SocketAuthority.close()
     Logger.info('[Server] Closing HTTP Server')
-    await new Promise((resolve) => this.server.close(resolve))
+    // stop runs after start, which creates the server
+    await new Promise((resolve) => this.server!.close(resolve))
     Logger.info('[Server] HTTP Server Closed')
   }
 }
-module.exports = Server
+export = Server

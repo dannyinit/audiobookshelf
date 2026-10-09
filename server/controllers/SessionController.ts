@@ -198,7 +198,8 @@ class SessionController {
       await this.playbackSessionManager.removeSession(req.playbackSession.id)
     }
 
-    await Database.removePlaybackSession(req.playbackSession.id)
+    // the session was loaded from the db by the middleware, so it has an id
+    await Database.removePlaybackSession(req.playbackSession.id!)
     res.sendStatus(200)
   }
 

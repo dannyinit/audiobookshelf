@@ -1,16 +1,51 @@
-const Path = require('path')
-const { Sequelize, Op } = require('sequelize')
+import Path = require('path')
+import sequelize = require('sequelize')
 
-const packageJson = require('../package.json')
-const fs = require('./libs/fsExtra')
-const Logger = require('./Logger')
+import packageJson = require('../package.json')
+import fs = require('./libs/fsExtra')
+import Logger = require('./Logger')
 
-const dbMigration = require('./utils/migrations/dbMigration')
-const Auth = require('./Auth')
+import dbMigration = require('./utils/migrations/dbMigration')
+// Only used as a type here; the side-effect import keeps the require (and the load order)
+import './Auth'
 
-const MigrationManager = require('./managers/MigrationManager')
+import MigrationManager = require('./managers/MigrationManager')
+import type Auth = require('./Auth')
+import type Setting = require('./models/Setting')
+import type PlaybackSession = require('./models/PlaybackSession')
+import type ServerSettings = require('./objects/settings/ServerSettings')
+import type NotificationSettings = require('./objects/settings/NotificationSettings')
+import type EmailSettings = require('./objects/settings/EmailSettings')
+import type { ModelsSequelize, ModelRegistry } from './models/types'
+import type { LibraryFilterData, InitializedDatabase } from './utils/types'
+import type { DataTypes as SequelizeDataTypes, WhereOptions } from 'sequelize'
+import type sqlite3 = require('sqlite3')
+import type oldPlaybackSession = require('./objects/PlaybackSession')
+const { Sequelize, Op } = sequelize
+
+/**
+ * The settings objects are null until loadData (called by init) loads them from the db.
+ * Every reader runs after init, so they are read as set; they can be written null (the constructor does).
+ */
+interface Database {
+  get serverSettings(): ServerSettings
+  set serverSettings(value: ServerSettings | null)
+  get notificationSettings(): NotificationSettings
+  set notificationSettings(value: NotificationSettings | null)
+  get emailSettings(): EmailSettings
+  set emailSettings(value: EmailSettings | null)
+}
 
 class Database {
+  declare sequelize: ModelsSequelize | null
+  declare dbPath: string | null
+  declare isNew: boolean
+  declare hasRootUser: boolean
+  declare settings: Setting['value'][]
+  declare libraryFilterData: Record<string, LibraryFilterData>
+  declare supportsUnaccent: boolean
+  declare supportsUnicodeFoldings: boolean
+
   constructor() {
     this.sequelize = null
     this.dbPath = null
@@ -20,150 +55,123 @@ class Database {
     this.settings = []
 
     // Cached library filter data
-    /** @type {Object<string, import('./utils/types').LibraryFilterData>} */
     this.libraryFilterData = {}
 
-    /** @type {import('./objects/settings/ServerSettings')} */
     this.serverSettings = null
-    /** @type {import('./objects/settings/NotificationSettings')} */
     this.notificationSettings = null
-    /** @type {import('./objects/settings/EmailSettings')} */
     this.emailSettings = null
 
     this.supportsUnaccent = false
     this.supportsUnicodeFoldings = false
   }
 
-  get models() {
-    return this.sequelize?.models || {}
+  get models(): ModelRegistry {
+    // cast(d): {} before init; the model getters are only read after init (buildModels has run)
+    return (this.sequelize?.models || {}) as ModelRegistry
   }
 
-  /** @type {typeof import('./models/User')} */
   get userModel() {
     return this.models.user
   }
 
-  /** @type {typeof import('./models/Session')} */
   get sessionModel() {
     return this.models.session
   }
 
-  /** @type {typeof import('./models/ApiKey')} */
   get apiKeyModel() {
     return this.models.apiKey
   }
 
-  /** @type {typeof import('./models/Library')} */
   get libraryModel() {
     return this.models.library
   }
 
-  /** @type {typeof import('./models/LibraryFolder')} */
   get libraryFolderModel() {
     return this.models.libraryFolder
   }
 
-  /** @type {typeof import('./models/Author')} */
   get authorModel() {
     return this.models.author
   }
 
-  /** @type {typeof import('./models/Series')} */
   get seriesModel() {
     return this.models.series
   }
 
-  /** @type {typeof import('./models/Book')} */
   get bookModel() {
     return this.models.book
   }
 
-  /** @type {typeof import('./models/BookSeries')} */
   get bookSeriesModel() {
     return this.models.bookSeries
   }
 
-  /** @type {typeof import('./models/BookAuthor')} */
   get bookAuthorModel() {
     return this.models.bookAuthor
   }
 
-  /** @type {typeof import('./models/Podcast')} */
   get podcastModel() {
     return this.models.podcast
   }
 
-  /** @type {typeof import('./models/PodcastEpisode')} */
   get podcastEpisodeModel() {
     return this.models.podcastEpisode
   }
 
-  /** @type {typeof import('./models/LibraryItem')} */
   get libraryItemModel() {
     return this.models.libraryItem
   }
 
-  /** @type {typeof import('./models/MediaProgress')} */
   get mediaProgressModel() {
     return this.models.mediaProgress
   }
 
-  /** @type {typeof import('./models/Collection')} */
   get collectionModel() {
     return this.models.collection
   }
 
-  /** @type {typeof import('./models/CollectionBook')} */
   get collectionBookModel() {
     return this.models.collectionBook
   }
 
-  /** @type {typeof import('./models/Playlist')} */
   get playlistModel() {
     return this.models.playlist
   }
 
-  /** @type {typeof import('./models/PlaylistMediaItem')} */
   get playlistMediaItemModel() {
     return this.models.playlistMediaItem
   }
 
-  /** @type {typeof import('./models/Feed')} */
   get feedModel() {
     return this.models.feed
   }
 
-  /** @type {typeof import('./models/FeedEpisode')} */
   get feedEpisodeModel() {
     return this.models.feedEpisode
   }
 
-  /** @type {typeof import('./models/PlaybackSession')} */
   get playbackSessionModel() {
     return this.models.playbackSession
   }
 
-  /** @type {typeof import('./models/CustomMetadataProvider')} */
   get customMetadataProviderModel() {
     return this.models.customMetadataProvider
   }
 
-  /** @type {typeof import('./models/MediaItemShare')} */
   get mediaItemShareModel() {
     return this.models.mediaItemShare
   }
 
-  /** @type {typeof import('./models/Device')} */
   get deviceModel() {
     return this.models.device
   }
 
   /**
    * Check if db file exists
-   * @returns {boolean}
    */
-  async checkHasDb() {
-    if (!(await fs.pathExists(this.dbPath))) {
+  async checkHasDb(): Promise<boolean> {
+    // dbPath is set by init before it calls this
+    if (!(await fs.pathExists(this.dbPath!))) {
       Logger.info(`[Database] absdatabase.sqlite not found at ${this.dbPath}`)
       return false
     }
@@ -172,7 +180,7 @@ class Database {
 
   /**
    * Connect to db, build models and run migrations
-   * @param {boolean} [force=false] Used for testing, drops & re-creates all tables
+   * @param [force=false] Used for testing, drops & re-creates all tables
    */
   async init(force = false) {
     this.dbPath = Path.join(global.ConfigPath, 'absdatabase.sqlite')
@@ -185,7 +193,8 @@ class Database {
     }
 
     try {
-      const migrationManager = new MigrationManager(this.sequelize, this.isNew, global.ConfigPath)
+      // sequelize is set by connect (checked above)
+      const migrationManager = new MigrationManager(this.sequelize!, this.isNew, global.ConfigPath)
       await migrationManager.init(packageJson.version)
       await migrationManager.runMigrations()
     } catch (error) {
@@ -194,25 +203,26 @@ class Database {
     }
 
     await this.buildModels(force)
-    Logger.info(`[Database] Db initialized with models:`, Object.keys(this.sequelize.models).join(', '))
+    // sequelize is set by connect (checked above)
+    Logger.info(`[Database] Db initialized with models:`, Object.keys(this.sequelize!.models).join(', '))
 
     await this.addTriggers()
 
     await this.loadData()
 
     Logger.info(`[Database] running ANALYZE`)
-    await this.sequelize.query('ANALYZE')
+    // sequelize is set by connect (checked above)
+    await this.sequelize!.query('ANALYZE')
     Logger.info(`[Database] ANALYZE completed`)
   }
 
   /**
    * Connect to db
-   * @returns {boolean}
    */
-  async connect() {
+  async connect(): Promise<boolean> {
     Logger.info(`[Database] Initializing db at "${this.dbPath}"`)
 
-    let logging = false
+    let logging: false | ((sql: string, timing?: number) => void) = false
     let benchmark = false
     if (process.env.QUERY_LOGGING === 'log') {
       // Setting QUERY_LOGGING=log will log all Sequelize queries before they run
@@ -225,13 +235,16 @@ class Database {
       benchmark = true
     }
 
+    // cast(d): uppercaseFirst is added on the next line and the models by buildModels (Model.init)
     this.sequelize = new Sequelize({
       dialect: 'sqlite',
-      storage: this.dbPath,
+      // dbPath is set by init before it calls this
+      storage: this.dbPath!,
       logging: logging,
       benchmark: benchmark,
-      transactionType: 'IMMEDIATE'
-    })
+      // cast(b): Sequelize types transactionType as its Transaction.TYPES enum, whose value is this string
+      transactionType: 'IMMEDIATE' as sequelize.Transaction.TYPES
+    }) as ModelsSequelize
 
     // Helper function
     this.sequelize.uppercaseFirst = (str) => (str ? `${str[0].toUpperCase()}${str.substr(1)}` : '')
@@ -275,18 +288,20 @@ class Database {
   }
 
   /**
-   * @param {string} extension paths to extension binary
+   * @param extension paths to extension binary
    */
-  async loadExtension(extension) {
+  async loadExtension(extension: string) {
     // This is a hack to get the db connection for loading extensions.
     // The proper way would be to use the 'afterConnect' hook, but that hook is never called for sqlite due to a bug in sequelize.
     // See https://github.com/sequelize/sequelize/issues/12487
     // This is not a public API and may break in the future.
-    const db = await this.sequelize.dialect.connectionManager.getConnection()
+    // cast(b): dialect (and its connection manager) is not in Sequelize's public types; the sqlite connection is a sqlite3 Database
+    // sequelize is set by connect, which calls this
+    const db = await (this.sequelize! as ModelsSequelize & { dialect: { connectionManager: { getConnection(): Promise<sqlite3.Database> } } }).dialect.connectionManager.getConnection()
     if (typeof db?.loadExtension !== 'function') throw new Error('Failed to get db connection for loading extensions')
 
     Logger.info(`[Database] Loading extension ${extension}`)
-    await new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       db.loadExtension(extension, (err) => {
         if (err) {
           Logger.error(`[Database] Failed to load extension ${extension}`, err)
@@ -304,7 +319,8 @@ class Database {
    */
   async disconnect() {
     Logger.info(`[Database] Disconnecting sqlite db`)
-    await this.sequelize.close()
+    // only called after init
+    await this.sequelize!.close()
   }
 
   /**
@@ -316,42 +332,44 @@ class Database {
   }
 
   buildModels(force = false) {
-    require('./models/User').init(this.sequelize)
-    require('./models/Session').init(this.sequelize)
-    require('./models/ApiKey').init(this.sequelize)
-    require('./models/Library').init(this.sequelize)
-    require('./models/LibraryFolder').init(this.sequelize)
-    require('./models/Book').init(this.sequelize)
-    require('./models/Podcast').init(this.sequelize)
-    require('./models/PodcastEpisode').init(this.sequelize)
-    require('./models/LibraryItem').init(this.sequelize)
-    require('./models/MediaProgress').init(this.sequelize)
-    require('./models/Series').init(this.sequelize)
-    require('./models/BookSeries').init(this.sequelize)
-    require('./models/Author').init(this.sequelize)
-    require('./models/BookAuthor').init(this.sequelize)
-    require('./models/Collection').init(this.sequelize)
-    require('./models/CollectionBook').init(this.sequelize)
-    require('./models/Playlist').init(this.sequelize)
-    require('./models/PlaylistMediaItem').init(this.sequelize)
-    require('./models/Device').init(this.sequelize)
-    require('./models/PlaybackSession').init(this.sequelize)
-    require('./models/Feed').init(this.sequelize)
-    require('./models/FeedEpisode').init(this.sequelize)
-    require('./models/Setting').init(this.sequelize)
-    require('./models/CustomMetadataProvider').init(this.sequelize)
-    require('./models/MediaItemShare').init(this.sequelize)
+    // cast(d): require() is typed any; the models are required here (lazily, in this order), not at module load
+    // sequelize is set by connect, which init calls first
+    (require('./models/User') as typeof import('./models/User')).init(this.sequelize!)
+    ;(require('./models/Session') as typeof import('./models/Session')).init(this.sequelize!)
+    ;(require('./models/ApiKey') as typeof import('./models/ApiKey')).init(this.sequelize!)
+    ;(require('./models/Library') as typeof import('./models/Library')).init(this.sequelize!)
+    ;(require('./models/LibraryFolder') as typeof import('./models/LibraryFolder')).init(this.sequelize!)
+    ;(require('./models/Book') as typeof import('./models/Book')).init(this.sequelize!)
+    ;(require('./models/Podcast') as typeof import('./models/Podcast')).init(this.sequelize!)
+    ;(require('./models/PodcastEpisode') as typeof import('./models/PodcastEpisode')).init(this.sequelize!)
+    ;(require('./models/LibraryItem') as typeof import('./models/LibraryItem')).init(this.sequelize!)
+    ;(require('./models/MediaProgress') as typeof import('./models/MediaProgress')).init(this.sequelize!)
+    ;(require('./models/Series') as typeof import('./models/Series')).init(this.sequelize!)
+    ;(require('./models/BookSeries') as typeof import('./models/BookSeries')).init(this.sequelize!)
+    ;(require('./models/Author') as typeof import('./models/Author')).init(this.sequelize!)
+    ;(require('./models/BookAuthor') as typeof import('./models/BookAuthor')).init(this.sequelize!)
+    ;(require('./models/Collection') as typeof import('./models/Collection')).init(this.sequelize!)
+    ;(require('./models/CollectionBook') as typeof import('./models/CollectionBook')).init(this.sequelize!)
+    ;(require('./models/Playlist') as typeof import('./models/Playlist')).init(this.sequelize!)
+    ;(require('./models/PlaylistMediaItem') as typeof import('./models/PlaylistMediaItem')).init(this.sequelize!)
+    ;(require('./models/Device') as typeof import('./models/Device')).init(this.sequelize!)
+    ;(require('./models/PlaybackSession') as typeof import('./models/PlaybackSession')).init(this.sequelize!)
+    ;(require('./models/Feed') as typeof import('./models/Feed')).init(this.sequelize!)
+    ;(require('./models/FeedEpisode') as typeof import('./models/FeedEpisode')).init(this.sequelize!)
+    ;(require('./models/Setting') as typeof import('./models/Setting')).init(this.sequelize!)
+    ;(require('./models/CustomMetadataProvider') as typeof import('./models/CustomMetadataProvider')).init(this.sequelize!)
+    ;(require('./models/MediaItemShare') as typeof import('./models/MediaItemShare')).init(this.sequelize!)
 
-    return this.sequelize.sync({ force, alter: false })
+    return this.sequelize!.sync({ force, alter: false })
   }
 
   /**
    * Compare two server versions
-   * @param {string} v1
-   * @param {string} v2
-   * @returns {-1|0|1} 1 if v1 > v2
+   * @param v1
+   * @param v2
+   * @returns 1 if v1 > v2
    */
-  compareVersions(v1, v2) {
+  compareVersions(v1: string, v2: string) {
     if (!v1 || !v2) return 0
     return v1.localeCompare(v2, undefined, { numeric: true, sensitivity: 'case', caseFirst: 'upper' })
   }
@@ -366,7 +384,8 @@ class Database {
   async loadData() {
     if (this.isNew && (await dbMigration.checkShouldMigrate())) {
       Logger.info(`[Database] New database was created and old database was detected - migrating old to new`)
-      await dbMigration.migrate(this.models)
+      // cast(d): ModelRegistry is an interface (no index signature); dbMigration reads the models by name
+      await dbMigration.migrate(this.models as unknown as Parameters<typeof dbMigration.migrate>[0])
     }
 
     const settingsData = await this.models.setting.getOldSettings()
@@ -379,15 +398,19 @@ class Database {
     // Version specific migrations
     if (packageJson.version !== this.serverSettings.version) {
       if (this.serverSettings.version === '2.3.0' && this.compareVersions(packageJson.version, '2.3.0') == 1) {
-        await dbMigration.migrationPatch(this)
+        // cast(d): called from init after connect and buildModels, so sequelize and the models are set
+        await dbMigration.migrationPatch(this as InitializedDatabase)
       }
-      if (['2.3.0', '2.3.1', '2.3.2', '2.3.3'].includes(this.serverSettings.version) && this.compareVersions(packageJson.version, '2.3.3') >= 0) {
-        await dbMigration.migrationPatch2(this)
+      // cast(d): includes(null) is false; version is only null for settings saved without one
+      if (['2.3.0', '2.3.1', '2.3.2', '2.3.3'].includes(this.serverSettings.version as string) && this.compareVersions(packageJson.version, '2.3.3') >= 0) {
+        // cast(d): called from init after connect and buildModels, so sequelize and the models are set
+        await dbMigration.migrationPatch2(this as InitializedDatabase)
       }
     }
     // Build migrations
     if (this.serverSettings.buildNumber <= 0) {
-      await require('./utils/migrations/absMetadataMigration').migrate(this)
+      // cast(d): require() is typed any; the module is required here (lazily), not at module load
+      await (require('./utils/migrations/absMetadataMigration') as typeof import('./utils/migrations/absMetadataMigration')).migrate(this)
     }
 
     await this.cleanDatabase()
@@ -414,12 +437,12 @@ class Database {
 
   /**
    * Create root user
-   * @param {string} username
-   * @param {string} pash
-   * @param {Auth} auth
-   * @returns {Promise<boolean>} true if created
+   * @param username
+   * @param pash
+   * @param auth
+   * @returns true if created
    */
-  async createRootUser(username, pash, auth) {
+  async createRootUser(username: string, pash: string, auth: Auth): Promise<boolean> {
     if (!this.sequelize) return false
     await this.userModel.createRootUser(username, pash, auth)
     this.hasRootUser = true
@@ -432,41 +455,39 @@ class Database {
     return this.updateSetting(this.serverSettings)
   }
 
-  updateSetting(settings) {
+  updateSetting(settings: ServerSettings | NotificationSettings | EmailSettings) {
     if (!this.sequelize) return false
     return this.models.setting.updateSettingObj(settings.toJSON())
   }
 
-  /**
-   * @param {import('sequelize').WhereOptions<import('./models/PlaybackSession')> | null} [where]
-   * @returns {false | ReturnType<typeof import('./models/PlaybackSession').getOldPlaybackSessions>}
-   */
-  getPlaybackSessions(where = null) {
+  getPlaybackSessions(where: WhereOptions<PlaybackSession> | null = null) {
     if (!this.sequelize) return false
     return this.models.playbackSession.getOldPlaybackSessions(where)
   }
 
-  getPlaybackSession(sessionId) {
+  getPlaybackSession(sessionId: string) {
     if (!this.sequelize) return false
     return this.models.playbackSession.getById(sessionId)
   }
 
-  createPlaybackSession(oldSession) {
+  createPlaybackSession(oldSession: oldPlaybackSession) {
     if (!this.sequelize) return false
-    return this.models.playbackSession.createFromOld(oldSession)
+    // cast(d): only user sessions are saved (PlaybackSessionManager); their id and userId are set by setData or the synced session
+    return this.models.playbackSession.createFromOld(oldSession as Parameters<typeof PlaybackSession.createFromOld>[0])
   }
 
-  updatePlaybackSession(oldSession) {
+  updatePlaybackSession(oldSession: oldPlaybackSession) {
     if (!this.sequelize) return false
-    return this.models.playbackSession.updateFromOld(oldSession)
+    // cast(d): only user sessions are saved (PlaybackSessionManager); their id and userId are set by setData or the synced session
+    return this.models.playbackSession.updateFromOld(oldSession as Parameters<typeof PlaybackSession.updateFromOld>[0])
   }
 
-  removePlaybackSession(sessionId) {
+  removePlaybackSession(sessionId: string) {
     if (!this.sequelize) return false
     return this.models.playbackSession.removeById(sessionId)
   }
 
-  replaceTagInFilterData(oldTag, newTag) {
+  replaceTagInFilterData(oldTag: string, newTag: string) {
     for (const libraryId in this.libraryFilterData) {
       const indexOf = this.libraryFilterData[libraryId].tags.findIndex((n) => n === oldTag)
       if (indexOf >= 0) {
@@ -475,13 +496,13 @@ class Database {
     }
   }
 
-  removeTagFromFilterData(tag) {
+  removeTagFromFilterData(tag: string) {
     for (const libraryId in this.libraryFilterData) {
       this.libraryFilterData[libraryId].tags = this.libraryFilterData[libraryId].tags.filter((t) => t !== tag)
     }
   }
 
-  addTagsToFilterData(libraryId, tags) {
+  addTagsToFilterData(libraryId: string, tags: string[] | null | undefined) {
     if (!this.libraryFilterData[libraryId] || !tags?.length) return
     tags.forEach((t) => {
       if (!this.libraryFilterData[libraryId].tags.includes(t)) {
@@ -490,7 +511,7 @@ class Database {
     })
   }
 
-  replaceGenreInFilterData(oldGenre, newGenre) {
+  replaceGenreInFilterData(oldGenre: string, newGenre: string) {
     for (const libraryId in this.libraryFilterData) {
       const indexOf = this.libraryFilterData[libraryId].genres.findIndex((n) => n === oldGenre)
       if (indexOf >= 0) {
@@ -499,13 +520,13 @@ class Database {
     }
   }
 
-  removeGenreFromFilterData(genre) {
+  removeGenreFromFilterData(genre: string) {
     for (const libraryId in this.libraryFilterData) {
       this.libraryFilterData[libraryId].genres = this.libraryFilterData[libraryId].genres.filter((g) => g !== genre)
     }
   }
 
-  addGenresToFilterData(libraryId, genres) {
+  addGenresToFilterData(libraryId: string, genres: string[] | null | undefined) {
     if (!this.libraryFilterData[libraryId] || !genres?.length) return
     genres.forEach((g) => {
       if (!this.libraryFilterData[libraryId].genres.includes(g)) {
@@ -514,7 +535,7 @@ class Database {
     })
   }
 
-  replaceNarratorInFilterData(libraryId, oldNarrator, newNarrator) {
+  replaceNarratorInFilterData(libraryId: string, oldNarrator: string, newNarrator: string) {
     if (!this.libraryFilterData[libraryId]) return
     const indexOf = this.libraryFilterData[libraryId].narrators.findIndex((n) => n === oldNarrator)
     if (indexOf >= 0) {
@@ -522,12 +543,12 @@ class Database {
     }
   }
 
-  removeNarratorFromFilterData(libraryId, narrator) {
+  removeNarratorFromFilterData(libraryId: string, narrator: string) {
     if (!this.libraryFilterData[libraryId]) return
     this.libraryFilterData[libraryId].narrators = this.libraryFilterData[libraryId].narrators.filter((n) => n !== narrator)
   }
 
-  addNarratorsToFilterData(libraryId, narrators) {
+  addNarratorsToFilterData(libraryId: string, narrators: string[] | null | undefined) {
     if (!this.libraryFilterData[libraryId] || !narrators?.length) return
     narrators.forEach((n) => {
       if (!this.libraryFilterData[libraryId].narrators.includes(n)) {
@@ -536,12 +557,12 @@ class Database {
     })
   }
 
-  removeSeriesFromFilterData(libraryId, seriesId) {
+  removeSeriesFromFilterData(libraryId: string, seriesId: string) {
     if (!this.libraryFilterData[libraryId]) return
     this.libraryFilterData[libraryId].series = this.libraryFilterData[libraryId].series.filter((se) => se.id !== seriesId)
   }
 
-  addSeriesToFilterData(libraryId, seriesName, seriesId) {
+  addSeriesToFilterData(libraryId: string, seriesName: string, seriesId: string) {
     if (!this.libraryFilterData[libraryId]) return
     // Check if series is already added
     if (this.libraryFilterData[libraryId].series.some((se) => se.id === seriesId)) return
@@ -551,12 +572,12 @@ class Database {
     })
   }
 
-  removeAuthorFromFilterData(libraryId, authorId) {
+  removeAuthorFromFilterData(libraryId: string, authorId: string) {
     if (!this.libraryFilterData[libraryId]) return
     this.libraryFilterData[libraryId].authors = this.libraryFilterData[libraryId].authors.filter((au) => au.id !== authorId)
   }
 
-  addAuthorToFilterData(libraryId, authorName, authorId) {
+  addAuthorToFilterData(libraryId: string, authorName: string, authorId: string) {
     if (!this.libraryFilterData[libraryId]) return
     // Check if author is already added
     if (this.libraryFilterData[libraryId].authors.some((au) => au.id === authorId)) return
@@ -566,17 +587,17 @@ class Database {
     })
   }
 
-  addPublisherToFilterData(libraryId, publisher) {
+  addPublisherToFilterData(libraryId: string, publisher: string | null | undefined) {
     if (!this.libraryFilterData[libraryId] || !publisher || this.libraryFilterData[libraryId].publishers.includes(publisher)) return
     this.libraryFilterData[libraryId].publishers.push(publisher)
   }
 
-  addPublishedDecadeToFilterData(libraryId, decade) {
+  addPublishedDecadeToFilterData(libraryId: string, decade: string | null | undefined) {
     if (!this.libraryFilterData[libraryId] || !decade || this.libraryFilterData[libraryId].publishedDecades.includes(decade)) return
     this.libraryFilterData[libraryId].publishedDecades.push(decade)
   }
 
-  addLanguageToFilterData(libraryId, language) {
+  addLanguageToFilterData(libraryId: string, language: string | null | undefined) {
     if (!this.libraryFilterData[libraryId] || !language || this.libraryFilterData[libraryId].languages.includes(language)) return
     this.libraryFilterData[libraryId].languages.push(language)
   }
@@ -585,11 +606,10 @@ class Database {
    * Used when updating items to make sure author id exists
    * If library filter data is set then use that for check
    * otherwise lookup in db
-   * @param {string} libraryId
-   * @param {string} authorId
-   * @returns {Promise<boolean>}
+   * @param libraryId
+   * @param authorId
    */
-  async checkAuthorExists(libraryId, authorId) {
+  async checkAuthorExists(libraryId: string, authorId: string): Promise<boolean> {
     if (!this.libraryFilterData[libraryId]) {
       return this.authorModel.checkExistsById(authorId)
     }
@@ -600,11 +620,10 @@ class Database {
    * Used when updating items to make sure series id exists
    * If library filter data is set then use that for check
    * otherwise lookup in db
-   * @param {string} libraryId
-   * @param {string} seriesId
-   * @returns {Promise<boolean>}
+   * @param libraryId
+   * @param seriesId
    */
-  async checkSeriesExists(libraryId, seriesId) {
+  async checkSeriesExists(libraryId: string, seriesId: string): Promise<boolean> {
     if (!this.libraryFilterData[libraryId]) {
       return this.seriesModel.checkExistsById(seriesId)
     }
@@ -614,11 +633,11 @@ class Database {
   /**
    * Get author id for library by name. Uses library filter data if available
    *
-   * @param {string} libraryId
-   * @param {string} authorName
-   * @returns {Promise<string>} author id or null if not found
+   * @param libraryId
+   * @param authorName
+   * @returns author id or null if not found
    */
-  async getAuthorIdByName(libraryId, authorName) {
+  async getAuthorIdByName(libraryId: string, authorName: string): Promise<string | null> {
     if (!this.libraryFilterData[libraryId]) {
       return (await this.authorModel.getByNameAndLibrary(authorName, libraryId))?.id || null
     }
@@ -628,11 +647,11 @@ class Database {
   /**
    * Get series id for library by name. Uses library filter data if available
    *
-   * @param {string} libraryId
-   * @param {string} seriesName
-   * @returns {Promise<string>} series id or null if not found
+   * @param libraryId
+   * @param seriesName
+   * @returns series id or null if not found
    */
-  async getSeriesIdByName(libraryId, seriesName) {
+  async getSeriesIdByName(libraryId: string, seriesName: string): Promise<string | null> {
     if (!this.libraryFilterData[libraryId]) {
       return (await this.seriesModel.getByNameAndLibrary(seriesName, libraryId))?.id || null
     }
@@ -641,15 +660,16 @@ class Database {
 
   /**
    * Reset numIssues for library
-   * @param {string} libraryId
+   * @param libraryId
    */
-  async resetLibraryIssuesFilterData(libraryId) {
+  async resetLibraryIssuesFilterData(libraryId: string) {
     if (!this.libraryFilterData[libraryId]) return // Do nothing if filter data is not set
 
     this.libraryFilterData[libraryId].numIssues = await this.libraryItemModel.count({
       where: {
         libraryId,
-        [Sequelize.Op.or]: [
+        // cast(b): sequelize.js sets Op on the Sequelize class, its types do not declare it
+        [(Sequelize as typeof Sequelize & { Op: typeof Op }).Op.or]: [
           {
             isMissing: true
           },
@@ -780,7 +800,8 @@ class Database {
     }
 
     // Remove mediaProgresses with duplicate mediaItemId (remove the oldest updatedAt or if updatedAt is the same, remove arbitrary one)
-    const [duplicateMediaProgresses] = await this.sequelize.query(`SELECT mp1.id, mp1.mediaItemId
+    // cast(b): query() types the rows as unknown[]; sequelize is set (cleanDatabase runs in init)
+    const [duplicateMediaProgresses] = (await this.sequelize!.query(`SELECT mp1.id, mp1.mediaItemId
 FROM mediaProgresses mp1
 WHERE EXISTS (
     SELECT 1
@@ -791,7 +812,7 @@ WHERE EXISTS (
         mp2.updatedAt > mp1.updatedAt
         OR (mp2.updatedAt = mp1.updatedAt AND mp2.id < mp1.id)
     )
-)`)
+)`)) as [{ id: string; mediaItemId: string }[], unknown]
     for (const duplicateMediaProgress of duplicateMediaProgresses) {
       Logger.warn(`Found duplicate mediaProgress for mediaItem "${duplicateMediaProgress.mediaItemId}" - removing it`)
       await this.mediaProgressModel.destroy({
@@ -816,7 +837,8 @@ WHERE EXISTS (
         Logger.info(`[Database] Deactivated ${affectedCount} expired api keys`)
       }
     } catch (error) {
-      Logger.error(`[Database] Error deactivating expired api keys: ${error.message}`)
+      // cast(d): catch variable is unknown
+      Logger.error(`[Database] Error deactivating expired api keys: ${(error as Error).message}`)
     }
   }
 
@@ -830,12 +852,14 @@ WHERE EXISTS (
         Logger.info(`[Database] Cleaned up ${deletedCount} expired sessions`)
       }
     } catch (error) {
-      Logger.error(`[Database] Error cleaning up expired sessions: ${error.message}`)
+      // cast(d): catch variable is unknown
+      Logger.error(`[Database] Error cleaning up expired sessions: ${(error as Error).message}`)
     }
   }
 
-  async createTextSearchQuery(query) {
-    const textQuery = new this.TextSearchQuery(this.sequelize, this.supportsUnaccent, query)
+  async createTextSearchQuery(query: string) {
+    // only called by the library queries, after init
+    const textQuery = new this.TextSearchQuery(this.sequelize!, this.supportsUnaccent, query)
     await textQuery.init()
     return textQuery
   }
@@ -852,17 +876,18 @@ WHERE EXISTS (
     await this.addAuthorNamesTriggersIfNotExist()
   }
 
-  async addTriggerIfNotExists(sourceTable, sourceColumn, sourceIdColumn, targetTable, targetColumn, targetIdColumn) {
+  async addTriggerIfNotExists(sourceTable: string, sourceColumn: string, sourceIdColumn: string, targetTable: string, targetColumn: string, targetIdColumn: string) {
     const action = `update_${targetTable}_${targetColumn}`
     const fromSource = sourceTable === 'books' ? '' : `_from_${sourceTable}_${sourceColumn}`
     const triggerName = this.convertToSnakeCase(`${action}${fromSource}`)
 
-    const [[{ count }]] = await this.sequelize.query(`SELECT COUNT(*) as count FROM sqlite_master WHERE type='trigger' AND name='${triggerName}'`)
+    // cast(b): query() types the rows as unknown[]; sequelize is set (addTriggers runs in init)
+    const [[{ count }]] = (await this.sequelize!.query(`SELECT COUNT(*) as count FROM sqlite_master WHERE type='trigger' AND name='${triggerName}'`)) as [{ count: number }[], unknown]
     if (count > 0) return // Trigger already exists
 
     Logger.info(`[Database] Adding trigger ${triggerName}`)
 
-    await this.sequelize.query(`
+    await this.sequelize!.query(`
       CREATE TRIGGER ${triggerName}
         AFTER UPDATE OF ${sourceColumn} ON ${sourceTable}
         FOR EACH ROW
@@ -879,15 +904,17 @@ WHERE EXISTS (
     const bookAuthors = 'bookAuthors'
     const authors = 'authors'
     const columns = [
-      { name: 'authorNamesFirstLast', source: `${authors}.name`, spec: { type: Sequelize.STRING, allowNull: true } },
-      { name: 'authorNamesLastFirst', source: `${authors}.lastFirst`, spec: { type: Sequelize.STRING, allowNull: true } }
+      // cast(b): sequelize.js sets the data types on the Sequelize class, its types do not declare them
+      { name: 'authorNamesFirstLast', source: `${authors}.name`, spec: { type: (Sequelize as typeof Sequelize & typeof SequelizeDataTypes).STRING, allowNull: true } },
+      // cast(b): as above
+      { name: 'authorNamesLastFirst', source: `${authors}.lastFirst`, spec: { type: (Sequelize as typeof Sequelize & typeof SequelizeDataTypes).STRING, allowNull: true } }
     ]
     const authorsSort = `${bookAuthors}.createdAt ASC`
     const columnNames = columns.map((column) => column.name).join(', ')
     const columnSourcesExpression = columns.map((column) => `GROUP_CONCAT(${column.source}, ', ' ORDER BY ${authorsSort})`).join(', ')
     const authorsJoin = `${authors} JOIN ${bookAuthors} ON ${authors}.id = ${bookAuthors}.authorId`
 
-    const addBookAuthorsTriggerIfNotExists = async (action) => {
+    const addBookAuthorsTriggerIfNotExists = async (action: string) => {
       const modifiedRecord = action === 'delete' ? 'OLD' : 'NEW'
       const triggerName = this.convertToSnakeCase(`update_${libraryItems}_authorNames_on_${bookAuthors}_${action}`)
       const authorNamesSubQuery = `
@@ -895,12 +922,13 @@ WHERE EXISTS (
         FROM ${authorsJoin}
         WHERE ${bookAuthors}.bookId = ${modifiedRecord}.bookId
       `
-      const [[{ count }]] = await this.sequelize.query(`SELECT COUNT(*) as count FROM sqlite_master WHERE type='trigger' AND name='${triggerName}'`)
+      // cast(b): query() types the rows as unknown[]; sequelize is set (addTriggers runs in init)
+      const [[{ count }]] = (await this.sequelize!.query(`SELECT COUNT(*) as count FROM sqlite_master WHERE type='trigger' AND name='${triggerName}'`)) as [{ count: number }[], unknown]
       if (count > 0) return // Trigger already exists
 
       Logger.info(`[Database] Adding trigger ${triggerName}`)
 
-      await this.sequelize.query(`
+      await this.sequelize!.query(`
         CREATE TRIGGER ${triggerName}
           AFTER ${action} ON ${bookAuthors}
           FOR EACH ROW
@@ -920,12 +948,13 @@ WHERE EXISTS (
         WHERE ${bookAuthors}.bookId = ${libraryItems}.mediaId
       `
 
-      const [[{ count }]] = await this.sequelize.query(`SELECT COUNT(*) as count FROM sqlite_master WHERE type='trigger' AND name='${triggerName}'`)
+      // cast(b): query() types the rows as unknown[]; sequelize is set (addTriggers runs in init)
+      const [[{ count }]] = (await this.sequelize!.query(`SELECT COUNT(*) as count FROM sqlite_master WHERE type='trigger' AND name='${triggerName}'`)) as [{ count: number }[], unknown]
       if (count > 0) return // Trigger already exists
 
       Logger.info(`[Database] Adding trigger ${triggerName}`)
 
-      await this.sequelize.query(`
+      await this.sequelize!.query(`
         CREATE TRIGGER ${triggerName}
           AFTER UPDATE OF name ON ${authors}
           FOR EACH ROW
@@ -942,12 +971,17 @@ WHERE EXISTS (
     await addAuthorsUpdateTriggerIfNotExists()
   }
 
-  convertToSnakeCase(str) {
+  convertToSnakeCase(str: string) {
     return str.replace(/([A-Z])/g, '_$1').toLowerCase()
   }
 
   TextSearchQuery = class {
-    constructor(sequelize, supportsUnaccent, query) {
+    declare sequelize: sequelize.Sequelize
+    declare supportsUnaccent: boolean
+    declare query: string
+    declare hasAccents: boolean
+
+    constructor(sequelize: sequelize.Sequelize, supportsUnaccent: boolean, query: string) {
       this.sequelize = sequelize
       this.supportsUnaccent = supportsUnaccent
       this.query = query
@@ -957,10 +991,9 @@ WHERE EXISTS (
     /**
      * Returns a normalized (accents-removed) expression for the specified value.
      *
-     * @param {string} value
-     * @returns {string}
+     * @param value
      */
-    normalize(value) {
+    normalize(value: string): string {
       return `unaccent(${value})`
     }
 
@@ -972,7 +1005,8 @@ WHERE EXISTS (
       if (!this.supportsUnaccent) return
       const escapedQuery = this.sequelize.escape(this.query)
       const normalizedQueryExpression = this.normalize(escapedQuery)
-      const normalizedQueryResult = await this.sequelize.query(`SELECT ${normalizedQueryExpression} as normalized_query`)
+      // cast(b): query() types the rows as unknown[]
+      const normalizedQueryResult = (await this.sequelize.query(`SELECT ${normalizedQueryExpression} as normalized_query`)) as [{ normalized_query: string }[], unknown]
       const normalizedQuery = normalizedQueryResult[0][0].normalized_query
       this.hasAccents = escapedQuery !== this.sequelize.escape(normalizedQuery)
     }
@@ -982,10 +1016,9 @@ WHERE EXISTS (
      * If the query contains accents, match against the column as-is (case-insensitive exact match).
      * otherwise match against a normalized column (case-insensitive match with accents removed).
      *
-     * @param {string} column
-     * @returns {string}
+     * @param column
      */
-    matchExpression(column) {
+    matchExpression(column: string): string {
       const pattern = this.sequelize.escape(`%${this.query}%`)
       if (!this.supportsUnaccent) return `${column} LIKE ${pattern}`
       const normalizedColumn = this.hasAccents ? column : this.normalize(column)
@@ -994,4 +1027,4 @@ WHERE EXISTS (
   }
 }
 
-module.exports = new Database()
+export = new Database()

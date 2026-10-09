@@ -1,26 +1,64 @@
-const { Request, Response, NextFunction } = require('express')
-const passport = require('passport')
-const JwtStrategy = require('passport-jwt').Strategy
-const ExtractJwt = require('passport-jwt').ExtractJwt
+import type { Request, Response, NextFunction, RequestHandler, Router } from 'express'
+import passport = require('passport')
+import passportJwt = require('passport-jwt')
 
-const Database = require('./Database')
-const Logger = require('./Logger')
-const TokenManager = require('./auth/TokenManager')
-const LocalAuthStrategy = require('./auth/LocalAuthStrategy')
-const OidcAuthStrategy = require('./auth/OidcAuthStrategy')
+import Database = require('./Database')
+import Logger = require('./Logger')
+import TokenManager = require('./auth/TokenManager')
+import LocalAuthStrategy = require('./auth/LocalAuthStrategy')
+import OidcAuthStrategy = require('./auth/OidcAuthStrategy')
 
-const RateLimiterFactory = require('./utils/rateLimiterFactory')
-const { escapeRegExp } = require('./utils')
+import RateLimiterFactory = require('./utils/rateLimiterFactory')
+import utils = require('./utils')
+import type User = require('./models/User')
+import type ServerSettings = require('./objects/settings/ServerSettings')
+import type EmailSettings = require('./objects/settings/EmailSettings')
+const JwtStrategy = passportJwt.Strategy
+const ExtractJwt = passportJwt.ExtractJwt
+const { escapeRegExp } = utils
+
+/**
+ * Login response payload; the login and refresh routes add the tokens to its user
+ */
+interface LoginResponsePayload {
+  user: ReturnType<User['toOldJSONForBrowser']> & { accessToken?: string | null; refreshToken?: string | null }
+  userDefaultLibraryId: ReturnType<User['getDefaultLibraryId']>
+  serverSettings: ReturnType<ServerSettings['toJSONForBrowser']>
+  ereaderDevices: ReturnType<EmailSettings['getEReaderDevices']>
+  Source: string
+}
+
+/**
+ * State the openid-client strategy keeps in the session under its session key (only what is read here)
+ */
+interface OidcSessionState {
+  code_verifier?: Request['query'][string]
+  mobile?: boolean
+  sso_redirect_uri?: string
+}
+
+/**
+ * Response of a failed openid-client request (attached to its errors), only what is logged
+ */
+interface OidcHttpResponse {
+  req?: { _header: string }
+  body?: unknown
+}
 
 /**
  * @class Class for handling all the authentication related functionality.
  */
 class Auth {
+  declare ignorePatterns: RegExp[]
+  declare authRateLimiter: RequestHandler
+  declare tokenManager: TokenManager
+  declare localAuthStrategy: LocalAuthStrategy
+  declare oidcAuthStrategy: OidcAuthStrategy
+
   constructor() {
     const escapedRouterBasePath = escapeRegExp(global.RouterBasePath)
     this.ignorePatterns = [new RegExp(`^(${escapedRouterBasePath}/api)?/items/[^/]+/cover$`), new RegExp(`^(${escapedRouterBasePath}/api)?/authors/[^/]+/image$`)]
 
-    /** @type {import('express-rate-limit').RateLimitRequestHandler} */
     this.authRateLimiter = RateLimiterFactory.getAuthRateLimiter()
 
     this.tokenManager = new TokenManager()
@@ -30,20 +68,19 @@ class Auth {
 
   /**
    * Checks if the request should not be authenticated.
-   * @param {Request} req
-   * @returns {boolean}
+   * @param req
    */
-  authNotNeeded(req) {
+  authNotNeeded(req: Request): boolean {
     return req.method === 'GET' && this.ignorePatterns.some((pattern) => pattern.test(req.path))
   }
 
   /**
    * Middleware to register passport in express-session
    *
-   * @param {function} middleware
+   * @param middleware
    */
-  ifAuthNeeded(middleware) {
-    return (req, res, next) => {
+  ifAuthNeeded(middleware: RequestHandler) {
+    return (req: Request, res: Response, next: NextFunction) => {
       if (this.authNotNeeded(req)) {
         return next()
       }
@@ -54,11 +91,11 @@ class Auth {
   /**
    * middleware to use in express to only allow authenticated users.
    *
-   * @param {Request} req
-   * @param {Response} res
-   * @param {NextFunction} next
+   * @param req
+   * @param res
+   * @param next
    */
-  isAuthenticated(req, res, next) {
+  isAuthenticated(req: Request, res: Response, next: NextFunction) {
     return passport.authenticate('jwt', { session: false })(req, res, next)
   }
 
@@ -67,10 +104,9 @@ class Auth {
    * TODO: Old method with no expiration
    * @deprecated
    *
-   * @param {{ id:string, username:string }} user
-   * @returns {string}
+   * @param user
    */
-  generateAccessToken(user) {
+  generateAccessToken(user: { id: string; username: string }): string {
     return this.tokenManager.generateAccessToken(user)
   }
 
@@ -78,22 +114,22 @@ class Auth {
    * Invalidate all JWT sessions for a given user
    * If user is current user and refresh token is valid, rotate tokens for the current session
    *
-   * @param {import('./models/User')} user
-   * @param {Request} req
-   * @param {Response} res
-   * @returns {Promise<{ accessToken:string, refreshToken:string }|null>} new tokens for the current session if kept alive
+   * @param user
+   * @param req
+   * @param res
+   * @returns new tokens for the current session if kept alive
    */
-  async invalidateJwtSessionsForUser(user, req, res) {
+  async invalidateJwtSessionsForUser(user: User, req: Request, res: Response) {
     return this.tokenManager.invalidateJwtSessionsForUser(user, req, res)
   }
 
   /**
    * Return the login info payload for a user
    *
-   * @param {import('./models/User')} user
-   * @returns {Promise<Object>} jsonPayload
+   * @param user
+   * @returns jsonPayload
    */
-  async getUserLoginResponsePayload(user) {
+  async getUserLoginResponsePayload(user: User): Promise<LoginResponsePayload> {
     const libraryIds = await Database.libraryModel.getAllLibraryIds()
     return {
       user: user.toOldJSONForBrowser(),
@@ -124,7 +160,8 @@ class Auth {
       new JwtStrategy(
         {
           jwtFromRequest: ExtractJwt.fromExtractors([ExtractJwt.fromAuthHeaderAsBearerToken(), ExtractJwt.fromUrlQueryParameter('token')]),
-          secretOrKey: TokenManager.TokenSecret,
+          // TokenSecret is set by initTokenSecret (Server.init) before passport is initialized
+          secretOrKey: TokenManager.TokenSecret!,
           // Handle expiration manaully in order to disable api keys that are expired
           ignoreExpiration: true
         },
@@ -147,7 +184,7 @@ class Auth {
 
     // define how to deseralize a user (use the ID to get it from the database)
     passport.deserializeUser(
-      function (user, cb) {
+      function (this: Auth, user: string, cb: (err: null, user: User | null) => void) {
         process.nextTick(
           async function () {
             const parsedUserInfo = JSON.parse(user)
@@ -164,9 +201,9 @@ class Auth {
   /**
    * Unuse strategy
    *
-   * @param {string} name
+   * @param name
    */
-  unuseAuthStrategy(name) {
+  unuseAuthStrategy(name: string) {
     if (name === 'openid') {
       this.oidcAuthStrategy.unuse()
     } else if (name === 'local') {
@@ -179,9 +216,9 @@ class Auth {
   /**
    * Use strategy
    *
-   * @param {string} name
+   * @param name
    */
-  useAuthStrategy(name) {
+  useAuthStrategy(name: string) {
     if (name === 'openid') {
       this.oidcAuthStrategy.init()
     } else if (name === 'local') {
@@ -194,10 +231,9 @@ class Auth {
   /**
    * Returns if the given auth method is API based.
    *
-   * @param {string} authMethod
-   * @returns {boolean}
+   * @param authMethod
    */
-  isAuthMethodAPIBased(authMethod) {
+  isAuthMethodAPIBased(authMethod: string): boolean {
     return ['api', 'openid-mobile'].includes(authMethod)
   }
 
@@ -210,12 +246,12 @@ class Auth {
    * - 'openid': OpenID authentication directly over web
    * - 'openid-mobile': OpenID authentication, but done via an mobile device
    *
-   * @param {Request} req
-   * @param {Response} res
-   * @param {string} authMethod - The authentication method, default is 'local'.
-   * @returns {Object|null} - Returns error object if validation fails, null if successful
+   * @param req
+   * @param res
+   * @param authMethod - The authentication method, default is 'local'.
+   * @returns - Returns error object if validation fails, null if successful
    */
-  paramsToCookies(req, res, authMethod = 'local') {
+  paramsToCookies(req: Request, res: Response, authMethod = 'local'): { error: string } | null {
     const TWO_MINUTES = 120000 // 2 minutes in milliseconds
     const callback = req.query.redirect_uri || req.query.callback
 
@@ -233,7 +269,8 @@ class Auth {
       }
 
       // Security: Validate callback URL is same-origin only
-      if (!this.oidcAuthStrategy.isValidWebCallbackUrl(callback, req)) {
+      // cast(d): query value
+      if (!this.oidcAuthStrategy.isValidWebCallbackUrl(callback as string, req)) {
         Logger.warn(`[Auth] Rejected invalid callback URL: ${callback}`)
         res.status(400).send({ message: 'Invalid callback URL - must be same-origin' })
         return { error: 'Invalid callback URL - must be same-origin' }
@@ -252,10 +289,10 @@ class Auth {
    * Informs the client in the right mode about a successfull login and the token
    * (clients choise is restored from cookies).
    *
-   * @param {Request} req
-   * @param {Response} res
+   * @param req
+   * @param res
    */
-  async handleLoginSuccessBasedOnCookie(req, res) {
+  async handleLoginSuccessBasedOnCookie(req: Request, res: Response) {
     // Handle token generation and get userResponse object
     // For API based auth (e.g. mobile), we will return the refresh token in the response
     const isApiBased = this.isAuthMethodAPIBased(req.cookies.auth_method)
@@ -287,15 +324,17 @@ class Auth {
    *
    * if returnTokens is false, sets the refresh token cookie
    *
-   * @param {Request} req
-   * @param {Response} res
-   * @param {boolean} returnTokens
+   * @param req
+   * @param res
+   * @param returnTokens
    */
-  async handleLoginSuccess(req, res, returnTokens = false) {
+  async handleLoginSuccess(req: Request, res: Response, returnTokens = false) {
     // Create tokens and session
-    const { accessToken, refreshToken } = await this.tokenManager.createTokensAndSession(req.user, req)
+    // req.user is set by passport.authenticate before this runs (see above)
+    const { accessToken, refreshToken } = await this.tokenManager.createTokensAndSession(req.user!, req)
 
-    const userResponse = await this.getUserLoginResponsePayload(req.user)
+    // req.user is set by passport.authenticate (see above)
+    const userResponse = await this.getUserLoginResponsePayload(req.user!)
 
     userResponse.user.refreshToken = returnTokens ? refreshToken : null
     userResponse.user.accessToken = accessToken
@@ -313,9 +352,9 @@ class Auth {
   /**
    * Creates all (express) routes required for authentication.
    *
-   * @param {import('express').Router} router
+   * @param router
    */
-  async initAuthRoutes(router) {
+  async initAuthRoutes(router: Router) {
     // Local strategy login route (takes username and password)
     router.post('/login', this.authRateLimiter, passport.authenticate('local'), async (req, res) => {
       // Check if mobile app wants refresh token in response
@@ -349,7 +388,8 @@ class Auth {
         return res.status(401).json({ error: refreshResponse.error })
       }
 
-      const userResponse = await this.getUserLoginResponsePayload(refreshResponse.user)
+      // handleRefreshToken returns the user when there is no error
+      const userResponse = await this.getUserLoginResponsePayload(refreshResponse.user!)
 
       userResponse.user.accessToken = refreshResponse.accessToken
       userResponse.user.refreshToken = shouldReturnRefreshToken ? refreshResponse.refreshToken : null
@@ -370,7 +410,8 @@ class Auth {
         return // Response already sent by paramsToCookies
       }
 
-      res.redirect(authorizationUrlResponse.authorizationUrl)
+      // the url is set when there is no error
+      res.redirect(authorizationUrlResponse.authorizationUrl!)
     })
 
     // This will be the oauth2 callback route for mobile clients
@@ -384,7 +425,8 @@ class Auth {
       (req, res, next) => {
         const sessionKey = this.oidcAuthStrategy.getStrategy()._key
 
-        if (!req.session[sessionKey]) {
+        // cast(b): express-session types the session without the keys strategies store under their own session key
+        if (!(req.session as unknown as Record<string, OidcSessionState | undefined>)[sessionKey]) {
           return res.status(400).send('No session')
         }
 
@@ -392,10 +434,11 @@ class Auth {
         // The code_verifier will be validated by the oauth2 provider by comparing it to the code_challenge in the first request
         // Crucial for API/Mobile clients
         if (req.query.code_verifier) {
-          req.session[sessionKey].code_verifier = req.query.code_verifier
+          // cast(b): as above; the session state was checked above
+          (req.session as unknown as Record<string, OidcSessionState>)[sessionKey].code_verifier = req.query.code_verifier
         }
 
-        function handleAuthError(isMobile, errorCode, errorMessage, logMessage, response) {
+        function handleAuthError(isMobile: boolean, errorCode: number, errorMessage: string, logMessage: string, response?: OidcHttpResponse) {
           Logger.error(JSON.stringify(logMessage, null, 2))
           if (response) {
             // Depending on the error, it can also have a body
@@ -411,9 +454,10 @@ class Auth {
           }
         }
 
-        function passportCallback(req, res, next) {
-          return (err, user, info) => {
-            const isMobile = req.session[sessionKey]?.mobile === true
+        function passportCallback(req: Request, res: Response, next: NextFunction) {
+          return (err: { response?: OidcHttpResponse } | null, user: (User & { openid_id_token?: string }) | false | null, info: { response?: OidcHttpResponse } | undefined) => {
+            // cast(b): as above
+            const isMobile = (req.session as unknown as Record<string, OidcSessionState | undefined>)[sessionKey]?.mobile === true
             if (err) {
               return handleAuthError(isMobile, 500, 'Error in callback', `[Auth] Error in openid callback - ${err}`, err?.response)
             }
@@ -432,7 +476,8 @@ class Auth {
               //   instead it containts a JWT with userinfo like user email, username, etc.
               //   the client will get to know it anyway in the logout url according to the oauth2 spec
               //   so it is safe to send it to the client, but we use strict settings
-              res.cookie('openid_id_token', user.openid_id_token, { maxAge: 1000 * 60 * 60 * 24 * 365 * 10, httpOnly: true, secure: true, sameSite: 'Strict' })
+              // cast(b): express types sameSite in lower case; the cookie module lower-cases the value, so 'Strict' is sent as Strict
+              res.cookie('openid_id_token', user.openid_id_token, { maxAge: 1000 * 60 * 60 * 24 * 365 * 10, httpOnly: true, secure: true, sameSite: 'Strict' as 'strict' })
               next()
             })
           }
@@ -441,7 +486,9 @@ class Auth {
         // While not required by the standard, the passport plugin re-sends the original redirect_uri in the token request
         // We need to set it correctly, as some SSO providers (e.g. keycloak) check that parameter when it is provided
         // We set it here again because the passport param can change between requests
-        return passport.authenticate('openid-client', { redirect_uri: req.session[sessionKey].sso_redirect_uri }, passportCallback(req, res, next))(req, res, next)
+        // cast(b): as above; the session state was checked above
+        // cast(b): the openid-client strategy takes redirect_uri, passport's AuthenticateOptions does not declare it
+        return passport.authenticate('openid-client', { redirect_uri: (req.session as unknown as Record<string, OidcSessionState>)[sessionKey].sso_redirect_uri } as passport.AuthenticateOptions & { redirect_uri?: string }, passportCallback(req, res, next))(req, res, next)
       },
       // on a successfull login: read the cookies and react like the client requested (callback or json)
       this.handleLoginSuccessBasedOnCookie.bind(this)
@@ -454,8 +501,10 @@ class Auth {
      * @example /auth/openid/config?issuer=http://192.168.1.66:9000/application/o/audiobookshelf/
      */
     router.get('/auth/openid/config', this.authRateLimiter, this.isAuthenticated, async (req, res) => {
-      if (!req.user.isAdminOrUp) {
-        Logger.error(`[Auth] Non-admin user "${req.user.username}" attempted to get issuer config`)
+      // req.user is set by isAuthenticated (the middleware before this handler)
+      if (!req.user!.isAdminOrUp) {
+        // req.user is set by isAuthenticated (see above)
+        Logger.error(`[Auth] Non-admin user "${req.user!.username}" attempted to get issuer config`)
         return res.sendStatus(403)
       }
 
@@ -463,7 +512,8 @@ class Auth {
         return res.status(400).send("Invalid request. Query param 'issuer' is required")
       }
 
-      const openIdIssuerConfig = await this.oidcAuthStrategy.getIssuerConfig(req.query.issuer)
+      // The config has no error or status, so the error result is told apart by its error
+      const openIdIssuerConfig: (Exclude<Awaited<ReturnType<OidcAuthStrategy['getIssuerConfig']>>, { error: string }> & { error?: undefined; status?: undefined }) | { status: number; error: string } = await this.oidcAuthStrategy.getIssuerConfig(req.query.issuer)
       if (openIdIssuerConfig.error) {
         return res.status(openIdIssuerConfig.status).send(openIdIssuerConfig.error)
       }
@@ -518,4 +568,4 @@ class Auth {
   // #endregion
 }
 
-module.exports = Auth
+export = Auth

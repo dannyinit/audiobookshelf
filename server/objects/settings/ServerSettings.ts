@@ -442,7 +442,8 @@ class ServerSettings {
 
       if (self[key] !== payload[key]) {
         if (key === 'logLevel') {
-          Logger.setLogLevel(payload[key])
+          // cast(d): the patch payload is not validated; the client sends the log level as a number
+          Logger.setLogLevel(payload[key] as number)
         }
         self[key] = payload[key]
         hasUpdates = true

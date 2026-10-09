@@ -1,3 +1,34 @@
+/**
+ * Parsed command line options (see optionDefinitions)
+ */
+interface CliOptions {
+  config?: string
+  metadata?: string
+  port?: string
+  host?: string
+  source?: string
+  dev?: boolean
+  'prod-with-dev-env'?: boolean
+}
+
+/**
+ * The config exported by dev.js (not in the repository, only required in development; see .devcontainer/dev.js)
+ */
+interface DevConfig {
+  Port?: number | string
+  ConfigPath?: string
+  MetadataPath?: string
+  FFmpegPath?: string
+  FFProbePath?: string
+  NunicodePath?: string
+  SkipBinariesCheck?: boolean
+  AllowIframe?: boolean
+  BackupPath?: string
+  ReactClientPath?: string
+  AllowedDevOrigins?: string | string[]
+  RouterBasePath?: string
+}
+
 const optionDefinitions = [
   { name: 'config', alias: 'c', type: String },
   { name: 'metadata', alias: 'm', type: String },
@@ -9,19 +40,22 @@ const optionDefinitions = [
   { name: 'prod-with-dev-env', alias: 'r', type: Boolean }
 ]
 
-const commandLineArgs = require('./server/libs/commandLineArgs')
-const options = commandLineArgs(optionDefinitions)
+import commandLineArgs = require('./server/libs/commandLineArgs')
+// The vendored command-line-args returns a JSDoc `object`
+const options: CliOptions = commandLineArgs(optionDefinitions)
 
-const Path = require('path')
+import Path = require('path')
 process.env.NODE_ENV = options.dev ? 'development' : process.env.NODE_ENV || 'production'
 
-const server = require('./server/Server')
+import server = require('./server/Server')
 global.appRoot = Path.basename(__dirname) === 'dist-server' ? Path.resolve(__dirname, '..') : __dirname
 
 const isDev = process.env.NODE_ENV !== 'production'
 if (isDev || options['prod-with-dev-env']) {
-  const devEnv = require('./dev').config
-  if (devEnv.Port) process.env.PORT = devEnv.Port
+  // dev.js is required here only (it does not exist in production); require() is typed any
+  const devEnv: DevConfig = require('./dev').config
+  // cast(d): process.env converts the assigned port to a string
+  if (devEnv.Port) process.env.PORT = devEnv.Port as string
   if (devEnv.ConfigPath) process.env.CONFIG_PATH = devEnv.ConfigPath
   if (devEnv.MetadataPath) process.env.METADATA_PATH = devEnv.MetadataPath
   if (devEnv.FFmpegPath) process.env.FFMPEG_PATH = devEnv.FFmpegPath
