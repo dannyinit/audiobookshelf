@@ -15,15 +15,14 @@ interface EBookFileData {
 
 class EBookFile {
   declare ino: string | null
-  declare metadata: FileMetadata
+  declare metadata: FileMetadata | null
   declare ebookFormat: string | null
   declare addedAt: number | null
   declare updatedAt: number | null
 
   constructor(file?: EBookFileData | null) {
     this.ino = null
-    // Typed FileMetadata; construct or setData sets it before use
-    this.metadata = null as unknown as FileMetadata
+    this.metadata = null
     this.ebookFormat = null
     this.addedAt = null
     this.updatedAt = null
@@ -44,7 +43,8 @@ class EBookFile {
   toJSON() {
     return {
       ino: this.ino,
-      metadata: this.metadata.toJSON(),
+      // cast(d): toJSON is only called on files that construct or setData filled in
+      metadata: this.metadata!.toJSON(),
       ebookFormat: this.ebookFormat,
       addedAt: this.addedAt,
       updatedAt: this.updatedAt
@@ -66,7 +66,8 @@ class EBookFile {
   updateFromLibraryFile(libraryFile: LibraryFile) {
     var hasUpdated = false
 
-    if (this.metadata.update(libraryFile.metadata)) {
+    // cast(d): for an ebook file that construct or setData filled in (nothing calls this method at the moment)
+    if (this.metadata!.update(libraryFile.metadata)) {
       hasUpdated = true
     }
 

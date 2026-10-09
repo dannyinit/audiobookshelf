@@ -226,9 +226,9 @@ class BookScanner {
       let ebookMatch = libraryItemData.ebookLibraryFilesModified.find((eFile) => eFile.old.metadata.path === media.ebookFile!.metadata.path)
       if (ebookMatch) {
         const ebookFile = new EBookFile(ebookMatch.new)
-        // The library file JSON has an extension
-        ebookFile.ebookFormat = ebookFile.metadata.ext!.slice(1).toLowerCase()
-        libraryScan.addLog(LogLevel.DEBUG, `Updating book ebook file "${media.ebookFile.metadata.path}" => "${ebookFile.metadata.path}" for book "${media.title}"`)
+        // cast(d): the constructor sets metadata from the library file JSON, which has an extension (2 reads)
+        ebookFile.ebookFormat = ebookFile.metadata!.ext!.slice(1).toLowerCase()
+        libraryScan.addLog(LogLevel.DEBUG, `Updating book ebook file "${media.ebookFile.metadata.path}" => "${ebookFile.metadata!.path}" for book "${media.title}"`)
         // cast(d): the stored ebook file JSON (EBookFile toJSON; ebookFormat was set just above)
         media.ebookFile = ebookFile.toJSON() as EBookFileObject
         media.changed('ebookFile', true)

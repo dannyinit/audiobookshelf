@@ -445,7 +445,7 @@ export = {
   /**
    * Get library items for an author, optional use user permissions
    */
-  async getLibraryItemsForAuthor(author: Author, user: User | null | undefined, limit: number, offset: number) {
+  async getLibraryItemsForAuthor(author: Author, user: User | null | undefined, limit?: number, offset?: number) {
     const { libraryItems, count } = await libraryItemsBookFilters.getFilteredLibraryItems(author.libraryId, user, 'authors', author.id, 'addedAt', true, false, [], limit, offset)
     return {
       count,

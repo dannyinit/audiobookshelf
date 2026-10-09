@@ -148,7 +148,8 @@ class PodcastManager {
     if (!success && !ffmpegDownloadResponse?.isRequestError) {
       Logger.info(`[PodcastManager] Retrying episode download without tagging`)
       // Download episode only
-      success = await downloadFile(this.currentDownload.url, this.currentDownload.targetPath)
+      // cast(d): setData sets url before the download is queued
+      success = await downloadFile(this.currentDownload.url!, this.currentDownload.targetPath)
         .then(() => true)
         .catch((error) => {
           Logger.error(`[PodcastManager] Podcast Episode download failed`, error)
@@ -213,7 +214,8 @@ class PodcastManager {
       return false
     }
 
-    const podcastEpisode = await Database.podcastEpisodeModel.createFromRssPodcastEpisode(this.currentDownload!.rssPodcastEpisode, libraryItem.media.id, audioFile)
+    // cast(d): setData sets rssPodcastEpisode before the download is queued
+    const podcastEpisode = await Database.podcastEpisodeModel.createFromRssPodcastEpisode(this.currentDownload!.rssPodcastEpisode!, libraryItem.media.id, audioFile)
 
     libraryItem.libraryFiles.push(libraryFile.toJSON())
     // Re-calculating library item size because this wasnt being updated properly for podcasts in v2.20.0 and below

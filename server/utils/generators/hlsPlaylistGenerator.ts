@@ -1,8 +1,6 @@
 import fsExtra = require('../../libs/fsExtra')
-import type { FsExtra } from '../types'
 
-// The inferred type of the vendored fs-extra lacks the fs methods it adds at runtime
-const fs = fsExtra as unknown as FsExtra
+const fs = fsExtra
 
 function getPlaylistStr(segmentName: string, duration: number, segmentLength: number, hlsSegmentType: string): string {
   var ext = hlsSegmentType === 'fmp4' ? 'm4s' : 'ts'

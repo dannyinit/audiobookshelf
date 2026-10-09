@@ -39,9 +39,8 @@ import ApiKeyController = require('../controllers/ApiKeyController')
 import type { FindOptions } from 'sequelize'
 import type Server = require('../Server')
 import type { DateAndTime } from '../objects/types'
-import type { FsExtra } from '../utils/types'
-// Typed views of the untyped vendored fs-extra and date-and-time
-const fs = fsExtra as unknown as FsExtra
+const fs = fsExtra
+// Typed view of the untyped vendored date-and-time
 const date = dateAndTime as unknown as DateAndTime
 
 type OldPlaybackSession = import('../objects/PlaybackSession')

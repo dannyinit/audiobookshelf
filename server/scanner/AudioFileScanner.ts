@@ -325,7 +325,8 @@ class AudioFileScanner {
     ]
 
     const firstScannedFile = audioFiles[0]
-    const audioFileMetaTags = firstScannedFile.metaTags
+    // cast(d): scanned and stored audio files have meta tags (construct and setDataFromProbe set them)
+    const audioFileMetaTags = firstScannedFile.metaTags!
     MetadataMapArray.forEach((mapping) => {
       let value = audioFileMetaTags[mapping.tag]
       let isAltTag = false
@@ -408,7 +409,8 @@ class AudioFileScanner {
    * Set podcast metadata from first audio file
    */
   setPodcastMetadataFromAudioMetaTags(audioFile: ScannedOrStoredAudioFile, podcastMetadata: PodcastMetadataObject, libraryScan: LibraryScan | ScanLogger) {
-    const audioFileMetaTags = audioFile.metaTags
+    // cast(d): scanned and stored audio files have meta tags (construct and setDataFromProbe set them)
+    const audioFileMetaTags = audioFile.metaTags!
 
     const MetadataMapArray: MetaTagMapping[] = [
       {
@@ -500,7 +502,8 @@ class AudioFileScanner {
       }
     ]
 
-    const audioFileMetaTags = podcastEpisode.audioFile.metaTags
+    // cast(d): scanned and stored audio files have meta tags (construct and setDataFromProbe set them)
+    const audioFileMetaTags = podcastEpisode.audioFile.metaTags!
     MetadataMapArray.forEach((mapping) => {
       let value = audioFileMetaTags[mapping.tag]
       let tagToUse = mapping.tag
@@ -608,8 +611,8 @@ class AudioFileScanner {
         if (file.duration) {
           let title = file.metadata.filename ? Path.basename(file.metadata.filename, Path.extname(file.metadata.filename)) : `Chapter ${currChapterId}`
           if (useMetaTagAsTitle) {
-            // Every file has a title tag when useMetaTagAsTitle is true
-            title = file.metaTags.tagTitle!
+            // cast(d): every file has meta tags with a title tag when useMetaTagAsTitle is true
+            title = file.metaTags!.tagTitle!
           }
 
           chapters.push({

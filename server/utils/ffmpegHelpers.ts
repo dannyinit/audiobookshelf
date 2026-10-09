@@ -7,11 +7,9 @@ import Path = require('path')
 import Logger = require('../Logger')
 import fileUtils = require('./fileUtils')
 import PodcastEpisodeDownload = require('../objects/PodcastEpisodeDownload')
-import type { FsExtra } from './types'
 const { filePathToPOSIX, copyToExisting } = fileUtils
 
-// The inferred type of the vendored fs-extra lacks the fs methods it adds at runtime
-const fs = fsExtra as unknown as FsExtra
+const fs = fsExtra
 
 /**
  * Audio track fields used (see models/Book AudioFileObject)
@@ -160,8 +158,9 @@ const downloadPodcastEpisode = (podcastEpisodeDownload: PodcastEpisodeDownload):
 
     for (const userAgent of userAgents) {
       try {
+        // cast(d): setData sets url before the download is queued (5 reads below)
         response = await axios({
-          url: podcastEpisodeDownload.url,
+          url: podcastEpisodeDownload.url!,
           method: 'GET',
           responseType: 'stream',
           headers: {
@@ -169,8 +168,8 @@ const downloadPodcastEpisode = (podcastEpisodeDownload: PodcastEpisodeDownload):
             'User-Agent': userAgent
           },
           timeout: global.PodcastDownloadTimeout,
-          httpAgent: global.DisableSsrfRequestFilter?.(podcastEpisodeDownload.url) ? null : ssrfFilter(podcastEpisodeDownload.url),
-          httpsAgent: global.DisableSsrfRequestFilter?.(podcastEpisodeDownload.url) ? null : ssrfFilter(podcastEpisodeDownload.url)
+          httpAgent: global.DisableSsrfRequestFilter?.(podcastEpisodeDownload.url!) ? null : ssrfFilter(podcastEpisodeDownload.url!),
+          httpsAgent: global.DisableSsrfRequestFilter?.(podcastEpisodeDownload.url!) ? null : ssrfFilter(podcastEpisodeDownload.url!)
         })
 
         Logger.debug(`[ffmpegHelpers] Successfully connected with User-Agent: ${userAgent}`)
@@ -200,7 +199,8 @@ const downloadPodcastEpisode = (podcastEpisodeDownload: PodcastEpisodeDownload):
 
     // Episodes are only downloaded for podcast library items
     const podcast = podcastEpisodeDownload.libraryItem.media as import('../models/Podcast')
-    const podcastEpisode = podcastEpisodeDownload.rssPodcastEpisode
+    // cast(d): setData sets rssPodcastEpisode before the download is queued
+    const podcastEpisode = podcastEpisodeDownload.rssPodcastEpisode!
     const finalSizeInBytes = Number(podcastEpisode.enclosure?.length || 0)
 
     const taggings: Record<string, string | number | null | undefined> = {

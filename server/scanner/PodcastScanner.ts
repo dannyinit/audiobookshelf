@@ -139,7 +139,8 @@ class PodcastScanner {
         newAudioFile.index = 1
 
         const newEpisode = {
-          title: newAudioFile.metaTags.tagTitle || newAudioFile.metadata.filenameNoExt,
+          // cast(d): a scanned audio file has meta tags (setDataFromProbe sets them)
+          title: newAudioFile.metaTags!.tagTitle || newAudioFile.metadata.filenameNoExt,
           subtitle: null,
           season: null,
           episode: null,
@@ -285,7 +286,8 @@ class PodcastScanner {
       audioFile.index = 1
 
       const newEpisode: NewPodcastEpisode = {
-        title: audioFile.metaTags.tagTitle || audioFile.metadata.filenameNoExt,
+        // cast(d): a scanned audio file has meta tags (setDataFromProbe sets them)
+        title: audioFile.metaTags!.tagTitle || audioFile.metadata.filenameNoExt,
         subtitle: null,
         season: null,
         episode: null,

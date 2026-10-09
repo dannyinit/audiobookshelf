@@ -5,12 +5,11 @@ import Logger = require('../../Logger')
 import fsExtra = require('../../libs/fsExtra')
 import archiverLib = require('../../libs/archiver')
 import StreamZip = require('../../libs/nodeStreamZip')
-import type { ArchiverFactory, FsExtra } from '../types'
+import type { ArchiverFactory } from '../types'
 const { once } = events
 const { createInterface } = readline
 
-// The inferred type of the vendored fs-extra lacks the fs methods it adds at runtime
-const fs = fsExtra as unknown as FsExtra
+const fs = fsExtra
 // The vendored archiver function is inferred as a non-callable class
 const archiver = archiverLib as unknown as ArchiverFactory
 

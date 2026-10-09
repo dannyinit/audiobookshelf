@@ -13,9 +13,9 @@ type RssPodcastEpisode = NonNullable<ReturnType<typeof import('../utils/podcastU
 
 class PodcastEpisodeDownload {
   declare id: string | null
-  declare rssPodcastEpisode: RssPodcastEpisode
+  declare rssPodcastEpisode: RssPodcastEpisode | null
 
-  declare url: string
+  declare url: string | null
   declare libraryItem: LibraryItem
   declare libraryId: string | null
 
@@ -34,11 +34,9 @@ class PodcastEpisodeDownload {
 
   constructor() {
     this.id = null
-    // Typed RssPodcastEpisode (as the JSDoc did); setData sets it before use
-    this.rssPodcastEpisode = null as unknown as RssPodcastEpisode
+    this.rssPodcastEpisode = null
 
-    // Typed string; setData sets it before use
-    this.url = null as unknown as string
+    this.url = null
     // Typed LibraryItem (as the JSDoc did); setData sets it before use
     this.libraryItem = null as unknown as LibraryItem
     this.libraryId = null
@@ -80,7 +78,8 @@ class PodcastEpisodeDownload {
   }
 
   get urlFileExtension() {
-    const cleanUrl = this.url.split('?')[0] // Remove query string
+    // cast(d): setData sets url before the getters are used
+    const cleanUrl = this.url!.split('?')[0] // Remove query string
     return Path.extname(cleanUrl).substring(1).toLowerCase()
   }
   get fileExtension() {
@@ -89,11 +88,13 @@ class PodcastEpisodeDownload {
     return 'mp3'
   }
   get enclosureType() {
-    const enclosureType = this.rssPodcastEpisode.enclosure.type
+    // cast(d): setData sets rssPodcastEpisode before the getters are used
+    const enclosureType = this.rssPodcastEpisode!.enclosure.type
     return typeof enclosureType === 'string' ? enclosureType : null
   }
   get episodeTitle() {
-    return this.rssPodcastEpisode.title
+    // cast(d): setData sets rssPodcastEpisode before the getters are used
+    return this.rssPodcastEpisode!.title
   }
   get targetPath() {
     // setData sets targetFilename to a string before the getters are used
@@ -106,8 +107,9 @@ class PodcastEpisodeDownload {
     return this.libraryItem?.id || null
   }
   get pubYear() {
-    if (!this.rssPodcastEpisode.publishedAt) return null
-    return new Date(this.rssPodcastEpisode.publishedAt).getFullYear()
+    // cast(d): setData sets rssPodcastEpisode before the getters are used (2)
+    if (!this.rssPodcastEpisode!.publishedAt) return null
+    return new Date(this.rssPodcastEpisode!.publishedAt).getFullYear()
   }
 
   /**
@@ -124,7 +126,8 @@ class PodcastEpisodeDownload {
    */
   setAppendRandomId(appendRandomId: boolean) {
     this.appendRandomId = appendRandomId
-    this.targetFilename = this.getSanitizedFilename(this.rssPodcastEpisode.title || '')
+    // cast(d): only called on a queued download, after setData set rssPodcastEpisode
+    this.targetFilename = this.getSanitizedFilename(this.rssPodcastEpisode!.title || '')
   }
 
   /**

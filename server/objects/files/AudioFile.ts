@@ -60,7 +60,7 @@ class AudioFile {
   declare embeddedCoverArt: string | null
 
   // Tags scraped from the audio file
-  declare metaTags: AudioMetaTags
+  declare metaTags: AudioMetaTags | null
 
   declare manuallyVerified: boolean
   declare exclude: boolean
@@ -91,8 +91,7 @@ class AudioFile {
     this.embeddedCoverArt = null
 
     // Tags scraped from the audio file
-    // Typed AudioMetaTags (as the JSDoc did); construct or setDataFromProbe sets it before use
-    this.metaTags = null as unknown as AudioMetaTags
+    this.metaTags = null
 
     this.manuallyVerified = false
     this.exclude = false
@@ -250,7 +249,8 @@ class AudioFile {
         }
       } else if (key === 'metaTags') {
         if (!this.metaTags || !this.metaTags.isEqual(scannedAudioFile.metaTags)) {
-          this.metaTags = scannedAudioFile.metaTags.clone()
+          // cast(d): a scanned audio file has meta tags (setDataFromProbe sets them)
+          this.metaTags = scannedAudioFile.metaTags!.clone()
           hasUpdated = true
         }
       } else if (key === 'chapters') {

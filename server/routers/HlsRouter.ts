@@ -7,9 +7,7 @@ import SocketAuthority = require('../SocketAuthority')
 import fsExtra = require('../libs/fsExtra')
 import type Auth = require('../Auth')
 import type PlaybackSessionManager = require('../managers/PlaybackSessionManager')
-import type { FsExtra } from '../utils/types'
-// Typed view of the untyped vendored fs-extra
-const fs = fsExtra as unknown as FsExtra
+const fs = fsExtra
 
 
 class HlsRouter {

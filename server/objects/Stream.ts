@@ -14,9 +14,7 @@ import AudioTrack = require('./files/AudioTrack')
 import type LibraryItem = require('../models/LibraryItem')
 import type Podcast = require('../models/Podcast')
 import type User = require('../models/User')
-import type { FsExtra } from '../utils/types'
-// Typed view of the untyped vendored fs-extra
-const fs = fsExtra as unknown as FsExtra
+const fs = fsExtra
 const { secondsToTimestamp } = utils
 const { writeConcatFile } = ffmpegHelpers
 const { AudioMimeType } = constants

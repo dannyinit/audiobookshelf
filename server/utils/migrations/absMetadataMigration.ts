@@ -5,10 +5,8 @@ import fileUtils = require('../fileUtils')
 import LibraryFile = require('../../objects/files/LibraryFile')
 import LibraryItem = require('../../models/LibraryItem')
 import type DatabaseModule = require('../../Database')
-import type { FsExtra } from '../types'
 
-// The inferred type of the vendored fs-extra lacks the fs methods it adds at runtime
-const fsExtra = fsExtraModule as unknown as FsExtra
+const fsExtra = fsExtraModule
 
 /**
  * @returns false if failed, null if the metadata file already exists

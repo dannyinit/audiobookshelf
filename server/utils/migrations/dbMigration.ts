@@ -6,14 +6,12 @@ import fsExtra = require('../../libs/fsExtra')
 import oldDbFiles = require('./oldDbFiles')
 import parseNameString = require('../parsers/parseNameString')
 import type { CreationAttributes, Model, ModelStatic, QueryInterface } from 'sequelize'
-import type { FsExtra } from '../types'
 import type DatabaseModule = require('../../Database')
 import type { ModelRegistry } from '../../models/types'
 const { DataTypes } = sequelize
 const uuidv4 = uuid.v4
 
-// The inferred type of the vendored fs-extra lacks the fs methods it adds at runtime
-const fs = fsExtra as unknown as FsExtra
+const fs = fsExtra
 
 /*
  * Old (pre 2.3.0) JSON db entities, only the fields used.

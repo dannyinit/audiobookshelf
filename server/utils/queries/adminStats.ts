@@ -4,12 +4,11 @@ import PlaybackSession = require('../../models/PlaybackSession')
 import fsExtraModule = require('../../libs/fsExtra')
 import Book = require('../../models/Book')
 import LibraryItem = require('../../models/LibraryItem')
-import type { FsExtra, PlaybackMediaMetadata } from '../types'
+import type { PlaybackMediaMetadata } from '../types'
 
 // Same module object (kept as an alias so the compiled module is unchanged)
 const Database = DatabaseModule
-// The inferred type of the vendored fs-extra lacks the fs methods it adds at runtime
-const fsExtra = fsExtraModule as unknown as FsExtra
+const fsExtra = fsExtraModule
 
 /**
  * Book with its libraryItem. size is a BIGINT column that sqlite returns as a number (the model JSDoc says BigInt)

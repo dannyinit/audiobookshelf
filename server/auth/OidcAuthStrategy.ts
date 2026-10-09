@@ -164,8 +164,7 @@ class OidcAuthStrategy {
    */
   async verifyCallback(tokenset: OpenIDClient.TokenSet, userinfo: OidcUserinfo, done: PassportDone) {
     let isNewUser = false
-    // Starts as null; typed as the user so the reads below type check (see the NOTE below)
-    let user = null as unknown as OidcUser
+    let user: OidcUser | null = null
     try {
       Logger.debug(`[OidcAuth] openid callback userinfo=`, JSON.stringify(userinfo, null, 2))
 
@@ -177,8 +176,8 @@ class OidcAuthStrategy {
         throw new Error(`Group claim ${Database.serverSettings.authOpenIDGroupClaim} not found or empty in userinfo`)
       }
 
-      // The { error } result is checked right below
-      user = (await Database.userModel.findUserFromOpenIdUserInfo(userinfo)) as OidcUser
+      // cast(d): the { error } result is checked right below (OidcUser has an optional error); null when no user matched
+      user = (await Database.userModel.findUserFromOpenIdUserInfo(userinfo)) as OidcUser | null
 
       if (user?.error) {
         throw new Error('Invalid userinfo or already linked')
@@ -196,16 +195,18 @@ class OidcAuthStrategy {
         }
       }
 
+      // cast(d): user is null here when no user was found and auto-register is off (see the NOTE below); same object as user
+      const activeUser = user!
       // NOTE: when no user was found and auto-register is off, user is null and this read throws a TypeError, so the 'User not active or not found' error is never thrown for that case (the login still fails)
-      if (!user.isActive) {
+      if (!activeUser.isActive) {
         throw new Error('User not active or not found')
       }
 
-      await this.setUserGroup(user, userinfo)
-      await this.updateUserPermissions(user, userinfo)
+      await this.setUserGroup(activeUser, userinfo)
+      await this.updateUserPermissions(activeUser, userinfo)
 
       // We also have to save the id_token for later (used for logout) because we cannot set cookies here
-      user.openid_id_token = tokenset.id_token
+      activeUser.openid_id_token = tokenset.id_token
 
       return done(null, user)
     } catch (error) {

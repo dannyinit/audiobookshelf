@@ -6,12 +6,11 @@ import fsExtra = require('../libs/fsExtra')
 import rra = require('../libs/recursiveReaddirAsync')
 import Logger = require('../Logger')
 import constants = require('./constants')
-import type { FilePathItem, FsExtra } from './types'
+import type { FilePathItem } from './types'
 const exec = childProcess.exec
 const { AudioMimeType } = constants
 
-// The inferred type of the vendored fs-extra lacks the fs methods it adds at runtime
-const fs = fsExtra as unknown as FsExtra
+const fs = fsExtra
 
 /**
  * Item returned by recursiveReaddirAsync list() with the options used in recurseFiles

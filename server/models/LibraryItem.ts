@@ -9,7 +9,6 @@ import LibraryFile = require('../objects/files/LibraryFile')
 // Required at load as in the JS (only their types are used here)
 import './Book'
 import './Podcast'
-import type { FsExtra } from '../utils/types'
 import type Author = require('./Author')
 import type Book = require('./Book')
 import type Feed = require('./Feed')
@@ -19,8 +18,7 @@ import type User = require('./User')
 import type { AudioFileObject, AudioTrack, LibraryFileObject, LibraryItemExtraData, ModelsSequelize } from './types'
 import type * as ModelTypes from './types'
 const { DataTypes, Model } = Sequelize
-// cast(a): the vendored fs-extra builds its fs API at runtime, so its inferred type lacks most fs methods
-const fsExtra = fsExtraModule as unknown as FsExtra
+const fsExtra = fsExtraModule
 const { filePathToPOSIX, getFileTimestampsWithIno } = fileUtils
 
 /**
@@ -603,8 +601,8 @@ class LibraryItem extends Model<InferAttributes<LibraryItem>, LibraryItemCreatio
    * Get book library items for author, optional use user permissions
    */
   static async getForAuthor(author: Author, user: User | null = null) {
-    // cast(d): libraryFilters types limit and offset as numbers; undefined (no limit, no offset) is passed on to the query, as in the JS
-    const { libraryItems } = await libraryFilters.getLibraryItemsForAuthor(author, user, undefined as unknown as number, undefined as unknown as number)
+    // undefined (no limit, no offset) is passed on to the query, as in the JS
+    const { libraryItems } = await libraryFilters.getLibraryItemsForAuthor(author, user, undefined, undefined)
     return libraryItems
   }
 

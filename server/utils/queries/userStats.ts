@@ -6,12 +6,11 @@ import fsExtraModule = require('../../libs/fsExtra')
 import Book = require('../../models/Book')
 import LibraryItem = require('../../models/LibraryItem')
 import type { Includeable } from 'sequelize'
-import type { FsExtra, PlaybackMediaMetadata } from '../types'
+import type { PlaybackMediaMetadata } from '../types'
 
 // Same module object (kept as an alias so the compiled module is unchanged)
 const Database = DatabaseModule
-// The inferred type of the vendored fs-extra lacks the fs methods it adds at runtime
-const fsExtra = fsExtraModule as unknown as FsExtra
+const fsExtra = fsExtraModule
 
 /**
  * Book loaded through the session/progress include, with its libraryItem

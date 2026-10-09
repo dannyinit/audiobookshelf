@@ -7,12 +7,10 @@ import StreamZip = require('../libs/nodeStreamZip')
 import Archive = require('../libs/libarchive/archive')
 import fileUtils = require('./fileUtils')
 import archiverUtils = require('../libs/archiver/archiverUtils')
-import type { FsExtra } from './types'
 const { isWritable } = fileUtils
 const { sanitizePath } = archiverUtils
 
-// The inferred type of the vendored fs-extra lacks the fs methods it adds at runtime
-const fs = fsExtra as unknown as FsExtra
+const fs = fsExtra
 
 /**
  * Sanitize a path from an archive

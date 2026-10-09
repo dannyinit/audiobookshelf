@@ -436,7 +436,7 @@ export = {
     countCache.clear()
   },
 
-  async findAndCountAll(findOptions: RuntimeFindOptions, limit: number | null, offset: number | null, useCountCache: boolean): Promise<{ rows: Book[]; count: number }> {
+  async findAndCountAll(findOptions: RuntimeFindOptions, limit: number | null | undefined, offset: number | null | undefined, useCountCache: boolean): Promise<{ rows: Book[]; count: number }> {
     const model = Database.bookModel
     if (useCountCache) {
       const countCacheKey = stringifySequelizeQuery(findOptions)
@@ -448,7 +448,7 @@ export = {
       }
 
       findOptions.limit = limit || null
-      // A null offset is passed through, as in the JS
+      // A null or undefined offset is passed through, as in the JS
       findOptions.offset = offset as number
 
       // cast(b): RuntimeFindOptions relaxes options to the shapes Sequelize accepts at runtime; its FindOptions type is stricter
@@ -459,7 +459,7 @@ export = {
     }
 
     findOptions.limit = limit || null
-    // A null offset is passed through, as in the JS
+    // A null or undefined offset is passed through, as in the JS
     findOptions.offset = offset as number
 
     // cast(b): RuntimeFindOptions relaxes options to the shapes Sequelize accepts at runtime; its FindOptions type is stricter
@@ -479,8 +479,8 @@ export = {
     sortDesc: boolean | null,
     collapseseries: boolean,
     include: string[],
-    limit: number | null,
-    offset: number | null,
+    limit: number | null | undefined,
+    offset: number | null | undefined,
     isHomePage = false
   ): Promise<{ libraryItems: FilteredLibraryItem[]; count: number }> {
     // TODO: Handle collapse sub-series

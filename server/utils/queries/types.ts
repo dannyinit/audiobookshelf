@@ -5,6 +5,7 @@ import type { FindAttributeOptions, FindOptions, Includeable, IncludeOptions, Or
 import type Sequelize = require('sequelize')
 import type LibraryItem = require('../../models/LibraryItem')
 import type Feed = require('../../models/Feed')
+import type MediaItemShare = require('../../models/MediaItemShare')
 
 /**
  * Named replacements for the raw SQL literals in a query
@@ -45,7 +46,12 @@ export type FilteredLibraryItem = LibraryItem & {
   rssFeed?: Feed
   numEpisodesIncomplete?: number
   recentEpisode?: unknown
-  [key: string]: unknown
+  /** Series shown on the book cover (filter by series, and the series of a continue series item) */
+  series?: { id: string; name: string; sequence: string | null }
+  /** Details of the collapsed series the book stands for (collapseseries) */
+  collapsedSeries?: { id: string; name: string; nameIgnorePrefix: string; sequence: string | null; numBooks: number; libraryItemIds: string[] }
+  /** Open share of the media item (ShareManager.findByMediaItemId) */
+  mediaItemShare?: MediaItemShare.MediaItemShareForClient | null
 }
 
 /**
