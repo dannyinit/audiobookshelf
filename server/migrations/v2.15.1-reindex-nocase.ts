@@ -1,19 +1,12 @@
-/**
- * @typedef MigrationContext
- * @property {import('sequelize').QueryInterface} queryInterface - a suquelize QueryInterface object.
- * @property {import('../Logger')} logger - a Logger object.
- *
- * @typedef MigrationOptions
- * @property {MigrationContext} context - an object containing the migration context.
- */
+import type { MigrationOptions } from './types'
 
 /**
  * This upward migration script fixes old database corruptions due to the a bad sqlite extension introduced in v2.12.0.
  *
- * @param {MigrationOptions} options - an object containing the migration context.
- * @returns {Promise<void>} - A promise that resolves when the migration is complete.
+ * @param options - an object containing the migration context.
+ * @returns A promise that resolves when the migration is complete.
  */
-async function up({ context: { queryInterface, logger } }) {
+async function up({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   // Upwards migration script
   logger.info('[2.15.1 migration] UPGRADE BEGIN: 2.15.1-reindex-nocase ')
 
@@ -27,10 +20,10 @@ async function up({ context: { queryInterface, logger } }) {
 /**
  * This downward migration script is a no-op.
  *
- * @param {MigrationOptions} options - an object containing the migration context.
- * @returns {Promise<void>} - A promise that resolves when the migration is complete.
+ * @param options - an object containing the migration context.
+ * @returns A promise that resolves when the migration is complete.
  */
-async function down({ context: { queryInterface, logger } }) {
+async function down({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   // Downward migration script
   logger.info('[2.15.1 migration] DOWNGRADE BEGIN: 2.15.1-reindex-nocase ')
 
@@ -40,4 +33,4 @@ async function down({ context: { queryInterface, logger } }) {
   logger.info('[2.15.1 migration] DOWNGRADE END: 2.15.1-reindex-nocase ')
 }
 
-module.exports = { up, down }
+export = { up, down }

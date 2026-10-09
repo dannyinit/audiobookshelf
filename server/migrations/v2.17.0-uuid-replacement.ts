@@ -1,19 +1,12 @@
-/**
- * @typedef MigrationContext
- * @property {import('sequelize').QueryInterface} queryInterface - a suquelize QueryInterface object.
- * @property {import('../Logger')} logger - a Logger object.
- *
- * @typedef MigrationOptions
- * @property {MigrationContext} context - an object containing the migration context.
- */
+import type { MigrationOptions } from './types'
 
 /**
  * This upward migration script changes table columns with data type UUIDv4 to UUID to match associated models.
  *
- * @param {MigrationOptions} options - an object containing the migration context.
- * @returns {Promise<void>} - A promise that resolves when the migration is complete.
+ * @param options - an object containing the migration context.
+ * @returns A promise that resolves when the migration is complete.
  */
-async function up({ context: { queryInterface, logger } }) {
+async function up({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   // Upwards migration script
   logger.info('[2.17.0 migration] UPGRADE BEGIN: 2.17.0-uuid-replacement')
 
@@ -58,10 +51,10 @@ async function up({ context: { queryInterface, logger } }) {
 /**
  * This downward migration script changes table columns data type back to UUIDv4.
  *
- * @param {MigrationOptions} options - an object containing the migration context.
- * @returns {Promise<void>} - A promise that resolves when the migration is complete.
+ * @param options - an object containing the migration context.
+ * @returns A promise that resolves when the migration is complete.
  */
-async function down({ context: { queryInterface, logger } }) {
+async function down({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   // Downward migration script
   logger.info('[2.17.0 migration] DOWNGRADE BEGIN: 2.17.0-uuid-replacement')
 
@@ -76,6 +69,7 @@ async function down({ context: { queryInterface, logger } }) {
   })
 
   logger.info('[2.17.0 migration] Changing mediaItemShares.mediaItemId column to UUIDV4')
+  // NOTE: unlike up, down does not check tableExists('mediaItemShares'), so a downgrade of a database without that table throws here
   await queryInterface.changeColumn('mediaItemShares', 'mediaItemId', {
     type: 'UUIDV4'
   })
@@ -99,4 +93,4 @@ async function down({ context: { queryInterface, logger } }) {
   logger.info('[2.17.0 migration] DOWNGRADE END: 2.17.0-uuid-replacement')
 }
 
-module.exports = { up, down }
+export = { up, down }

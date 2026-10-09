@@ -1,20 +1,14 @@
-/**
- * @typedef MigrationContext
- * @property {import('sequelize').QueryInterface} queryInterface - a suquelize QueryInterface object.
- * @property {import('../Logger')} logger - a Logger object.
- *
- * @typedef MigrationOptions
- * @property {MigrationContext} context - an object containing the migration context.
- */
+import type { ColumnDescription, QueryInterface, QueryTypes, Sequelize } from 'sequelize'
+import type { MigrationOptions } from './types'
 
 /**
  * This upward migration script changes foreign key constraints for the
  * libraryItems, feeds, mediaItemShares, playbackSessions, playlistMediaItems, and mediaProgresses tables.
  *
- * @param {MigrationOptions} options - an object containing the migration context.
- * @returns {Promise<void>} - A promise that resolves when the migration is complete.
+ * @param options - an object containing the migration context.
+ * @returns A promise that resolves when the migration is complete.
  */
-async function up({ context: { queryInterface, logger } }) {
+async function up({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   // Upwards migration script
   logger.info('[2.17.3 migration] UPGRADE BEGIN: 2.17.3-fk-constraints')
 
@@ -100,10 +94,10 @@ async function up({ context: { queryInterface, logger } }) {
 /**
  * This downward migration script is a no-op.
  *
- * @param {MigrationOptions} options - an object containing the migration context.
- * @returns {Promise<void>} - A promise that resolves when the migration is complete.
+ * @param options - an object containing the migration context.
+ * @returns A promise that resolves when the migration is complete.
  */
-async function down({ context: { queryInterface, logger } }) {
+async function down({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   // Downward migration script
   logger.info('[2.17.3 migration] DOWNGRADE BEGIN: 2.17.3-fk-constraints')
 
@@ -114,25 +108,42 @@ async function down({ context: { queryInterface, logger } }) {
   logger.info('[2.17.3 migration] DOWNGRADE END: 2.17.3-fk-constraints')
 }
 
-/**
- * @typedef ConstraintUpdateObj
- * @property {string} field - The field to update
- * @property {string} onDelete - The onDelete constraint
- * @property {string} onUpdate - The onUpdate constraint
- */
+interface ConstraintUpdateObj {
+  /** The field to update */
+  field: string
+  /** The onDelete constraint */
+  onDelete: string
+  /** The onUpdate constraint */
+  onUpdate: string
+}
+
+interface SequelizeFKObj {
+  references: { model: string; key: string }
+  onDelete: string
+  onUpdate: string
+}
 
 /**
- * @typedef SequelizeFKObj
- * @property {{ model: string, key: string }} references
- * @property {string} onDelete
- * @property {string} onUpdate
+ * A row of PRAGMA foreign_key_list (the columns read here)
  */
+interface PragmaForeignKeyRow {
+  from: string
+  table: string
+  to: string
+  on_delete: string
+  on_update: string
+}
 
 /**
- * @param {Object} fk - The foreign key object from PRAGMA foreign_key_list
- * @returns {SequelizeFKObj} - The foreign key object formatted for Sequelize
+ * A column of describeTable, with the updated foreign key constraint if the column has one
  */
-const formatFKsPragmaToSequelizeFK = (fk) => {
+type ColumnDescriptionWithFK = ColumnDescription & Partial<SequelizeFKObj>
+
+/**
+ * @param fk - The foreign key object from PRAGMA foreign_key_list
+ * @returns The foreign key object formatted for Sequelize
+ */
+const formatFKsPragmaToSequelizeFK = (fk: PragmaForeignKeyRow): SequelizeFKObj => {
   return {
     references: {
       model: fk.table,
@@ -143,21 +154,15 @@ const formatFKsPragmaToSequelizeFK = (fk) => {
   }
 }
 
-/**
- *
- * @param {import('sequelize').QueryInterface} queryInterface
- * @param {string} tableName
- * @param {ConstraintUpdateObj[]} constraints
- * @returns {Promise<Record<string, SequelizeFKObj>|null>}
- */
-async function getUpdatedForeignKeys(queryInterface, tableName, constraints) {
+async function getUpdatedForeignKeys(queryInterface: QueryInterface, tableName: string, constraints: ConstraintUpdateObj[]): Promise<Record<string, SequelizeFKObj> | null> {
   const execQuery = queryInterface.sequelize.query.bind(queryInterface.sequelize)
   const quotedTableName = queryInterface.quoteIdentifier(tableName)
 
-  const foreignKeys = await execQuery(`PRAGMA foreign_key_list(${quotedTableName});`)
+  // cast(b): Sequelize types a raw query result as [rows, metadata]; the sqlite dialect returns only the rows for PRAGMA foreign_key_list
+  const foreignKeys = (await execQuery(`PRAGMA foreign_key_list(${quotedTableName});`)) as unknown as PragmaForeignKeyRow[]
 
   let hasUpdates = false
-  const foreignKeysByColName = foreignKeys.reduce((prev, curr) => {
+  const foreignKeysByColName = foreignKeys.reduce<Record<string, SequelizeFKObj>>((prev, curr) => {
     const fk = formatFKsPragmaToSequelizeFK(curr)
 
     const constraint = constraints.find((c) => c.field === curr.from)
@@ -176,15 +181,15 @@ async function getUpdatedForeignKeys(queryInterface, tableName, constraints) {
 /**
  * Extends the Sequelize describeTable function to include the updated foreign key constraints
  *
- * @param {import('sequelize').QueryInterface} queryInterface
- * @param {String} tableName
- * @param {Record<string, SequelizeFKObj>} updatedForeignKeys
+ * @param queryInterface
+ * @param tableName
+ * @param updatedForeignKeys
  */
-async function describeTableWithFKs(queryInterface, tableName, updatedForeignKeys) {
+async function describeTableWithFKs(queryInterface: QueryInterface, tableName: string, updatedForeignKeys: Record<string, SequelizeFKObj>) {
   const tableDescription = await queryInterface.describeTable(tableName)
 
-  const tableDescriptionWithFks = Object.entries(tableDescription).reduce((prev, [col, attributes]) => {
-    let extendedAttributes = attributes
+  const tableDescriptionWithFks = Object.entries(tableDescription).reduce<Record<string, ColumnDescriptionWithFK>>((prev, [col, attributes]) => {
+    let extendedAttributes: ColumnDescriptionWithFK = attributes
 
     if (updatedForeignKeys[col]) {
       extendedAttributes = {
@@ -202,12 +207,12 @@ async function describeTableWithFKs(queryInterface, tableName, updatedForeignKey
  * @see https://www.sqlite.org/lang_altertable.html#otheralter
  * @see https://sequelize.org/docs/v6/other-topics/query-interface/#changing-and-removing-columns-in-sqlite
  *
- * @param {import('sequelize').QueryInterface} queryInterface
- * @param {string} tableName
- * @param {ConstraintUpdateObj[]} constraints
- * @returns {Promise<boolean>} - Return false if no changes are needed, true otherwise
+ * @param queryInterface
+ * @param tableName
+ * @param constraints
+ * @returns Return false if no changes are needed, true otherwise
  */
-async function changeConstraints(queryInterface, tableName, constraints) {
+async function changeConstraints(queryInterface: QueryInterface, tableName: string, constraints: ConstraintUpdateObj[]): Promise<boolean> {
   const updatedForeignKeys = await getUpdatedForeignKeys(queryInterface, tableName, constraints)
   if (!updatedForeignKeys) {
     return false
@@ -222,7 +227,8 @@ async function changeConstraints(queryInterface, tableName, constraints) {
   try {
     const tableDescriptionWithFks = await describeTableWithFKs(queryInterface, tableName, updatedForeignKeys)
 
-    const attributes = queryInterface.queryGenerator.attributesToSQL(tableDescriptionWithFks)
+    // cast(b): Sequelize types queryGenerator as unknown; the sqlite query generator's attributesToSQL returns the column SQL by name
+    const attributes = (queryInterface.queryGenerator as { attributesToSQL(attributes: Record<string, ColumnDescriptionWithFK>): Record<string, string> }).attributesToSQL(tableDescriptionWithFks)
 
     // Create the backup table
     await queryInterface.createTable(backupTableName, attributes)
@@ -242,7 +248,8 @@ async function changeConstraints(queryInterface, tableName, constraints) {
 
     // Validate that all foreign key constraints are correct
     const result = await execQuery(`PRAGMA foreign_key_check(${quotedTableName});`, {
-      type: queryInterface.sequelize.Sequelize.QueryTypes.SELECT
+      // cast(b): sequelize sets QueryTypes on the Sequelize class at runtime; its types only export it from the module
+      type: (queryInterface.sequelize.Sequelize as typeof Sequelize & { QueryTypes: typeof QueryTypes }).QueryTypes.SELECT
     })
 
     // There are foreign key violations, exit
@@ -256,4 +263,4 @@ async function changeConstraints(queryInterface, tableName, constraints) {
   }
 }
 
-module.exports = { up, down }
+export = { up, down }

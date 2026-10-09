@@ -1,25 +1,19 @@
-/**
- * @typedef MigrationContext
- * @property {import('sequelize').QueryInterface} queryInterface - a suquelize QueryInterface object.
- * @property {import('../Logger')} logger - a Logger object.
- *
- * @typedef MigrationOptions
- * @property {MigrationContext} context - an object containing the migration context.
- */
+import type { MigrationOptions } from './types'
 
 /**
  * This upward migration script adds indexes to speed up queries on the `BookAuthor`, `BookSeries`, and `podcastEpisodes` tables.
  *
- * @param {MigrationOptions} options - an object containing the migration context.
- * @returns {Promise<void>} - A promise that resolves when the migration is complete.
+ * @param options - an object containing the migration context.
+ * @returns A promise that resolves when the migration is complete.
  */
-async function up({ context: { queryInterface, logger } }) {
+async function up({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   // Upwards migration script
   logger.info('[2.15.2 migration] UPGRADE BEGIN: 2.15.2-index-creation')
 
   // Create index for bookAuthors
   logger.info('[2.15.2 migration] Creating index for bookAuthors')
-  const bookAuthorsIndexes = await queryInterface.showIndex('bookAuthors')
+  // cast(b): Sequelize types showIndex as Promise<object>; it resolves to the list of index rows
+  const bookAuthorsIndexes = (await queryInterface.showIndex('bookAuthors')) as { name: string }[]
   if (!bookAuthorsIndexes.some((index) => index.name === 'bookAuthor_authorId')) {
     await queryInterface.addIndex('bookAuthors', ['authorId'], {
       name: 'bookAuthor_authorId'
@@ -30,7 +24,8 @@ async function up({ context: { queryInterface, logger } }) {
 
   // Create index for bookSeries
   logger.info('[2.15.2 migration] Creating index for bookSeries')
-  const bookSeriesIndexes = await queryInterface.showIndex('bookSeries')
+  // cast(b): Sequelize types showIndex as Promise<object>; it resolves to the list of index rows
+  const bookSeriesIndexes = (await queryInterface.showIndex('bookSeries')) as { name: string }[]
   if (!bookSeriesIndexes.some((index) => index.name === 'bookSeries_seriesId')) {
     await queryInterface.addIndex('bookSeries', ['seriesId'], {
       name: 'bookSeries_seriesId'
@@ -45,7 +40,8 @@ async function up({ context: { queryInterface, logger } }) {
 
   // Create index for podcastEpisode and createdAt
   logger.info('[2.15.2 migration] Creating index for podcastEpisode and createdAt')
-  const podcastEpisodesIndexes = await queryInterface.showIndex('podcastEpisodes')
+  // cast(b): Sequelize types showIndex as Promise<object>; it resolves to the list of index rows
+  const podcastEpisodesIndexes = (await queryInterface.showIndex('podcastEpisodes')) as { name: string }[]
   if (!podcastEpisodesIndexes.some((index) => index.name === 'podcastEpisode_createdAt_podcastId')) {
     await queryInterface.addIndex('podcastEpisodes', ['createdAt', 'podcastId'], {
       name: 'podcastEpisode_createdAt_podcastId'
@@ -61,10 +57,10 @@ async function up({ context: { queryInterface, logger } }) {
 /**
  * This downward migration script removes the newly created indexes and re-adds the old index on the `podcastEpisodes` table.
  *
- * @param {MigrationOptions} options - an object containing the migration context.
- * @returns {Promise<void>} - A promise that resolves when the migration is complete.
+ * @param options - an object containing the migration context.
+ * @returns A promise that resolves when the migration is complete.
  */
-async function down({ context: { queryInterface, logger } }) {
+async function down({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   // Downward migration script
   logger.info('[2.15.2 migration] DOWNGRADE BEGIN: 2.15.2-index-creation')
 
@@ -90,4 +86,4 @@ async function down({ context: { queryInterface, logger } }) {
   logger.info('[2.15.2 migration] DOWNGRADE END: 2.15.2-index-creation')
 }
 
-module.exports = { up, down }
+export = { up, down }

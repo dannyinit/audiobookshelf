@@ -1,13 +1,12 @@
-const util = require('util')
+import util = require('util')
+import type { DataTypes as SequelizeDataTypes, Sequelize } from 'sequelize'
+import type { ModelAttributeColumnOptions, QueryInterface } from 'sequelize'
+import type { MigrationContext, MigrationOptions } from './types'
 
 /**
- * @typedef MigrationContext
- * @property {import('sequelize').QueryInterface} queryInterface - a suquelize QueryInterface object.
- * @property {import('../Logger')} logger - a Logger object.
- *
- * @typedef MigrationOptions
- * @property {MigrationContext} context - an object containing the migration context.
+ * An index column: a column name or a column with a collation
  */
+type IndexColumn = string | { name: string; collate: string }
 
 const migrationVersion = '2.19.1'
 const migrationName = `${migrationVersion}-copy-title-to-library-items`
@@ -18,19 +17,21 @@ const loggerPrefix = `[${migrationVersion} migration]`
  * and creates a new index on the title column. In addition it sets a trigger on the books table to update the title column
  * in the libraryItems table when a book is updated.
  *
- * @param {MigrationOptions} options - an object containing the migration context.
- * @returns {Promise<void>} - A promise that resolves when the migration is complete.
+ * @param options - an object containing the migration context.
+ * @returns A promise that resolves when the migration is complete.
  */
-async function up({ context: { queryInterface, logger } }) {
+async function up({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   // Upwards migration script
   logger.info(`${loggerPrefix} UPGRADE BEGIN: ${migrationName}`)
 
-  await addColumn(queryInterface, logger, 'libraryItems', 'title', { type: queryInterface.sequelize.Sequelize.STRING, allowNull: true })
+  // cast(b): sequelize copies the data types onto the Sequelize class at runtime; its types only export them from the module
+  await addColumn(queryInterface, logger, 'libraryItems', 'title', { type: (queryInterface.sequelize.Sequelize as typeof Sequelize & typeof SequelizeDataTypes).STRING, allowNull: true })
   await copyColumn(queryInterface, logger, 'books', 'title', 'id', 'libraryItems', 'title', 'mediaId')
   await addTrigger(queryInterface, logger, 'books', 'title', 'id', 'libraryItems', 'title', 'mediaId')
   await addIndex(queryInterface, logger, 'libraryItems', ['libraryId', 'mediaType', { name: 'title', collate: 'NOCASE' }])
 
-  await addColumn(queryInterface, logger, 'libraryItems', 'titleIgnorePrefix', { type: queryInterface.sequelize.Sequelize.STRING, allowNull: true })
+  // cast(b): sequelize copies the data types onto the Sequelize class at runtime; its types only export them from the module
+  await addColumn(queryInterface, logger, 'libraryItems', 'titleIgnorePrefix', { type: (queryInterface.sequelize.Sequelize as typeof Sequelize & typeof SequelizeDataTypes).STRING, allowNull: true })
   await copyColumn(queryInterface, logger, 'books', 'titleIgnorePrefix', 'id', 'libraryItems', 'titleIgnorePrefix', 'mediaId')
   await addTrigger(queryInterface, logger, 'books', 'titleIgnorePrefix', 'id', 'libraryItems', 'titleIgnorePrefix', 'mediaId')
   await addIndex(queryInterface, logger, 'libraryItems', ['libraryId', 'mediaType', { name: 'titleIgnorePrefix', collate: 'NOCASE' }])
@@ -44,10 +45,10 @@ async function up({ context: { queryInterface, logger } }) {
  * This downward migration script removes the title column from the libraryItems table, removes the trigger on the books table,
  * and removes the index on the title column.
  *
- * @param {MigrationOptions} options - an object containing the migration context.
- * @returns {Promise<void>} - A promise that resolves when the migration is complete.
+ * @param options - an object containing the migration context.
+ * @returns A promise that resolves when the migration is complete.
  */
-async function down({ context: { queryInterface, logger } }) {
+async function down({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   // Downward migration script
   logger.info(`${loggerPrefix} DOWNGRADE BEGIN: ${migrationName}`)
 
@@ -67,20 +68,22 @@ async function down({ context: { queryInterface, logger } }) {
 /**
  * Utility function to add an index to a table. If the index already z`exists, it logs a message and continues.
  *
- * @param {import('sequelize').QueryInterface} queryInterface
- * @param {import ('../Logger')} logger
- * @param {string} tableName
- * @param {string[]} columns
+ * @param queryInterface
+ * @param logger
+ * @param tableName
+ * @param columns - column names, or { name, collate } objects for a collated column
  */
-async function addIndex(queryInterface, logger, tableName, columns) {
+async function addIndex(queryInterface: QueryInterface, logger: MigrationContext['logger'], tableName: string, columns: IndexColumn[]) {
   const columnString = columns.map((column) => util.inspect(column)).join(', ')
   const indexName = convertToSnakeCase(`${tableName}_${columns.map((column) => (typeof column === 'string' ? column : column.name)).join('_')}`)
   try {
     logger.info(`${loggerPrefix} adding index on [${columnString}] to table ${tableName}. index name: ${indexName}"`)
-    await queryInterface.addIndex(tableName, columns)
+    // cast(b): Sequelize types addIndex attributes as string[], but it passes them on as index fields, which may be { name, collate } objects
+    await queryInterface.addIndex(tableName, columns as string[])
     logger.info(`${loggerPrefix} added index on [${columnString}] to table ${tableName}. index name: ${indexName}"`)
   } catch (error) {
-    if (error.name === 'SequelizeDatabaseError' && error.message.includes('already exists')) {
+    // cast(d): catch variable is unknown
+    if ((error as Error).name === 'SequelizeDatabaseError' && (error as Error).message.includes('already exists')) {
       logger.info(`${loggerPrefix} index [${columnString}] for table "${tableName}" already exists`)
     } else {
       throw error
@@ -97,13 +100,13 @@ async function addIndex(queryInterface, logger, tableName, columns) {
  * @param {string} tableName
  * @param {string[]} columns
  */
-async function removeIndex(queryInterface, logger, tableName, columns) {
+async function removeIndex(queryInterface: QueryInterface, logger: MigrationContext['logger'], tableName: string, columns: string[]) {
   logger.info(`${loggerPrefix} removing index [${columns.join(', ')}] from table "${tableName}"`)
   await queryInterface.removeIndex(tableName, columns)
   logger.info(`${loggerPrefix} removed index [${columns.join(', ')}] from table "${tableName}"`)
 }
 
-async function addColumn(queryInterface, logger, table, column, options) {
+async function addColumn(queryInterface: QueryInterface, logger: MigrationContext['logger'], table: string, column: string, options: ModelAttributeColumnOptions) {
   logger.info(`${loggerPrefix} adding column "${column}" to table "${table}"`)
   const tableDescription = await queryInterface.describeTable(table)
   if (!tableDescription[column]) {
@@ -114,13 +117,13 @@ async function addColumn(queryInterface, logger, table, column, options) {
   }
 }
 
-async function removeColumn(queryInterface, logger, table, column) {
+async function removeColumn(queryInterface: QueryInterface, logger: MigrationContext['logger'], table: string, column: string) {
   logger.info(`${loggerPrefix} removing column "${column}" from table "${table}"`)
   await queryInterface.removeColumn(table, column)
   logger.info(`${loggerPrefix} removed column "${column}" from table "${table}"`)
 }
 
-async function copyColumn(queryInterface, logger, sourceTable, sourceColumn, sourceIdColumn, targetTable, targetColumn, targetIdColumn) {
+async function copyColumn(queryInterface: QueryInterface, logger: MigrationContext['logger'], sourceTable: string, sourceColumn: string, sourceIdColumn: string, targetTable: string, targetColumn: string, targetIdColumn: string) {
   logger.info(`${loggerPrefix} copying column "${sourceColumn}" from table "${sourceTable}" to table "${targetTable}"`)
   await queryInterface.sequelize.query(`
     UPDATE ${targetTable}
@@ -131,7 +134,7 @@ async function copyColumn(queryInterface, logger, sourceTable, sourceColumn, sou
   logger.info(`${loggerPrefix} copied column "${sourceColumn}" from table "${sourceTable}" to table "${targetTable}"`)
 }
 
-async function addTrigger(queryInterface, logger, sourceTable, sourceColumn, sourceIdColumn, targetTable, targetColumn, targetIdColumn) {
+async function addTrigger(queryInterface: QueryInterface, logger: MigrationContext['logger'], sourceTable: string, sourceColumn: string, sourceIdColumn: string, targetTable: string, targetColumn: string, targetIdColumn: string) {
   logger.info(`${loggerPrefix} adding trigger to update ${targetTable}.${targetColumn} when ${sourceTable}.${sourceColumn} is updated`)
   const triggerName = convertToSnakeCase(`update_${targetTable}_${targetColumn}`)
 
@@ -150,15 +153,15 @@ async function addTrigger(queryInterface, logger, sourceTable, sourceColumn, sou
   logger.info(`${loggerPrefix} added trigger to update ${targetTable}.${targetColumn} when ${sourceTable}.${sourceColumn} is updated`)
 }
 
-async function removeTrigger(queryInterface, logger, targetTable, targetColumn) {
+async function removeTrigger(queryInterface: QueryInterface, logger: MigrationContext['logger'], targetTable: string, targetColumn: string) {
   logger.info(`${loggerPrefix} removing trigger to update ${targetTable}.${targetColumn}`)
   const triggerName = convertToSnakeCase(`update_${targetTable}_${targetColumn}`)
   await queryInterface.sequelize.query(`DROP TRIGGER IF EXISTS ${triggerName}`)
   logger.info(`${loggerPrefix} removed trigger to update ${targetTable}.${targetColumn}`)
 }
 
-function convertToSnakeCase(str) {
+function convertToSnakeCase(str: string): string {
   return str.replace(/([A-Z])/g, '_$1').toLowerCase()
 }
 
-module.exports = { up, down }
+export = { up, down }

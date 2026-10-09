@@ -1,11 +1,5 @@
-/**
- * @typedef MigrationContext
- * @property {import('sequelize').QueryInterface} queryInterface - a Sequelize QueryInterface object.
- * @property {import('../Logger')} logger - a Logger object.
- *
- * @typedef MigrationOptions
- * @property {MigrationContext} context - an object containing the migration context.
- */
+import type { DataTypes as SequelizeDataTypes, Sequelize } from 'sequelize'
+import type { MigrationOptions } from './types'
 
 const migrationVersion = '2.35.0'
 const migrationName = `${migrationVersion}-add-last-refresh-token`
@@ -14,10 +8,10 @@ const loggerPrefix = `[${migrationVersion} migration]`
 /**
  * This migration script adds lastRefreshToken and lastRefreshTokenExpiresAt columns to the sessions table.
  *
- * @param {MigrationOptions} options - an object containing the migration context.
- * @returns {Promise<void>} - A promise that resolves when the migration is complete.
+ * @param options - an object containing the migration context.
+ * @returns A promise that resolves when the migration is complete.
  */
-async function up({ context: { queryInterface, logger } }) {
+async function up({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   logger.info(`${loggerPrefix} UPGRADE BEGIN: ${migrationName}`)
 
   if (await queryInterface.tableExists('sessions')) {
@@ -26,7 +20,8 @@ async function up({ context: { queryInterface, logger } }) {
     if (!tableDescription.lastRefreshToken) {
       logger.info(`${loggerPrefix} Adding lastRefreshToken column to sessions table`)
       await queryInterface.addColumn('sessions', 'lastRefreshToken', {
-        type: queryInterface.sequelize.Sequelize.DataTypes.STRING,
+        // cast(b): sequelize sets DataTypes on the Sequelize class at runtime; its types only export it from the module
+        type: (queryInterface.sequelize.Sequelize as typeof Sequelize & { DataTypes: typeof SequelizeDataTypes }).DataTypes.STRING,
         allowNull: true
       })
     } else {
@@ -36,7 +31,8 @@ async function up({ context: { queryInterface, logger } }) {
     if (!tableDescription.lastRefreshTokenExpiresAt) {
       logger.info(`${loggerPrefix} Adding lastRefreshTokenExpiresAt column to sessions table`)
       await queryInterface.addColumn('sessions', 'lastRefreshTokenExpiresAt', {
-        type: queryInterface.sequelize.Sequelize.DataTypes.DATE,
+        // cast(b): sequelize sets DataTypes on the Sequelize class at runtime; its types only export it from the module
+        type: (queryInterface.sequelize.Sequelize as typeof Sequelize & { DataTypes: typeof SequelizeDataTypes }).DataTypes.DATE,
         allowNull: true
       })
     } else {
@@ -52,10 +48,10 @@ async function up({ context: { queryInterface, logger } }) {
 /**
  * This migration script removes the lastRefreshToken and lastRefreshTokenExpiresAt columns from the sessions table.
  *
- * @param {MigrationOptions} options - an object containing the migration context.
- * @returns {Promise<void>} - A promise that resolves when the migration is complete.
+ * @param options - an object containing the migration context.
+ * @returns A promise that resolves when the migration is complete.
  */
-async function down({ context: { queryInterface, logger } }) {
+async function down({ context: { queryInterface, logger } }: MigrationOptions): Promise<void> {
   logger.info(`${loggerPrefix} DOWNGRADE BEGIN: ${migrationName}`)
 
   if (await queryInterface.tableExists('sessions')) {
@@ -81,4 +77,4 @@ async function down({ context: { queryInterface, logger } }) {
   logger.info(`${loggerPrefix} DOWNGRADE END: ${migrationName}`)
 }
 
-module.exports = { up, down }
+export = { up, down }
