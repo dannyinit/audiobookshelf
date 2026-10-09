@@ -28,7 +28,7 @@ const countCache = new Map<string, number>()
  * Book model as loaded by these queries. The included associations are optional because the mapping code
  * moves them around (bookSeries -> series, bookAuthors -> authors, libraryItem -> libraryItem.media)
  */
-type BookRow = Omit<Book, 'series' | 'authors'> & {
+type BookRow = Omit<Book, 'series' | 'authors' | 'bookSeries' | 'bookAuthors'> & {
   libraryItem?: FilteredLibraryItem
   bookSeries?: BookSeriesRow[]
   bookAuthors?: BookAuthorRow[]

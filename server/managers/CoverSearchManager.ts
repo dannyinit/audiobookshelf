@@ -1,14 +1,41 @@
-const { setMaxListeners } = require('events')
-const Logger = require('../Logger')
-const BookFinder = require('../finders/BookFinder')
-const PodcastFinder = require('../finders/PodcastFinder')
+import events = require('events')
+import Logger = require('../Logger')
+import BookFinder = require('../finders/BookFinder')
+import PodcastFinder = require('../finders/PodcastFinder')
+const { setMaxListeners } = events
+
+interface CoverSearchParams {
+  title: string
+  author?: string | null
+  provider: string
+  podcast?: boolean
+}
+
+/**
+ * Covers found by one provider
+ */
+interface CoverSearchResultChunk {
+  provider: string
+  covers: string[]
+  total: number
+}
+
+type OnResult = (result: CoverSearchResultChunk) => void
+/**
+ * Provider error callback (SocketAuthority emits the provider and the error message)
+ */
+type OnError = (provider: string, errorMessage?: string) => void
 
 /**
  * Manager for handling streaming cover search across multiple providers
  */
 class CoverSearchManager {
+  declare activeSearches: Map<string, AbortController>
+  declare providerTimeout: number
+  declare maxListeners: number
+
   constructor() {
-    /** @type {Map<string, AbortController>} Map of requestId to AbortController */
+    // Map of requestId to AbortController
     this.activeSearches = new Map()
 
     // Default timeout for each provider search
@@ -21,17 +48,13 @@ class CoverSearchManager {
 
   /**
    * Start a streaming cover search
-   * @param {string} requestId - Unique identifier for this search request
-   * @param {Object} searchParams - Search parameters
-   * @param {string} searchParams.title - Title to search for
-   * @param {string} searchParams.author - Author to search for (optional)
-   * @param {string} searchParams.provider - Provider to search (or 'all')
-   * @param {boolean} searchParams.podcast - Whether this is a podcast search
-   * @param {Function} onResult - Callback for each result chunk
-   * @param {Function} onComplete - Callback when search completes
-   * @param {Function} onError - Callback for errors
+   * @param requestId - Unique identifier for this search request
+   * @param searchParams - Search parameters: title to search for, author (optional), provider to search (or 'all'), podcast (whether this is a podcast search)
+   * @param onResult - Callback for each result chunk
+   * @param onComplete - Callback when search completes
+   * @param onError - Callback for errors
    */
-  async startSearch(requestId, searchParams, onResult, onComplete, onError) {
+  async startSearch(requestId: string, searchParams: CoverSearchParams, onResult: OnResult, onComplete: () => void, onError: OnError) {
     if (this.activeSearches.has(requestId)) {
       Logger.warn(`[CoverSearchManager] Search with requestId ${requestId} already exists`)
       return
@@ -60,11 +83,14 @@ class CoverSearchManager {
         onComplete()
       }
     } catch (error) {
-      if (error.name === 'AbortError') {
+      // cast(d): catch variable is unknown
+      if ((error as Error).name === 'AbortError') {
         Logger.info(`[CoverSearchManager] Search ${requestId} was cancelled`)
       } else {
         Logger.error(`[CoverSearchManager] Search ${requestId} failed:`, error)
-        onError(error.message)
+        // NOTE: onError takes (provider, errorMessage); the message is passed as the provider and the error message is undefined
+        // cast(d): catch variable is unknown
+        onError((error as Error).message)
       }
     } finally {
       this.activeSearches.delete(requestId)
@@ -73,9 +99,9 @@ class CoverSearchManager {
 
   /**
    * Cancel an active search
-   * @param {string} requestId - Request ID to cancel
+   * @param requestId - Request ID to cancel
    */
-  cancelSearch(requestId) {
+  cancelSearch(requestId: string) {
     const abortController = this.activeSearches.get(requestId)
     if (abortController) {
       Logger.info(`[CoverSearchManager] Cancelling search ${requestId}`)
@@ -89,7 +115,7 @@ class CoverSearchManager {
   /**
    * Search for podcast covers
    */
-  async searchPodcastCovers(requestId, title, signal, onResult, onError) {
+  async searchPodcastCovers(requestId: string, title: string, signal: AbortSignal, onResult: OnResult, onError: OnError) {
     try {
       const results = await this.executeWithTimeout(() => PodcastFinder.findCovers(title), this.providerTimeout, signal)
 
@@ -104,9 +130,11 @@ class CoverSearchManager {
         })
       }
     } catch (error) {
-      if (error.name !== 'AbortError') {
+      // cast(d): catch variable is unknown
+      if ((error as Error).name !== 'AbortError') {
         Logger.error(`[CoverSearchManager] Podcast search failed:`, error)
-        onError('itunes', error.message)
+        // cast(d): catch variable is unknown
+        onError('itunes', (error as Error).message)
       }
     }
   }
@@ -114,8 +142,8 @@ class CoverSearchManager {
   /**
    * Search for book covers across providers
    */
-  async searchBookCovers(requestId, provider, title, author, signal, onResult, onError) {
-    let providers = []
+  async searchBookCovers(requestId: string, provider: string, title: string, author: string | null | undefined, signal: AbortSignal, onResult: OnResult, onError: OnError) {
+    let providers: string[] = []
 
     if (provider === 'all') {
       providers = [...BookFinder.providers]
@@ -149,9 +177,12 @@ class CoverSearchManager {
           })
         }
       } catch (error) {
-        if (error.name !== 'AbortError') {
-          Logger.warn(`[CoverSearchManager] Provider ${providerName} failed:`, error.message)
-          onError(providerName, error.message)
+        // cast(d): catch variable is unknown
+        if ((error as Error).name !== 'AbortError') {
+          // cast(d): catch variable is unknown
+          Logger.warn(`[CoverSearchManager] Provider ${providerName} failed:`, (error as Error).message)
+          // cast(d): catch variable is unknown
+          onError(providerName, (error as Error).message)
         }
       }
     })
@@ -162,10 +193,10 @@ class CoverSearchManager {
   /**
    * Execute a promise with timeout and abort signal
    */
-  async executeWithTimeout(fn, timeout, signal) {
+  async executeWithTimeout<T>(fn: () => Promise<T>, timeout: number, signal: AbortSignal): Promise<T> {
     return new Promise(async (resolve, reject) => {
-      let abortHandler = null
-      let timeoutId = null
+      let abortHandler: (() => void) | null = null
+      let timeoutId: NodeJS.Timeout | null = null
 
       // Cleanup function to ensure we always remove listeners
       const cleanup = () => {
@@ -219,8 +250,8 @@ class CoverSearchManager {
   /**
    * Extract cover URLs from search results
    */
-  extractCoversFromResults(results) {
-    const covers = []
+  extractCoversFromResults(results: unknown) {
+    const covers: string[] = []
     if (!Array.isArray(results)) return covers
 
     results.forEach((result) => {
@@ -251,4 +282,4 @@ class CoverSearchManager {
   }
 }
 
-module.exports = new CoverSearchManager()
+export = new CoverSearchManager()

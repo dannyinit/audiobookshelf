@@ -348,7 +348,8 @@ async function addCoverAndMetadataToFile(
   coverFilePath: string | null,
   metadataFilePath: string,
   track: number,
-  mimeType: string,
+  /** null when the files of a book have different mime types (see AudioMetadataManager); only compared below */
+  mimeType: string | null,
   progressCB: ((percent: number) => void) | null = null,
   ffmpeg: Ffmpeg.FfmpegCommand = Ffmpeg(),
   copyFunc: (srcPath: string, destPath: string) => Promise<void> = copyToExisting

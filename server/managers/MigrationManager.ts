@@ -1,20 +1,77 @@
-const { Umzug, SequelizeStorage } = require('../libs/umzug')
-const { Sequelize, DataTypes } = require('sequelize')
-const semver = require('semver')
-const path = require('path')
-const Module = require('module')
-const fs = require('../libs/fsExtra')
-const Logger = require('../Logger')
+import umzugModule = require('../libs/umzug')
+import sequelizeModule = require('sequelize')
+import semver = require('semver')
+import path = require('path')
+import Module = require('module')
+import fs = require('../libs/fsExtra')
+import Logger = require('../Logger')
+// cast(b): sequelize sets QueryTypes on the Sequelize class at runtime; its types only export it from the module
+const { Sequelize, DataTypes } = sequelizeModule as typeof sequelizeModule & { Sequelize: { QueryTypes: typeof sequelizeModule.QueryTypes } }
+
+/**
+ * Migration as the vendored umzug lists it
+ */
+interface UmzugMigration {
+  name: string
+}
+
+interface UmzugOptions {
+  migrations:
+    | {
+        files: string[]
+        resolve: (params: { path: string; name: string }) => { name: string; path: string; up: unknown; down: unknown }
+      }
+    | (() => Promise<UmzugMigration[]>)
+  context?: unknown
+  storage?: unknown
+  logger?: unknown
+}
+
+interface UmzugInstance {
+  options: UmzugOptions
+  migrations(): Promise<UmzugMigration[]>
+  executed(): Promise<UmzugMigration[]>
+  up(options: { migrations: string[]; rerun: string }): Promise<unknown>
+  down(options: { migrations: string[]; rerun: string }): Promise<unknown>
+}
+
+/**
+ * The parts of the vendored umzug (server/libs/umzug) used here
+ */
+interface UmzugModule {
+  Umzug: new (options: UmzugOptions) => UmzugInstance
+  SequelizeStorage: new (options: { sequelize: sequelizeModule.Sequelize }) => unknown
+}
+
+// cast(a): the vendored umzug re-exports its modules at runtime (__exportStar), which TypeScript does not follow
+const { Umzug, SequelizeStorage } = umzugModule as unknown as UmzugModule
+
+/**
+ * Node's internal module API used to load a migration script as if it were in the migrations source dir
+ */
+type InternalModule = Module & { _compile(content: string, filename: string): void }
+type InternalModuleStatic = typeof Module & { _nodeModulePaths(from: string): string[] }
 
 class MigrationManager {
   static MIGRATIONS_META_TABLE = 'migrationsMeta'
 
+  declare sequelize: sequelizeModule.Sequelize
+  declare isDatabaseNew: boolean
+  declare configPath: string
+  declare migrationsSourceDir: string
+  declare initialized: boolean
+  declare migrationsDir: string | null
+  declare maxVersion: string | null
+  declare databaseVersion: string | null
+  declare serverVersion: string | null
+  declare umzug: UmzugInstance | null
+
   /**
-   * @param {import('../Database').sequelize} sequelize
-   * @param {boolean} isDatabaseNew
-   * @param {string} [configPath]
+   * @param [configPath]
    */
-  constructor(sequelize, isDatabaseNew, configPath = global.configPath) {
+  // NOTE: the default reads global.configPath, which is never set (the global is ConfigPath); Database passes the config path, so the default is not used
+  // cast(c): read as in the JS (see NOTE above)
+  constructor(sequelize: sequelizeModule.Sequelize, isDatabaseNew: boolean, configPath = (global as typeof globalThis & { configPath?: string }).configPath) {
     if (!sequelize || !(sequelize instanceof Sequelize)) throw new Error('Sequelize instance is required for MigrationManager.')
     this.sequelize = sequelize
     this.isDatabaseNew = isDatabaseNew
@@ -31,17 +88,16 @@ class MigrationManager {
 
   /**
    * Init version vars and copy migration files to config dir if necessary
-   *
-   * @param {string} serverVersion
    */
-  async init(serverVersion) {
+  async init(serverVersion: string) {
     if (!(await fs.pathExists(this.configPath))) throw new Error(`Config path does not exist: ${this.configPath}`)
 
     this.migrationsDir = path.join(this.configPath, 'migrations')
     try {
       await fs.ensureDir(this.migrationsDir)
     } catch (error) {
-      Logger.error(`[MigrationManager] Failed to create migrations directory at "${this.migrationsDir}": ${error.message}`)
+      // cast(d): catch variable is unknown
+      Logger.error(`[MigrationManager] Failed to create migrations directory at "${this.migrationsDir}": ${(error as Error).message}`)
       throw new Error(`[MigrationManager] Failed to create migrations directory at "${this.migrationsDir}"`, { cause: error })
     }
 
@@ -77,19 +133,22 @@ class MigrationManager {
       return
     }
 
-    const versionCompare = semver.compare(this.serverVersion, this.databaseVersion)
+    // Both are set by init (checked above)
+    const versionCompare = semver.compare(this.serverVersion!, this.databaseVersion!)
     if (versionCompare == 0) {
       Logger.info('[MigrationManager] Database is already up to date.')
       return
     }
 
     await this.initUmzug()
-    const migrations = await this.umzug.migrations()
-    const executedMigrations = (await this.umzug.executed()).map((m) => m.name)
+    // Set by initUmzug
+    const migrations = await this.umzug!.migrations()
+    // Set by initUmzug
+    const executedMigrations = (await this.umzug!.executed()).map((m) => m.name)
 
     const migrationDirection = versionCompare == 1 ? 'up' : 'down'
 
-    let migrationsToRun = []
+    let migrationsToRun: string[] = []
     migrationsToRun = this.findMigrationsToRun(migrations, executedMigrations, migrationDirection)
 
     // Only proceed with migration if there are migrations to run
@@ -104,7 +163,8 @@ class MigrationManager {
         Logger.info('Created a backup of the original database.')
 
         // Run migrations
-        await this.umzug[migrationDirection]({ migrations: migrationsToRun, rerun: 'ALLOW' })
+        // Set by initUmzug
+        await this.umzug![migrationDirection]({ migrations: migrationsToRun, rerun: 'ALLOW' })
 
         // Clean up the backup
         await fs.remove(backupDbPath)
@@ -133,14 +193,16 @@ class MigrationManager {
     await this.updateDatabaseVersion()
   }
 
-  async initUmzug(umzugStorage = new SequelizeStorage({ sequelize: this.sequelize })) {
+  async initUmzug(umzugStorage: unknown = new SequelizeStorage({ sequelize: this.sequelize })) {
     // This check is for dependency injection in tests
-    const files = (await fs.readdir(this.migrationsDir))
+    // migrationsDir is set by init
+    const files = (await fs.readdir(this.migrationsDir!))
       .filter((file) => {
         // Only include .js files and exclude dot files
         return !file.startsWith('.') && path.extname(file).toLowerCase() === '.js'
       })
-      .map((file) => path.join(this.migrationsDir, file))
+      // migrationsDir is set by init
+      .map((file) => path.join(this.migrationsDir!, file))
 
     // Validate migration names
     for (const file of files) {
@@ -160,9 +222,11 @@ class MigrationManager {
           const migrationName = params.name
           const contents = fs.readFileSync(migrationPath, 'utf8')
           const fakePath = path.join(this.migrationsSourceDir, path.basename(migrationPath))
-          const module = new Module(fakePath)
+          // cast(d): Node's internal module API (_compile) is not in the node types
+          const module = new Module(fakePath) as InternalModule
           module.filename = fakePath
-          module.paths = Module._nodeModulePaths(this.migrationsSourceDir)
+          // cast(d): Node's internal module API (_nodeModulePaths) is not in the node types
+          module.paths = (Module as InternalModuleStatic)._nodeModulePaths(this.migrationsSourceDir)
           module._compile(contents, fakePath)
           const script = module.exports
           return {
@@ -185,7 +249,8 @@ class MigrationManager {
         (await parent.migrations()).sort((a, b) => {
           const versionA = this.extractVersionFromTag(a.name)
           const versionB = this.extractVersionFromTag(b.name)
-          return semver.compare(versionA, versionB)
+          // Migration names were validated above (each has a version)
+          return semver.compare(versionA!, versionB!)
         })
     })
   }
@@ -193,13 +258,13 @@ class MigrationManager {
   async fetchVersionsFromDatabase() {
     await this.checkOrCreateMigrationsMetaTable()
 
-    const [{ version }] = await this.sequelize.query("SELECT value as version FROM :migrationsMeta WHERE key = 'version'", {
+    const [{ version }] = await this.sequelize.query<{ version: string }>("SELECT value as version FROM :migrationsMeta WHERE key = 'version'", {
       replacements: { migrationsMeta: MigrationManager.MIGRATIONS_META_TABLE },
       type: Sequelize.QueryTypes.SELECT
     })
     this.databaseVersion = version
 
-    const [{ maxVersion }] = await this.sequelize.query("SELECT value as maxVersion FROM :migrationsMeta WHERE key = 'maxVersion'", {
+    const [{ maxVersion }] = await this.sequelize.query<{ maxVersion: string }>("SELECT value as maxVersion FROM :migrationsMeta WHERE key = 'maxVersion'", {
       replacements: { migrationsMeta: MigrationManager.MIGRATIONS_META_TABLE },
       type: Sequelize.QueryTypes.SELECT
     })
@@ -212,7 +277,7 @@ class MigrationManager {
 
     // If the table exists, check that the `version` and `maxVersion` rows exist
     if (migrationsMetaTableExists) {
-      const [{ count }] = await this.sequelize.query("SELECT COUNT(*) as count FROM :migrationsMeta WHERE key IN ('version', 'maxVersion')", {
+      const [{ count }] = await this.sequelize.query<{ count: number }>("SELECT COUNT(*) as count FROM :migrationsMeta WHERE key IN ('version', 'maxVersion')", {
         replacements: { migrationsMeta: MigrationManager.MIGRATIONS_META_TABLE },
         type: Sequelize.QueryTypes.SELECT
       })
@@ -249,7 +314,7 @@ class MigrationManager {
     }
   }
 
-  extractVersionFromTag(tag) {
+  extractVersionFromTag(tag: string | null | undefined) {
     if (!tag) return null
     const versionMatch = tag.match(/^v?(\d+\.\d+\.\d+)/)
     return versionMatch ? versionMatch[1] : null
@@ -264,7 +329,8 @@ class MigrationManager {
         .filter((file) => path.extname(file) === '.js')
         .map(async (file) => {
           const sourceFile = path.join(this.migrationsSourceDir, file)
-          const targetFile = path.join(this.migrationsDir, file)
+          // migrationsDir is set by init
+          const targetFile = path.join(this.migrationsDir!, file)
           await fs.copy(sourceFile, targetFile) // Asynchronously copy the files
         })
     )
@@ -272,21 +338,21 @@ class MigrationManager {
   }
 
   /**
-   *
-   * @param {{ name: string }[]} migrations
-   * @param {string[]} executedMigrations - names of executed migrations
-   * @param {string} direction - 'up' or 'down'
-   * @returns {string[]} - names of migrations to run
+   * @param executedMigrations - names of executed migrations
+   * @param direction - 'up' or 'down'
+   * @returns names of migrations to run
    */
-  findMigrationsToRun(migrations, executedMigrations, direction) {
+  findMigrationsToRun(migrations: { name: string }[], executedMigrations: string[], direction: string): string[] {
     const migrationsToRun = migrations
       .filter((migration) => {
-        const migrationVersion = this.extractVersionFromTag(migration.name)
+        // initUmzug validated that every migration name has a version
+        const migrationVersion = this.extractVersionFromTag(migration.name)!
+        // The database and server versions are set by init
         if (direction === 'up') {
-          return semver.gt(migrationVersion, this.databaseVersion) && semver.lte(migrationVersion, this.serverVersion) && !executedMigrations.includes(migration.name)
+          return semver.gt(migrationVersion, this.databaseVersion!) && semver.lte(migrationVersion, this.serverVersion!) && !executedMigrations.includes(migration.name)
         } else {
           // A down migration should be run even if the associated up migration wasn't executed before
-          return semver.lte(migrationVersion, this.databaseVersion) && semver.gt(migrationVersion, this.serverVersion)
+          return semver.lte(migrationVersion, this.databaseVersion!) && semver.gt(migrationVersion, this.serverVersion!)
         }
       })
       .map((migration) => migration.name)
@@ -322,4 +388,4 @@ class MigrationManager {
   }
 }
 
-module.exports = MigrationManager
+export = MigrationManager

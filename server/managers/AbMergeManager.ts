@@ -1,45 +1,73 @@
-const Path = require('path')
-const fs = require('../libs/fsExtra')
-const Logger = require('../Logger')
-const TaskManager = require('./TaskManager')
-const Task = require('../objects/Task')
-const ffmpegHelpers = require('../utils/ffmpegHelpers')
-const Ffmpeg = require('../libs/fluentFfmpeg')
-const SocketAuthority = require('../SocketAuthority')
-const { isWritable, copyToExisting } = require('../utils/fileUtils')
-const TrackProgressMonitor = require('../objects/TrackProgressMonitor')
+import Path = require('path')
+import fs = require('../libs/fsExtra')
+import Logger = require('../Logger')
+import TaskManager = require('./TaskManager')
+import Task = require('../objects/Task')
+import ffmpegHelpers = require('../utils/ffmpegHelpers')
+import Ffmpeg = require('../libs/fluentFfmpeg')
+import SocketAuthority = require('../SocketAuthority')
+import fileUtils = require('../utils/fileUtils')
+import TrackProgressMonitor = require('../objects/TrackProgressMonitor')
+import type LibraryItem = require('../models/LibraryItem')
+import type { ChapterObject } from '../models/types'
+const { isWritable, copyToExisting } = fileUtils
 
 /**
- * @typedef AbMergeEncodeOptions
- * @property {string} codec
- * @property {string} channels
- * @property {string} bitrate
+ * Encode options (codec, channels, bitrate) from the request
  */
+type AbMergeEncodeOptions = Parameters<typeof ffmpegHelpers.mergeAudioFiles>[4]
+
+/**
+ * Data of an encode-m4b task (set in startAudiobookMerge)
+ */
+type MergeTaskData = {
+  libraryItemId: string
+  libraryItemDir: string
+  userId: string
+  originalTrackPaths: string[]
+  inos: string[]
+  tempFilepath: string
+  targetFilename: string
+  targetFilepath: string
+  itemCachePath: string
+  ffmetadataObject: ReturnType<typeof ffmpegHelpers.getFFMetadataObject>
+  chapters: ChapterObject[]
+  coverPath: string | null
+  ffmetadataPath: string
+  duration: number
+  encodeOptions: AbMergeEncodeOptions
+  /** Set while ffmpeg runs, so the task can be cancelled */
+  ffmpeg?: CancellableFfmpegCommand
+}
+
+/**
+ * fluent-ffmpeg command; kill defaults the signal to SIGKILL (the vendored typings require the signal)
+ */
+type CancellableFfmpegCommand = Omit<Ffmpeg.FfmpegCommand, 'kill'> & { kill(signal?: string): Ffmpeg.FfmpegCommand }
+
+/**
+ * Task with its encode-m4b data
+ */
+type MergeTask = Task & { data: MergeTaskData }
 
 class AbMergeManager {
+  declare itemsCacheDir: string
+  declare pendingTasks: { id: string | null; task: MergeTask }[]
+
   constructor() {
     this.itemsCacheDir = Path.join(global.MetadataPath, 'cache/items')
 
-    /** @type {Task[]} */
     this.pendingTasks = []
   }
 
-  /**
-   *
-   * @param {string} libraryItemId
-   * @returns {Task|null}
-   */
-  getPendingTaskByLibraryItemId(libraryItemId) {
+  getPendingTaskByLibraryItemId(libraryItemId: string) {
     return this.pendingTasks.find((t) => t.task.data.libraryItemId === libraryItemId)
   }
 
   /**
    * Cancel and fail running task
-   *
-   * @param {Task} task
-   * @returns {Promise<void>}
    */
-  cancelEncode(task) {
+  cancelEncode(task: MergeTask): Promise<void> {
     const taskFailedString = {
       text: 'Task canceled by user',
       key: 'MessageTaskCanceledByUser'
@@ -48,14 +76,9 @@ class AbMergeManager {
     return this.removeTask(task, true)
   }
 
-  /**
-   *
-   * @param {string} userId
-   * @param {import('../models/LibraryItem')} libraryItem
-   * @param {AbMergeEncodeOptions} [options={}]
-   */
-  async startAudiobookMerge(userId, libraryItem, options = {}) {
-    const task = new Task()
+  async startAudiobookMerge(userId: string, libraryItem: LibraryItem.BookLibraryItem, options: AbMergeEncodeOptions = {}) {
+    // cast(d): the data is set by setData below
+    const task = new Task() as MergeTask
 
     const audiobookBaseName = libraryItem.isFile ? Path.basename(libraryItem.path, Path.extname(libraryItem.path)) : Path.basename(libraryItem.path)
     const targetFilename = audiobookBaseName + '.m4b'
@@ -63,7 +86,7 @@ class AbMergeManager {
     const tempFilepath = Path.join(itemCachePath, targetFilename)
     const ffmetadataPath = Path.join(itemCachePath, 'ffmetadata.txt')
     const libraryItemDir = libraryItem.isFile ? Path.dirname(libraryItem.path) : libraryItem.path
-    const taskData = {
+    const taskData: MergeTaskData = {
       libraryItemId: libraryItem.id,
       libraryItemDir,
       userId,
@@ -101,13 +124,7 @@ class AbMergeManager {
     this.runAudiobookMerge(libraryItem, task, options || {})
   }
 
-  /**
-   *
-   * @param {import('../models/LibraryItem')} libraryItem
-   * @param {Task} task
-   * @param {AbMergeEncodeOptions} encodingOptions
-   */
-  async runAudiobookMerge(libraryItem, task, encodingOptions) {
+  async runAudiobookMerge(libraryItem: LibraryItem.BookLibraryItem, task: MergeTask, encodingOptions: AbMergeEncodeOptions) {
     // Make sure the target directory is writable
     if (!(await isWritable(task.data.libraryItemDir))) {
       Logger.error(`[AbMergeManager] Target directory is not writable: ${task.data.libraryItemDir}`)
@@ -149,12 +166,14 @@ class AbMergeManager {
         },
         (trackIndex) => SocketAuthority.adminEmitter('track_finished', { libraryItemId: libraryItem.id, ino: task.data.inos[trackIndex] })
       )
-      task.data.ffmpeg = new Ffmpeg()
+      // cast(a): the vendored fluent-ffmpeg is a function constructor, which TypeScript does not infer a construct signature for
+      task.data.ffmpeg = new (Ffmpeg as unknown as new () => Ffmpeg.FfmpegCommand)()
       await ffmpegHelpers.mergeAudioFiles(libraryItem.media.includedAudioFiles, task.data.duration, task.data.itemCachePath, task.data.tempFilepath, encodingOptions, (progress) => trackProgressMonitor.update(progress), task.data.ffmpeg)
       delete task.data.ffmpeg
       trackProgressMonitor.finish()
     } catch (error) {
-      if (error.message === 'FFMPEG_CANCELED') {
+      // cast(d): catch variable is unknown
+      if ((error as Error).message === 'FFMPEG_CANCELED') {
         Logger.info(`[AbMergeManager] Task cancelled ${task.id}`)
       } else {
         Logger.error(`[AbMergeManager] mergeAudioFiles failed`, error)
@@ -170,7 +189,8 @@ class AbMergeManager {
 
     // Write metadata to merged file
     try {
-      task.data.ffmpeg = new Ffmpeg()
+      // cast(a): the vendored fluent-ffmpeg is a function constructor, which TypeScript does not infer a construct signature for
+      task.data.ffmpeg = new (Ffmpeg as unknown as new () => Ffmpeg.FfmpegCommand)()
       await ffmpegHelpers.addCoverAndMetadataToFile(
         task.data.tempFilepath,
         task.data.coverPath,
@@ -185,7 +205,8 @@ class AbMergeManager {
       )
       delete task.data.ffmpeg
     } catch (error) {
-      if (error.message === 'FFMPEG_CANCELED') {
+      // cast(d): catch variable is unknown
+      if ((error as Error).message === 'FFMPEG_CANCELED') {
         Logger.info(`[AbMergeManager] Task cancelled ${task.id}`)
       } else {
         Logger.error(`[AbMergeManager] Failed to embed metadata in file "${task.data.tempFilepath}"`)
@@ -215,12 +236,12 @@ class AbMergeManager {
       Logger.debug(`[AbMergeManager] Backing up original track "${trackPath}" to ${moveToPath}`)
       if (index === 0) {
         // copy the first track to the cache directory
-        await fs.copy(trackPath, moveToPath).catch((err) => {
+        await fs.copy(trackPath, moveToPath).catch((err: Error) => {
           Logger.error(`[AbMergeManager] Failed to copy track "${trackPath}" to "${moveToPath}"`, err)
         })
       } else {
         // move the rest of the tracks to the cache directory
-        await fs.move(trackPath, moveToPath, { overwrite: true }).catch((err) => {
+        await fs.move(trackPath, moveToPath, { overwrite: true }).catch((err: Error) => {
           Logger.error(`[AbMergeManager] Failed to move track "${trackPath}" to "${moveToPath}"`, err)
         })
       }
@@ -254,10 +275,9 @@ class AbMergeManager {
   /**
    * Remove ab merge task
    *
-   * @param {Task} task
-   * @param {boolean} [removeTempFilepath=false]
+   * @param [removeTempFilepath=false]
    */
-  async removeTask(task, removeTempFilepath = false) {
+  async removeTask(task: MergeTask, removeTempFilepath = false) {
     Logger.info('[AbMergeManager] Removing task ' + task.id)
 
     const pendingTask = this.pendingTasks.find((d) => d.id === task.id)
@@ -267,7 +287,7 @@ class AbMergeManager {
         Logger.warn(`[AbMergeManager] Killing ffmpeg process for task ${task.id}`)
         task.data.ffmpeg.kill()
         // wait for ffmpeg to exit, so that the output file is unlocked
-        await new Promise((resolve) => setTimeout(resolve, 500))
+        await new Promise<void>((resolve) => setTimeout(resolve, 500))
       }
     }
 
@@ -279,7 +299,7 @@ class AbMergeManager {
           .then(() => {
             Logger.info('[AbMergeManager] Deleted target file', task.data.tempFilepath)
           })
-          .catch((err) => {
+          .catch((err: Error) => {
             Logger.error('[AbMergeManager] Failed to delete target file', err)
           })
       }
@@ -289,7 +309,7 @@ class AbMergeManager {
           .then(() => {
             Logger.info('[AbMergeManager] Deleted ffmetadata file', task.data.ffmetadataPath)
           })
-          .catch((err) => {
+          .catch((err: Error) => {
             Logger.error('[AbMergeManager] Failed to delete ffmetadata file', err)
           })
       }
@@ -298,4 +318,4 @@ class AbMergeManager {
     TaskManager.taskFinished(task)
   }
 }
-module.exports = AbMergeManager
+export = AbMergeManager

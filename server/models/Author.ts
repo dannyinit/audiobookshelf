@@ -2,6 +2,7 @@ import Sequelize = require('sequelize')
 import type { Attributes, CreationOptional, InferAttributes, InferCreationAttributes, InitOptions, ModelAttributes, ModelStatic, NonAttribute } from 'sequelize'
 import parseNameString = require('../utils/parsers/parseNameString')
 import type Book = require('./Book')
+import type BookAuthor = require('./BookAuthor')
 import type LibraryItem = require('./LibraryItem')
 import type { ModelsSequelize } from './types'
 const { DataTypes, Model, where, fn, col } = Sequelize
@@ -23,6 +24,9 @@ class Author extends Model<InferAttributes<Author>, InferCreationAttributes<Auth
 
   /** Loaded with their libraryItem (see getAllLibraryItemsForAuthor) */
   declare books?: NonAttribute<Book.BookExpandedWithLibraryItem[]>
+
+  /** The book_author join row, when the author is loaded through a book (like Series bookSeries) */
+  declare bookAuthor: NonAttribute<BookAuthor>
 
   static getLastFirst(name: string): string | null | undefined {
     if (!name) return null

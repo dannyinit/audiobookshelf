@@ -15,8 +15,8 @@ const { DataTypes, Model } = Sequelize
 
 interface FeedOptionsObject {
   preventIndexing: boolean
-  ownerName: string
-  ownerEmail: string
+  ownerName: string | null
+  ownerEmail: string | null
 }
 
 /**

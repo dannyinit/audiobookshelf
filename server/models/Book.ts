@@ -1,5 +1,5 @@
 import Sequelize = require('sequelize')
-import type { Attributes, CreationOptional, InferAttributes, InferCreationAttributes, InitOptions, ModelAttributes, ModelStatic, NonAttribute } from 'sequelize'
+import type { Attributes, BelongsToManyAddAssociationMixin, BelongsToManyGetAssociationsMixin, CreationOptional, InferAttributes, InferCreationAttributes, InitOptions, ModelAttributes, ModelStatic, NonAttribute } from 'sequelize'
 import Logger = require('../Logger')
 import utils = require('../utils')
 import parseNameString = require('../utils/parsers/parseNameString')
@@ -7,6 +7,8 @@ import htmlSanitizer = require('../utils/htmlSanitizer')
 import libraryItemsBookFilters = require('../utils/queries/libraryItemsBookFilters')
 import SocketAuthority = require('../SocketAuthority')
 import type Author = require('./Author')
+import type BookAuthor = require('./BookAuthor')
+import type BookSeries = require('./BookSeries')
 import type LibraryItem = require('./LibraryItem')
 import type MediaProgress = require('./MediaProgress')
 import type Series = require('./Series')
@@ -77,6 +79,16 @@ class Book extends Model<InferAttributes<Book>, InferCreationAttributes<Book>> {
   declare libraryItem?: NonAttribute<LibraryItem>
 
   declare mediaProgresses?: NonAttribute<MediaProgress[]>
+
+  /** The join rows, when a book is created or loaded with them (see BookScanner scanNewBookLibraryItem) */
+  declare bookAuthors?: NonAttribute<BookAuthor[]>
+  declare bookSeries?: NonAttribute<BookSeries[]>
+
+  // Association mixins used by the scanner
+  declare addAuthor: BelongsToManyAddAssociationMixin<Author, string>
+  declare addSeries: BelongsToManyAddAssociationMixin<Series, string>
+  declare getAuthors: BelongsToManyGetAssociationsMixin<Author>
+  declare getSeries: BelongsToManyGetAssociationsMixin<Series>
 
   /**
    * Initialize model

@@ -3,6 +3,7 @@
  */
 import type { Sequelize, Utils } from 'sequelize'
 import type { AudioChapter, FileMetadataJSON } from '../objects/types'
+import type AudioMetaTags = require('../objects/metadata/AudioMetaTags')
 import type ApiKey = require('./ApiKey')
 import type Author = require('./Author')
 import type Book = require('./Book')
@@ -122,7 +123,10 @@ export interface AudioFileObject {
   channels: number
   channelLayout: string
   chapters: ChapterObject[]
-  metaTags: object
+  /** Codec of the embedded cover art stream (see objects/files/AudioFile toJSON) */
+  embeddedCoverArt?: string | null
+  /** AudioMetaTags toJSON */
+  metaTags: ReturnType<AudioMetaTags['toJSON']>
   mimeType: string
 }
 
@@ -143,6 +147,8 @@ export interface LibraryFileObject {
   isSupplementary: boolean
   addedAt: number
   updatedAt: number
+  /** Set by objects/files/LibraryFile (toJSON) */
+  fileType: string
   metadata: FileMetadataObject
 }
 

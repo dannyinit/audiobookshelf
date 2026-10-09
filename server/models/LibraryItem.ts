@@ -58,16 +58,17 @@ type LibraryItemDataValues = InferAttributes<LibraryItem> & {
 }
 
 /**
- * Attributes accepted by create: mtime, ctime and birthtime may be epoch ms (the DATE columns convert them to Dates)
+ * Attributes accepted by create: mtime, ctime, birthtime and lastScan may be epoch ms (the DATE columns convert them to Dates)
  */
-type LibraryItemCreationAttributes = InferCreationAttributes<LibraryItem, { omit: 'mtime' | 'ctime' | 'birthtime' }> & {
+type LibraryItemCreationAttributes = InferCreationAttributes<LibraryItem, { omit: 'mtime' | 'ctime' | 'birthtime' | 'lastScan' }> & {
   mtime: Date | number | null
   ctime: Date | number | null
   birthtime: Date | number | null
+  lastScan: Date | number | null
 }
 
 /**
- * mtime, ctime and birthtime are read as Dates (or null). They are also set to epoch ms (file timestamps),
+ * mtime, ctime, birthtime and lastScan are read as Dates (or null). They are also set to epoch ms (file timestamps),
  * which the DATE(6) columns convert to Dates.
  */
 interface LibraryItem {
@@ -77,6 +78,9 @@ interface LibraryItem {
   set ctime(value: Date | number | null)
   get birthtime(): Date | null
   set birthtime(value: Date | number | null)
+  /** The scanner sets it to Date.now() */
+  get lastScan(): Date | null
+  set lastScan(value: Date | number | null)
 }
 
 class LibraryItem extends Model<InferAttributes<LibraryItem>, LibraryItemCreationAttributes> {
@@ -91,7 +95,6 @@ class LibraryItem extends Model<InferAttributes<LibraryItem>, LibraryItemCreatio
   declare isInvalid: boolean
   /** BIGINT column, a number in sqlite (total size of the library files) */
   declare size: number
-  declare lastScan: Date | null
   declare lastScanVersion: string | null
   declare libraryFiles: LibraryFileObject[]
   declare extraData: LibraryItemExtraData | null
@@ -956,7 +959,7 @@ class LibraryItem extends Model<InferAttributes<LibraryItem>, LibraryItemCreatio
    *
    * @param [episodeId]
    */
-  getTrackList(episodeId?: string): AudioTrack[] {
+  getTrackList(episodeId?: string | null): AudioTrack[] {
     if (!this.media) {
       Logger.error(`[LibraryItem] getTrackList: Library item "${this.id}" does not have media`)
       return []

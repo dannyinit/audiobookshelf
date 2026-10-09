@@ -39,6 +39,17 @@ declare global {
   var MetadataPath: string
   var DisableSsrfRequestFilter: ((url: string) => boolean) | undefined
   var PodcastDownloadTimeout: number
+  var MaxFailedEpisodeChecks: number
+  var XAccel: string | undefined
+  /** Directory of index.js / prod.js (set there) */
+  var appRoot: string
+
+  namespace NodeJS {
+    interface Process {
+      /** Set when the server runs as a pkg executable */
+      pkg?: unknown
+    }
+  }
 }
 
 /**
@@ -65,6 +76,9 @@ export interface FilePathItem {
 export interface ZipArchive {
   pointer(): number
   on(event: 'warning' | 'error', listener: (err: NodeJS.ErrnoException) => void): this
+  on(event: 'progress', listener: (progress: { fs: { processedBytes: number } }) => void): this
+  abort(): this
+  append(source: string, data: { name: string }): this
   pipe<T extends NodeJS.WritableStream>(destination: T): T
   directory(dirpath: string, destpath: string | false): this
   file(filepath: string, data: { name: string }): this
@@ -139,3 +153,55 @@ export type SortInstance = <T>(ctx: T[]) => {
  * Text search query created by Database.createTextSearchQuery (see Database TextSearchQuery)
  */
 export type TextSearchQuery = InstanceType<DatabaseInstance['TextSearchQuery']>
+
+/**
+ * ffprobe data parsed by utils/prober (parseProbeData), read by scanner/MediaProbeData
+ */
+export type ProbeTags = Record<string, string>
+
+export interface ProbeStreamInfo {
+  index: number
+  type: string | undefined
+  codec: string | null
+  codec_long: string | null
+  codec_time_base: string | null
+  time_base: string | null
+  bit_rate: number | null
+  language: string | null
+  title: string | null
+  tags?: ProbeTags
+  is_default?: boolean
+  profile?: string | null
+  is_avc?: boolean
+  pix_fmt?: string | null
+  frame_rate?: number | null
+  width?: number | null
+  height?: number | null
+  color_range?: string | null
+  color_space?: string | null
+  color_transfer?: string | null
+  color_primaries?: string | null
+  channels?: number | null
+  sample_rate?: number | null
+  channel_layout?: string | null | undefined
+}
+
+export interface ProbeChapter {
+  id?: number
+  start: number
+  end: number
+  title: string
+}
+
+export interface RawProbeData {
+  format: string
+  duration: number | null
+  size: number | null
+  sizeMb: number | null
+  bit_rate: number | null
+  tags: Record<string, string | null>
+  rawTags?: ProbeTags
+  video_stream?: ProbeStreamInfo
+  audio_stream?: ProbeStreamInfo | null
+  chapters?: ProbeChapter[]
+}

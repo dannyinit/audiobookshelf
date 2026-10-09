@@ -51,7 +51,7 @@ class SocketAuthority {
   /**
    * Emits event to all authorized clients
    * @param {string} evt
-   * @param {any} data
+   * @param {any} [data]
    * @param {Function} [filter] optional filter function to only send event to specific users
    */
   emitter(evt, data, filter = null) {

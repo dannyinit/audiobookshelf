@@ -1,20 +1,44 @@
-const fs = require('../libs/fsExtra')
-const Path = require('path')
-const Logger = require('../Logger')
-const readChunk = require('../libs/readChunk')
-const imageType = require('../libs/imageType')
+import fs = require('../libs/fsExtra')
+import Path = require('path')
+import Logger = require('../Logger')
+import readChunk = require('../libs/readChunk')
+import imageType = require('../libs/imageType')
 
-const globals = require('../utils/globals')
-const { downloadImageFile, filePathToPOSIX, checkPathIsFile } = require('../utils/fileUtils')
-const { extractCoverArt } = require('../utils/ffmpegHelpers')
-const parseEbookMetadata = require('../utils/parsers/parseEbookMetadata')
+import globals = require('../utils/globals')
+import fileUtils = require('../utils/fileUtils')
+import ffmpegHelpers = require('../utils/ffmpegHelpers')
+import parseEbookMetadata = require('../utils/parsers/parseEbookMetadata')
 
-const CacheManager = require('../managers/CacheManager')
+import CacheManager = require('../managers/CacheManager')
+import type LibraryItem = require('../models/LibraryItem')
+import type AudioFile = require('../objects/files/AudioFile')
+import type { AudioFileObject } from '../models/types'
+import type { EBookFileScanData } from '../utils/parsers/types'
+const { downloadImageFile, filePathToPOSIX, checkPathIsFile } = fileUtils
+const { extractCoverArt } = ffmpegHelpers
+
+/**
+ * Image type detected by the vendored image-type (server/libs/imageType), or the error when the file is not a supported image
+ */
+type ImageTypeResult = { ext: string; mime: string; error?: undefined } | { error: string; ext?: undefined }
+
+/**
+ * Result of setting a cover: the error, or the path of the new cover
+ */
+type CoverResult = { error: string; cover?: undefined } | { cover: string; error?: undefined }
+
+/**
+ * Uploaded file from req.files (express-fileupload), only what is used
+ */
+interface UploadedCoverFile {
+  name: string
+  mv(path: string): Promise<void>
+}
 
 class CoverManager {
   constructor() {}
 
-  getCoverDirectory(libraryItem) {
+  getCoverDirectory(libraryItem: LibraryItem) {
     if (global.ServerSettings.storeCoverWithItem && !libraryItem.isFile) {
       return libraryItem.path
     } else {
@@ -22,7 +46,7 @@ class CoverManager {
     }
   }
 
-  getFilesInDirectory(dir) {
+  getFilesInDirectory(dir: string) {
     try {
       return fs.readdir(dir)
     } catch (error) {
@@ -31,9 +55,9 @@ class CoverManager {
     }
   }
 
-  removeFile(filepath) {
+  removeFile(filepath: string) {
     try {
-      return fs.pathExists(filepath).then((exists) => {
+      return fs.pathExists(filepath).then<void | false>((exists) => {
         if (!exists) Logger.warn(`[CoverManager] Attempting to remove file that does not exist ${filepath}`)
         return exists ? fs.unlink(filepath) : false
       })
@@ -44,7 +68,7 @@ class CoverManager {
   }
 
   // Remove covers that dont have the same filename as the new cover
-  async removeOldCovers(dirpath, newCoverExt) {
+  async removeOldCovers(dirpath: string, newCoverExt: string) {
     var filesInDir = await this.getFilesInDirectory(dirpath)
 
     const imageExtensions = ['.jpeg', '.jpg', '.png', '.webp', '.jiff']
@@ -60,9 +84,10 @@ class CoverManager {
     }
   }
 
-  async checkFileIsValidImage(imagepath, removeOnInvalid = false) {
-    const buffer = await readChunk(imagepath, 0, 12)
-    const imgType = imageType(buffer)
+  async checkFileIsValidImage(imagepath: string, removeOnInvalid = false): Promise<ImageTypeResult> {
+    const buffer: Buffer = await readChunk(imagepath, 0, 12)
+    // The vendored image-type returns the detected type ({ ext, mime }) or null
+    const imgType: { ext: string; mime: string } | null = imageType(buffer)
     if (!imgType) {
       if (removeOnInvalid) await this.removeFile(imagepath)
       return {
@@ -80,12 +105,9 @@ class CoverManager {
   }
 
   /**
-   *
-   * @param {import('../models/LibraryItem')} libraryItem
-   * @param {*} coverFile - file object from req.files
-   * @returns {Promise<{error:string}|{cover:string}>}
+   * @param coverFile - file object from req.files
    */
-  async uploadCover(libraryItem, coverFile) {
+  async uploadCover(libraryItem: LibraryItem, coverFile: UploadedCoverFile): Promise<CoverResult> {
     const extname = Path.extname(coverFile.name.toLowerCase())
     if (!extname || !globals.SupportedImageTypes.includes(extname.slice(1))) {
       return {
@@ -102,7 +124,7 @@ class CoverManager {
     const success = await coverFile
       .mv(coverFullPath)
       .then(() => true)
-      .catch((error) => {
+      .catch((error: Error) => {
         Logger.error('[CoverManager] Failed to move cover file', coverFullPath, error)
         return false
       })
@@ -123,13 +145,7 @@ class CoverManager {
     }
   }
 
-  /**
-   *
-   * @param {string} coverPath
-   * @param {import('../models/LibraryItem')} libraryItem
-   * @returns {Promise<{error:string}|{cover:string,updated:boolean}>}
-   */
-  async validateCoverPath(coverPath, libraryItem) {
+  async validateCoverPath(coverPath: string, libraryItem: LibraryItem): Promise<{ error: string; cover?: undefined } | { cover: string; updated: boolean; error?: undefined }> {
     // Invalid cover path
     if (!coverPath || coverPath.startsWith('http:') || coverPath.startsWith('https:')) {
       Logger.error(`[CoverManager] validate cover path invalid http url "${coverPath}"`)
@@ -192,7 +208,7 @@ class CoverManager {
       var copySuccess = await fs
         .copy(coverPath, newCoverPath, { overwrite: true })
         .then(() => true)
-        .catch((error) => {
+        .catch((error: Error) => {
           Logger.error(`[CoverManager] validate cover path failed to copy cover`, error)
           return false
         })
@@ -217,12 +233,10 @@ class CoverManager {
   /**
    * Extract cover art from audio file and save for library item
    *
-   * @param {import('../models/Book').AudioFileObject[]} audioFiles
-   * @param {string} libraryItemId
-   * @param {string} [libraryItemPath] null for isFile library items
-   * @returns {Promise<string>} returns cover path
+   * @param [libraryItemPath] null for isFile library items
+   * @returns returns cover path
    */
-  async saveEmbeddedCoverArt(audioFiles, libraryItemId, libraryItemPath) {
+  async saveEmbeddedCoverArt(audioFiles: (AudioFile | AudioFileObject)[], libraryItemId: string, libraryItemPath?: string | null): Promise<string | null> {
     let audioFileWithCover = audioFiles.find((af) => af.embeddedCoverArt)
     if (!audioFileWithCover) return null
 
@@ -243,7 +257,8 @@ class CoverManager {
       return null
     }
 
-    const success = await extractCoverArt(audioFileWithCover.metadata.path, coverFilePath)
+    // Scanned and stored audio files have a path
+    const success = await extractCoverArt(audioFileWithCover.metadata.path!, coverFilePath)
     if (success) {
       await CacheManager.purgeCoverCache(libraryItemId)
       return coverFilePath
@@ -254,12 +269,10 @@ class CoverManager {
   /**
    * Extract cover art from ebook and save for library item
    *
-   * @param {import('../utils/parsers/parseEbookMetadata').EBookFileScanData} ebookFileScanData
-   * @param {string} libraryItemId
-   * @param {string} [libraryItemPath] null for isFile library items
-   * @returns {Promise<string>} returns cover path
+   * @param [libraryItemPath] null for isFile library items
+   * @returns returns cover path
    */
-  async saveEbookCoverArt(ebookFileScanData, libraryItemId, libraryItemPath) {
+  async saveEbookCoverArt(ebookFileScanData: EBookFileScanData | null | undefined, libraryItemId: string, libraryItemPath?: string | null): Promise<string | null> {
     if (!ebookFileScanData?.ebookCoverPath) return null
 
     let coverDirPath = null
@@ -290,14 +303,10 @@ class CoverManager {
   }
 
   /**
-   *
-   * @param {string} url
-   * @param {string} libraryItemId
-   * @param {string} [libraryItemPath] - null if library item isFile
-   * @param {boolean} [forceLibraryItemFolder=false] - force save cover with library item (used for adding new podcasts)
-   * @returns {Promise<{error:string}|{cover:string}>}
+   * @param [libraryItemPath] - null if library item isFile
+   * @param [forceLibraryItemFolder=false] - force save cover with library item (used for adding new podcasts)
    */
-  async downloadCoverFromUrlNew(url, libraryItemId, libraryItemPath, forceLibraryItemFolder = false) {
+  async downloadCoverFromUrlNew(url: string, libraryItemId: string, libraryItemPath?: string | null, forceLibraryItemFolder = false): Promise<CoverResult> {
     try {
       let coverDirPath = null
       if ((global.ServerSettings.storeCoverWithItem || forceLibraryItemFolder) && libraryItemPath) {
@@ -311,7 +320,7 @@ class CoverManager {
       const temppath = Path.posix.join(coverDirPath, 'cover')
       const success = await downloadImageFile(url, temppath)
         .then(() => true)
-        .catch((err) => {
+        .catch((err: Error) => {
           Logger.error(`[CoverManager] Download image file failed for "${url}"`, err)
           return false
         })
@@ -344,4 +353,4 @@ class CoverManager {
     }
   }
 }
-module.exports = new CoverManager()
+export = new CoverManager()

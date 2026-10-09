@@ -1,19 +1,49 @@
-const Path = require('path')
-const SocketAuthority = require('../SocketAuthority')
-const Logger = require('../Logger')
-const fs = require('../libs/fsExtra')
-const ffmpegHelpers = require('../utils/ffmpegHelpers')
-const TaskManager = require('./TaskManager')
-const Task = require('../objects/Task')
-const fileUtils = require('../utils/fileUtils')
+import Path = require('path')
+import SocketAuthority = require('../SocketAuthority')
+import Logger = require('../Logger')
+import fs = require('../libs/fsExtra')
+import ffmpegHelpers = require('../utils/ffmpegHelpers')
+import TaskManager = require('./TaskManager')
+import Task = require('../objects/Task')
+import fileUtils = require('../utils/fileUtils')
+import type LibraryItem = require('../models/LibraryItem')
+import type { ChapterObject } from '../models/types'
+
+interface UpdateMetadataOptions {
+  /** Whether to force embed chapters (default false) */
+  forceEmbedChapters?: boolean
+  /** Whether to backup the files (default false) */
+  backup?: boolean
+}
 
 /**
- * @typedef UpdateMetadataOptions
- * @property {boolean} [forceEmbedChapters=false] - Whether to force embed chapters.
- * @property {boolean} [backup=false] - Whether to backup the files.
+ * Data of an embed-metadata task (set in updateMetadataForItem)
  */
+type EmbedTaskData = {
+  libraryItemId: string
+  libraryItemDir: string
+  userId: string
+  audioFiles: { index: number; ino: string; filename: string; path: string; cachePath: string; duration: number }[]
+  coverPath: string | null
+  metadataObject: ReturnType<typeof ffmpegHelpers.getFFMetadataObject>
+  itemCachePath: string
+  chapters: ChapterObject[] | null
+  mimeType: string | null
+  options: { forceEmbedChapters: boolean; backupFiles: boolean }
+  duration: number
+}
+
+/**
+ * Task with its embed-metadata data
+ */
+type EmbedTask = Task & { data: EmbedTaskData }
 
 class AudioMetadataMangaer {
+  declare itemsCacheDir: string
+  declare MAX_CONCURRENT_TASKS: number
+  declare tasksRunning: EmbedTask[]
+  declare tasksQueued: EmbedTask[]
+
   constructor() {
     this.itemsCacheDir = Path.join(global.MetadataPath, 'cache/items')
 
@@ -24,62 +54,45 @@ class AudioMetadataMangaer {
 
   /**
    * Get queued task data
-   * @return {Array}
    */
   getQueuedTaskData() {
     return this.tasksQueued.map((t) => t.data)
   }
 
-  getIsLibraryItemQueuedOrProcessing(libraryItemId) {
+  getIsLibraryItemQueuedOrProcessing(libraryItemId: string) {
     return this.tasksQueued.some((t) => t.data.libraryItemId === libraryItemId) || this.tasksRunning.some((t) => t.data.libraryItemId === libraryItemId)
   }
 
-  /**
-   *
-   * @param {import('../models/LibraryItem')} libraryItem
-   * @returns
-   */
-  getMetadataObjectForApi(libraryItem) {
+  getMetadataObjectForApi(libraryItem: LibraryItem.BookLibraryItem) {
     return ffmpegHelpers.getFFMetadataObject(libraryItem, libraryItem.media.includedAudioFiles.length)
   }
 
-  /**
-   *
-   * @param {string} userId
-   * @param {import('../models/LibraryItem')[]} libraryItems
-   * @param {UpdateMetadataOptions} options
-   */
-  handleBatchEmbed(userId, libraryItems, options = {}) {
+  handleBatchEmbed(userId: string, libraryItems: LibraryItem.BookLibraryItem[], options: UpdateMetadataOptions = {}) {
     libraryItems.forEach((li) => {
       this.updateMetadataForItem(userId, li, options)
     })
   }
 
-  /**
-   *
-   * @param {string} userId
-   * @param {import('../models/LibraryItem')} libraryItem
-   * @param {UpdateMetadataOptions} [options={}]
-   */
-  async updateMetadataForItem(userId, libraryItem, options = {}) {
+  async updateMetadataForItem(userId: string, libraryItem: LibraryItem.BookLibraryItem, options: UpdateMetadataOptions = {}) {
     const forceEmbedChapters = !!options.forceEmbedChapters
     const backupFiles = !!options.backup
 
     const audioFiles = libraryItem.media.includedAudioFiles
 
-    const task = new Task()
+    // cast(d): the data is set by setData below
+    const task = new Task() as EmbedTask
 
     const itemCachePath = Path.join(this.itemsCacheDir, libraryItem.id)
 
     // Only writing chapters for single file audiobooks
     const chapters = audioFiles.length == 1 || forceEmbedChapters ? libraryItem.media.chapters.map((c) => ({ ...c })) : null
 
-    let mimeType = audioFiles[0].mimeType
+    let mimeType: string | null = audioFiles[0].mimeType
     if (audioFiles.some((a) => a.mimeType !== mimeType)) mimeType = null
 
     // Create task
     const libraryItemDir = libraryItem.isFile ? Path.dirname(libraryItem.path) : libraryItem.path
-    const taskData = {
+    const taskData: EmbedTaskData = {
       libraryItemId: libraryItem.id,
       libraryItemDir,
       userId,
@@ -126,11 +139,7 @@ class AudioMetadataMangaer {
     }
   }
 
-  /**
-   *
-   * @param {import('../objects/Task')} task
-   */
-  async runMetadataEmbed(task) {
+  async runMetadataEmbed(task: EmbedTask) {
     this.tasksRunning.push(task)
     TaskManager.addTask(task)
 
@@ -267,13 +276,14 @@ class AudioMetadataMangaer {
     this.handleTaskFinished(task)
   }
 
-  handleTaskFinished(task) {
+  handleTaskFinished(task: EmbedTask) {
     TaskManager.taskFinished(task)
     this.tasksRunning = this.tasksRunning.filter((t) => t.id !== task.id)
 
     if (this.tasksRunning.length < this.MAX_CONCURRENT_TASKS && this.tasksQueued.length) {
       Logger.info(`[AudioMetadataManager] Task finished and dequeueing next task. ${this.tasksQueued.length} tasks queued.`)
-      const nextTask = this.tasksQueued.shift()
+      // The queue is not empty (checked above)
+      const nextTask = this.tasksQueued.shift()!
       SocketAuthority.emitter('metadata_embed_queue_update', {
         libraryItemId: nextTask.data.libraryItemId,
         queued: false
@@ -286,4 +296,4 @@ class AudioMetadataMangaer {
     }
   }
 }
-module.exports = AudioMetadataMangaer
+export = AudioMetadataMangaer

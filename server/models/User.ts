@@ -69,8 +69,10 @@ const { DataTypes, Model } = sequelize
 
 interface ProgressUpdatePayloadObject {
   libraryItemId: string
-  episodeId?: string
-  duration?: number
+  /** null for a book (playback sessions pass their episodeId) */
+  episodeId?: string | null
+  /** null from a playback session without a duration (read with isNullOrNaN) */
+  duration?: number | null
   progress?: number
   currentTime?: number
   isFinished?: boolean
@@ -78,9 +80,12 @@ interface ProgressUpdatePayloadObject {
   ebookLocation?: string
   ebookProgress?: number
   finishedAt?: string
-  lastUpdate?: number
-  markAsFinishedTimeRemaining?: number
-  markAsFinishedPercentComplete?: number
+  /** null from a playback session without updatedAt (only a truthy value is used) */
+  lastUpdate?: number | null
+  /** From the library settings, which store null when not set */
+  markAsFinishedTimeRemaining?: number | null
+  /** From the library settings, which store null when not set */
+  markAsFinishedPercentComplete?: number | null
   /** Sent by clients syncing local progress (read when the progress is created) */
   createdAt?: number
 }

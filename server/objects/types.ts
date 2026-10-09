@@ -32,7 +32,8 @@ export interface AudioChapter {
 export interface TaskString {
   text: string
   key: string
-  subs?: string[]
+  /** Substitutions; the managers also pass numbers and missing (null or undefined) titles */
+  subs?: (string | number | null | undefined)[]
 }
 
 /**

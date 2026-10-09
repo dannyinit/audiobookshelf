@@ -1,12 +1,41 @@
-const { Request, Response } = require('express')
-const Path = require('path')
+import type { Request, Response } from 'express'
+import type { Includeable } from 'sequelize'
+import Path = require('path')
 
-const Logger = require('../Logger')
-const { getAudioMimeTypeFromExtname } = require('../utils/fileUtils')
-const SocketAuthority = require('../SocketAuthority')
-const Database = require('../Database')
+import Logger = require('../Logger')
+import fileUtils = require('../utils/fileUtils')
+import SocketAuthority = require('../SocketAuthority')
+import Database = require('../Database')
 
-const fs = require('../libs/fsExtra')
+import fs = require('../libs/fsExtra')
+import type Feed = require('../models/Feed')
+import type LibraryItem = require('../models/LibraryItem')
+import type Collection = require('../models/Collection')
+import type Series = require('../models/Series')
+const { getAudioMimeTypeFromExtname } = fileUtils
+
+/**
+ * Feed metadata details from the open feed request body
+ */
+interface FeedMetadataDetails {
+  preventIndexing?: unknown
+  ownerName?: unknown
+  ownerEmail?: unknown
+}
+
+/**
+ * Open feed request body (the RSS feed controller checks serverAddress and slug)
+ */
+interface OpenFeedOptions {
+  serverAddress: string
+  slug: string
+  metadataDetails?: FeedMetadataDetails | null
+}
+
+/**
+ * Request with the host prefix that Server.js sets for the feed routes
+ */
+type FeedRequest = Request & { originalHostPrefix: string }
 
 class RssFeedManager {
   constructor() {}
@@ -33,7 +62,7 @@ class RssFeedManager {
       ]
     })
 
-    const feedIdsToRemove = []
+    const feedIdsToRemove: string[] = []
     for (const feed of feeds) {
       if (!feed.entity) {
         Logger.error(`[RssFeedManager] Removing feed "${feed.title}". Entity not found`)
@@ -53,10 +82,8 @@ class RssFeedManager {
 
   /**
    * Find open feed for an entity (e.g. collection id, playlist id, library item id)
-   * @param {string} entityId
-   * @returns {Promise<import('../models/Feed')>}
    */
-  findFeedForEntityId(entityId) {
+  findFeedForEntityId(entityId: string) {
     return Database.feedModel.findOne({
       where: {
         entityId
@@ -64,12 +91,7 @@ class RssFeedManager {
     })
   }
 
-  /**
-   *
-   * @param {string} slug
-   * @returns {Promise<boolean>}
-   */
-  checkExistsBySlug(slug) {
+  checkExistsBySlug(slug: string): Promise<boolean> {
     return Database.feedModel
       .count({
         where: {
@@ -81,15 +103,14 @@ class RssFeedManager {
 
   /**
    * Feed requires update if the entity (or child entities) has been updated since the feed was last updated
-   *
-   * @param {import('../models/Feed')} feed
-   * @returns {Promise<boolean>}
    */
-  async checkFeedRequiresUpdate(feed) {
+  async checkFeedRequiresUpdate(feed: Feed): Promise<boolean> {
     if (feed.entityType === 'libraryItem') {
-      feed.entity = await feed.getEntity({
+      // NOTE: getEntity returns null when the library item no longer exists; the reads below then throw a TypeError
+      // cast(c): assigned as in the JS (see NOTE above)
+      feed.entity = (await feed.getEntity({
         attributes: ['id', 'updatedAt', 'mediaId', 'mediaType']
-      })
+      })) as LibraryItem
 
       let newEntityUpdatedAt = feed.entity.updatedAt
 
@@ -119,8 +140,11 @@ class RssFeedManager {
 
       return newEntityUpdatedAt > feed.entityUpdatedAt
     } else if (feed.entityType === 'collection' || feed.entityType === 'series') {
-      feed.entity = await feed.getEntity({
+      // NOTE: getEntity returns null when the collection or series no longer exists; the reads below then throw a TypeError
+      // cast(c): assigned as in the JS (see NOTE above)
+      feed.entity = (await feed.getEntity({
         attributes: ['id', 'updatedAt'],
+        // cast(b): sequelize accepts a single model or include object as a nested include, its types only allow an array
         include: {
           model: Database.bookModel,
           attributes: ['id', 'audioFiles', 'updatedAt'],
@@ -131,17 +155,17 @@ class RssFeedManager {
             model: Database.libraryItemModel,
             attributes: ['id', 'updatedAt']
           }
-        }
-      })
+        } as unknown as Includeable
+      })) as Collection | Series
 
       const totalBookTracks = feed.entity.books.reduce((total, book) => total + book.includedAudioFiles.length, 0)
       if (feed.feedEpisodes.length !== totalBookTracks) {
         return true
       }
 
-      let newEntityUpdatedAt = feed.entity.updatedAt
+      let newEntityUpdatedAt: Date | number = feed.entity.updatedAt
 
-      const mostRecentItemUpdatedAt = feed.entity.books.reduce((mostRecent, book) => {
+      const mostRecentItemUpdatedAt = feed.entity.books.reduce<Date | number>((mostRecent, book) => {
         let updatedAt = book.libraryItem.updatedAt > book.updatedAt ? book.libraryItem.updatedAt : book.updatedAt
         return updatedAt > mostRecent ? updatedAt : mostRecent
       }, 0)
@@ -158,11 +182,8 @@ class RssFeedManager {
 
   /**
    * GET: /feed/:slug
-   *
-   * @param {Request} req
-   * @param {Response} res
    */
-  async getFeed(req, res) {
+  async getFeed(req: FeedRequest, res: Response) {
     let feed = await Database.feedModel.findOne({
       where: {
         slug: req.params.slug
@@ -180,7 +201,9 @@ class RssFeedManager {
     const feedRequiresUpdate = await this.checkFeedRequiresUpdate(feed)
     if (feedRequiresUpdate) {
       Logger.info(`[RssFeedManager] Feed "${feed.title}" requires update - updating feed`)
-      feed = await feed.updateFeedForEntity()
+      // NOTE: updateFeedForEntity returns null when the update fails; feed.buildXml below then throws a TypeError
+      // cast(c): assigned as in the JS (see NOTE above)
+      feed = (await feed.updateFeedForEntity()) as Feed
     }
 
     const xml = feed.buildXml(req.originalHostPrefix)
@@ -190,11 +213,8 @@ class RssFeedManager {
 
   /**
    * GET: /feed/:slug/item/:episodeId/*
-   *
-   * @param {Request} req
-   * @param {Response} res
    */
-  async getFeedItem(req, res) {
+  async getFeedItem(req: Request, res: Response) {
     const feed = await Database.feedModel.findOne({
       where: {
         slug: req.params.slug
@@ -227,11 +247,8 @@ class RssFeedManager {
 
   /**
    * GET: /feed/:slug/cover*
-   *
-   * @param {Request} req
-   * @param {Response} res
    */
-  async getFeedCover(req, res) {
+  async getFeedCover(req: Request, res: Response) {
     const feed = await Database.feedModel.findOne({
       where: {
         slug: req.params.slug
@@ -264,33 +281,22 @@ class RssFeedManager {
     readStream.pipe(res)
   }
 
-  /**
-   *
-   * @param {*} options
-   * @returns {import('../models/Feed').FeedOptions}
-   */
-  getFeedOptionsFromReqOptions(options) {
-    const metadataDetails = options.metadataDetails || {}
+  getFeedOptionsFromReqOptions(options: OpenFeedOptions): Feed.FeedOptions {
+    const metadataDetails: FeedMetadataDetails = options.metadataDetails || {}
 
     if (metadataDetails.preventIndexing !== false) {
       metadataDetails.preventIndexing = true
     }
 
     return {
-      preventIndexing: metadataDetails.preventIndexing,
+      // cast(d): any value other than false was replaced by true just above
+      preventIndexing: metadataDetails.preventIndexing as boolean,
       ownerName: metadataDetails.ownerName && typeof metadataDetails.ownerName === 'string' ? metadataDetails.ownerName : null,
       ownerEmail: metadataDetails.ownerEmail && typeof metadataDetails.ownerEmail === 'string' ? metadataDetails.ownerEmail : null
     }
   }
 
-  /**
-   *
-   * @param {string} userId
-   * @param {import('../models/LibraryItem')} libraryItem
-   * @param {*} options
-   * @returns {Promise<import('../models/Feed').FeedExpanded>}
-   */
-  async openFeedForItem(userId, libraryItem, options) {
+  async openFeedForItem(userId: string, libraryItem: LibraryItem.LibraryItemExpanded, options: OpenFeedOptions) {
     const serverAddress = options.serverAddress
     const slug = options.slug
     const feedOptions = this.getFeedOptionsFromReqOptions(options)
@@ -304,14 +310,7 @@ class RssFeedManager {
     return feedExpanded
   }
 
-  /**
-   *
-   * @param {string} userId
-   * @param {import('../models/Collection')} collectionExpanded
-   * @param {*} options
-   * @returns {Promise<import('../models/Feed').FeedExpanded>}
-   */
-  async openFeedForCollection(userId, collectionExpanded, options) {
+  async openFeedForCollection(userId: string, collectionExpanded: Collection, options: OpenFeedOptions) {
     const serverAddress = options.serverAddress
     const slug = options.slug
     const feedOptions = this.getFeedOptionsFromReqOptions(options)
@@ -325,14 +324,7 @@ class RssFeedManager {
     return feedExpanded
   }
 
-  /**
-   *
-   * @param {string} userId
-   * @param {import('../models/Series')} seriesExpanded
-   * @param {*} options
-   * @returns {Promise<import('../models/Feed').FeedExpanded>}
-   */
-  async openFeedForSeries(userId, seriesExpanded, options) {
+  async openFeedForSeries(userId: string, seriesExpanded: Series, options: OpenFeedOptions) {
     const serverAddress = options.serverAddress
     const slug = options.slug
     const feedOptions = this.getFeedOptionsFromReqOptions(options)
@@ -349,10 +341,9 @@ class RssFeedManager {
   /**
    * Close Feed and emit Socket event
    *
-   * @param {import('../models/Feed')} feed
-   * @returns {Promise<boolean>} - true if feed was closed
+   * @returns true if feed was closed
    */
-  async handleCloseFeed(feed) {
+  async handleCloseFeed(feed: Feed | null | undefined): Promise<boolean> {
     if (!feed) return false
     const wasRemoved = await Database.feedModel.removeById(feed.id)
     SocketAuthority.emitter('rss_feed_closed', feed.toOldJSONMinified())
@@ -361,11 +352,9 @@ class RssFeedManager {
   }
 
   /**
-   *
-   * @param {string} entityId
-   * @returns {Promise<boolean>} - true if feed was closed
+   * @returns true if feed was closed
    */
-  async closeFeedForEntityId(entityId) {
+  async closeFeedForEntityId(entityId: string) {
     const feed = await Database.feedModel.findOne({
       where: {
         entityId
@@ -377,11 +366,7 @@ class RssFeedManager {
     return this.handleCloseFeed(feed)
   }
 
-  /**
-   *
-   * @param {string[]} entityIds
-   */
-  async closeFeedsForEntityIds(entityIds) {
+  async closeFeedsForEntityIds(entityIds: string[]) {
     const feeds = await Database.feedModel.findAll({
       where: {
         entityId: entityIds
@@ -392,10 +377,6 @@ class RssFeedManager {
     }
   }
 
-  /**
-   *
-   * @returns {Promise<import('../models/Feed').FeedExpanded[]>}
-   */
   getFeeds() {
     return Database.feedModel.findAll({
       include: {
@@ -404,4 +385,4 @@ class RssFeedManager {
     })
   }
 }
-module.exports = new RssFeedManager()
+export = new RssFeedManager()

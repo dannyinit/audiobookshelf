@@ -6,6 +6,14 @@ import type { LibraryExtraData, LibrarySettingsObject, ModelsSequelize } from '.
 import type * as ModelTypes from './types'
 const { DataTypes, Model } = Sequelize
 
+/**
+ * lastScan is read as a Date (or null) and set to epoch ms by the library scanner (the DATE column converts it)
+ */
+interface Library {
+  get lastScan(): Date | null
+  set lastScan(value: Date | number | null)
+}
+
 class Library extends Model<InferAttributes<Library>, InferCreationAttributes<Library>> {
   declare id: CreationOptional<string>
   declare name: string
@@ -13,7 +21,6 @@ class Library extends Model<InferAttributes<Library>, InferCreationAttributes<Li
   declare icon: string
   declare mediaType: string
   declare provider: string
-  declare lastScan: Date | null
   declare lastScanVersion: string | null
   declare settings: LibrarySettingsObject
   declare extraData: LibraryExtraData | null

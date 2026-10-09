@@ -2,11 +2,11 @@ import nodeFfprobe = require('../libs/nodeFfprobe')
 import MediaProbeData = require('../scanner/MediaProbeData')
 
 import Logger = require('../Logger')
+import type { ProbeChapter, ProbeStreamInfo, ProbeTags, RawProbeData } from './types'
 
 // isNaN coerces its argument; ffprobe reports most numbers as strings
 const isNaN = globalThis.isNaN as (value: unknown) => boolean
 
-type ProbeTags = Record<string, string>
 
 /**
  * Stream as output by ffprobe -print_format json (only the fields used)
@@ -75,52 +75,8 @@ type Ffprobe = ((file: string) => Promise<FfprobeOutput>) & { FFPROBE_PATH?: str
 // The vendored module is an IIFE so its inferred type does not describe the output
 const ffprobe = nodeFfprobe as unknown as Ffprobe
 
-interface ProbeStreamInfo {
-  index: number
-  type: string | undefined
-  codec: string | null
-  codec_long: string | null
-  codec_time_base: string | null
-  time_base: string | null
-  bit_rate: number | null
-  language: string | null
-  title: string | null
-  tags?: ProbeTags
-  is_default?: boolean
-  profile?: string | null
-  is_avc?: boolean
-  pix_fmt?: string | null
-  frame_rate?: number | null
-  width?: number | null
-  height?: number | null
-  color_range?: string | null
-  color_space?: string | null
-  color_transfer?: string | null
-  color_primaries?: string | null
-  channels?: number | null
-  sample_rate?: number | null
-  channel_layout?: string | null | undefined
-}
 
-interface ProbeChapter {
-  id?: number
-  start: number
-  end: number
-  title: string
-}
 
-interface RawProbeData {
-  format: string
-  duration: number | null
-  size: number | null
-  sizeMb: number | null
-  bit_rate: number | null
-  tags: Record<string, string | null>
-  rawTags?: ProbeTags
-  video_stream?: ProbeStreamInfo
-  audio_stream?: ProbeStreamInfo | null
-  chapters?: ProbeChapter[]
-}
 
 function tryGrabBitRate(stream: FfprobeStream, all_streams: FfprobeStream[], total_bit_rate: number | null): number | null {
   if (!isNaN(stream.bit_rate) && stream.bit_rate) {

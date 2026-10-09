@@ -12,19 +12,19 @@ class Task {
   /** Used for translation */
   declare titleKey: string | null
   /** Used for translation */
-  declare titleSubs: string[] | null
+  declare titleSubs: NonNullable<TaskString['subs']> | null
 
   declare description: string | null
   /** Used for translation */
   declare descriptionKey: string | null
   /** Used for translation */
-  declare descriptionSubs: string[] | null
+  declare descriptionSubs: NonNullable<TaskString['subs']> | null
 
   declare error: string | null
   /** Used for translation */
   declare errorKey: string | null
   /** Used for translation */
-  declare errorSubs: string[] | null
+  declare errorSubs: NonNullable<TaskString['subs']> | null
 
   /** client should keep the task visible after success */
   declare showSuccess: boolean
@@ -94,7 +94,7 @@ class Task {
    * @param showSuccess
    * @param [data]
    */
-  setData(action: string, titleString: TaskString, descriptionString: TaskString | null, showSuccess: boolean, data: Record<string, unknown> = {}) {
+  setData(action: string, titleString: TaskString, descriptionString: TaskString | null, showSuccess: boolean, data: Record<string, unknown> | null = {}) {
     this.id = uuidv4()
     this.action = action
     this.data = { ...data }

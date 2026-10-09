@@ -317,7 +317,7 @@ class Podcast extends Model<InferAttributes<Podcast>, InferCreationAttributes<Po
     return hasUpdates
   }
 
-  checkCanDirectPlay(supportedMimeTypes: string[], episodeId: string): boolean {
+  checkCanDirectPlay(supportedMimeTypes: string[], episodeId: string | null | undefined): boolean {
     if (!Array.isArray(supportedMimeTypes)) {
       Logger.error(`[Podcast] checkCanDirectPlay: supportedMimeTypes is not an array`, supportedMimeTypes)
       return false

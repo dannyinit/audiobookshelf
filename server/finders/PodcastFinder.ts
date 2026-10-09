@@ -8,7 +8,7 @@ class PodcastFinder {
     this.iTunesApi = new iTunes()
   }
 
-  async search(term: string, options: { country?: string } = {}): Promise<iTunes.iTunesPodcastSearchResult[] | null> {
+  async search(term: string | null | undefined, options: { country?: string } = {}): Promise<iTunes.iTunesPodcastSearchResult[] | null> {
     if (!term) return null
     Logger.debug(`[iTunes] Searching for podcast with term "${term}"`)
     const results = await this.iTunesApi.searchPodcasts(term, options)

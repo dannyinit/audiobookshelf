@@ -55,6 +55,10 @@ type ValidatedAbMetadata = Record<string, unknown> & {
   title?: string | null
   series?: unknown[]
   chapters?: AbMetadataChapter[]
+  /** Validated as arrays (see the expected keys) */
+  authors?: unknown[]
+  genres?: unknown[]
+  tags?: unknown[]
 }
 
 function parseJsonMetadataText(text: string, mediaType: 'book' | 'podcast'): ValidatedAbMetadata | null {

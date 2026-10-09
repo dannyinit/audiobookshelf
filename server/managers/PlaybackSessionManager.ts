@@ -1,55 +1,114 @@
-const uuidv4 = require('uuid').v4
-const Path = require('path')
-const serverVersion = require('../../package.json').version
-const Logger = require('../Logger')
-const SocketAuthority = require('../SocketAuthority')
-const Database = require('../Database')
+import uuid = require('uuid')
+import Path = require('path')
+import packageJson = require('../../package.json')
+import Logger = require('../Logger')
+import SocketAuthority = require('../SocketAuthority')
+import Database = require('../Database')
 
-const date = require('../libs/dateAndTime')
-const fs = require('../libs/fsExtra')
-const uaParserJs = require('../libs/uaParser')
-const requestIp = require('../libs/requestIp')
+import dateAndTime = require('../libs/dateAndTime')
+import fs = require('../libs/fsExtra')
+import uaParserJs = require('../libs/uaParser')
+import requestIp = require('../libs/requestIp')
 
-const { PlayMethod } = require('../utils/constants')
+import constants = require('../utils/constants')
 
-const PlaybackSession = require('../objects/PlaybackSession')
-const DeviceInfo = require('../objects/DeviceInfo')
-const Stream = require('../objects/Stream')
+import PlaybackSession = require('../objects/PlaybackSession')
+import DeviceInfo = require('../objects/DeviceInfo')
+import Stream = require('../objects/Stream')
+import type { Request, Response } from 'express'
+import type User = require('../models/User')
+import type LibraryItem = require('../models/LibraryItem')
+import type Podcast = require('../models/Podcast')
+import type { DateAndTime } from '../objects/types'
+import type { AudioTrack as AudioTrackObject } from '../models/types'
+const uuidv4 = uuid.v4
+const serverVersion = packageJson.version
+const { PlayMethod } = constants
+
+// cast(a): typed view of the minified vendored date-and-time (see DateAndTime)
+const date = dateAndTime as unknown as DateAndTime
+
+/**
+ * Device info sent by the client
+ */
+type ClientDeviceInfo = NonNullable<Parameters<DeviceInfo['setData']>[2]>
+
+/**
+ * Old device info with its id set, as the Device model stores it
+ */
+type OldDeviceInfo = Parameters<typeof Database.deviceModel.createFromOld>[0]
+
+/**
+ * Request with the user and the client device info in the body (set by the auth and controller middleware)
+ */
+type PlaybackRequest = Request & { user: User }
+
+/**
+ * Request to start a session, with the library item loaded by the library item controller middleware
+ */
+type StartSessionRequest = PlaybackRequest & { libraryItem: LibraryItem.LibraryItemExpanded }
+
+/**
+ * Local playback session sent by a client (stored session JSON with the ids the server maps)
+ */
+type LocalSessionJson = ConstructorParameters<typeof PlaybackSession>[0] & {
+  id: string
+  libraryItemId: string
+  episodeId: string | null
+  bookId?: string | null
+  libraryId?: string | null
+  updatedAt: number
+  currentTime: number
+  timeListening: number
+}
+
+/**
+ * Options of a start session request
+ */
+interface StartSessionOptions {
+  forceDirectPlay?: boolean
+  forceTranscode?: boolean
+  mediaPlayer: string
+  supportedMimeTypes?: string[]
+}
+
+/**
+ * Progress sent with a sync or close session request
+ */
+interface SyncData {
+  currentTime: number
+  timeListened: number | string
+  duration?: number
+}
 
 class PlaybackSessionManager {
+  declare StreamsPath: string
+  declare oldPlaybackSessionMap: Record<string, string>
+  declare sessions: PlaybackSession[]
+
   constructor() {
     this.StreamsPath = Path.join(global.MetadataPath, 'streams')
 
     this.oldPlaybackSessionMap = {} // TODO: Remove after updated mobile versions
 
-    /** @type {PlaybackSession[]} */
     this.sessions = []
   }
 
   /**
    * Get open session by id
-   *
-   * @param {string} sessionId
-   * @returns {PlaybackSession}
    */
-  getSession(sessionId) {
+  getSession(sessionId: string) {
     return this.sessions.find((s) => s.id === sessionId)
   }
-  getUserSession(userId) {
+  getUserSession(userId: string) {
     return this.sessions.find((s) => s.userId === userId)
   }
-  getStream(sessionId) {
+  getStream(sessionId: string) {
     const session = this.getSession(sessionId)
     return session?.stream || null
   }
 
-  /**
-   *
-   * @param {import('../controllers/LibraryItemController').LibraryItemControllerRequest} req
-   * @param {Object} [clientDeviceInfo]
-   * @returns {Promise<DeviceInfo>}
-   */
-  async getDeviceInfo(req, clientDeviceInfo = null) {
+  async getDeviceInfo(req: PlaybackRequest, clientDeviceInfo: ClientDeviceInfo | null = null): Promise<DeviceInfo> {
     const ua = uaParserJs(req.headers['user-agent'])
     const ip = requestIp.getClientIp(req)
 
@@ -60,24 +119,20 @@ class PlaybackSessionManager {
       const existingDevice = await Database.deviceModel.getOldDeviceByDeviceId(clientDeviceInfo.deviceId)
       if (existingDevice) {
         if (existingDevice.update(deviceInfo)) {
-          await Database.deviceModel.updateFromOld(existingDevice)
+          // cast(d): a device loaded from the database has its id
+          await Database.deviceModel.updateFromOld(existingDevice as OldDeviceInfo)
         }
         return existingDevice
       }
     }
 
-    await Database.deviceModel.createFromOld(deviceInfo)
+    // cast(d): setData sets the device id
+    await Database.deviceModel.createFromOld(deviceInfo as OldDeviceInfo)
 
     return deviceInfo
   }
 
-  /**
-   *
-   * @param {import('../controllers/LibraryItemController').LibraryItemControllerRequest} req
-   * @param {import('express').Response} res
-   * @param {string} [episodeId]
-   */
-  async startSessionRequest(req, res, episodeId) {
+  async startSessionRequest(req: StartSessionRequest, res: Response, episodeId?: string | null) {
     const deviceInfo = await this.getDeviceInfo(req, req.body?.deviceInfo)
     Logger.debug(`[PlaybackSessionManager] startSessionRequest for device ${deviceInfo.deviceDescription}`)
     const { libraryItem, body: options } = req
@@ -85,14 +140,7 @@ class PlaybackSessionManager {
     res.json(session.toJSONForClient(libraryItem))
   }
 
-  /**
-   *
-   * @param {import('../models/User')} user
-   * @param {*} session
-   * @param {*} payload
-   * @param {import('express').Response} res
-   */
-  async syncSessionRequest(user, session, payload, res) {
+  async syncSessionRequest(user: User, session: PlaybackSession, payload: SyncData, res: Response) {
     if (await this.syncSession(user, session, payload)) {
       res.sendStatus(200)
     } else {
@@ -100,12 +148,12 @@ class PlaybackSessionManager {
     }
   }
 
-  async syncLocalSessionsRequest(req, res) {
+  async syncLocalSessionsRequest(req: PlaybackRequest, res: Response) {
     const deviceInfo = await this.getDeviceInfo(req, req.body?.deviceInfo)
     const user = req.user
-    const sessions = req.body.sessions || []
+    const sessions: LocalSessionJson[] = req.body.sessions || []
 
-    const syncResults = []
+    const syncResults: Awaited<ReturnType<PlaybackSessionManager['syncLocalSession']>>[] = []
     for (const sessionJson of sessions) {
       Logger.info(`[PlaybackSessionManager] Syncing local session "${sessionJson.displayTitle}" (${sessionJson.id}) (updatedAt: ${sessionJson.updatedAt})`)
       const result = await this.syncLocalSession(user, sessionJson, deviceInfo)
@@ -117,17 +165,11 @@ class PlaybackSessionManager {
     })
   }
 
-  /**
-   *
-   * @param {import('../models/User')} user
-   * @param {*} sessionJson
-   * @param {*} deviceInfo
-   * @returns
-   */
-  async syncLocalSession(user, sessionJson, deviceInfo) {
+  async syncLocalSession(user: User, sessionJson: LocalSessionJson, deviceInfo: DeviceInfo): Promise<{ id: string | null; success: boolean; progressSynced?: boolean; error?: string }> {
     // TODO: Combine libraryItem query with library query
     const libraryItem = await Database.libraryItemModel.getExpandedById(sessionJson.libraryItemId)
-    const episode = sessionJson.episodeId && libraryItem && libraryItem.isPodcast ? libraryItem.media.podcastEpisodes.find((pe) => pe.id === sessionJson.episodeId) : null
+    // cast(d): isPodcast is checked just before
+    const episode = sessionJson.episodeId && libraryItem && libraryItem.isPodcast ? (libraryItem.media as Podcast).podcastEpisodes.find((pe) => pe.id === sessionJson.episodeId) : null
     if (!libraryItem || (libraryItem.isPodcast && !episode)) {
       Logger.error(`[PlaybackSessionManager] syncLocalSession: Media item not found for session "${sessionJson.displayTitle}" (${sessionJson.id})`)
       return {
@@ -176,7 +218,7 @@ class PlaybackSessionManager {
       sessionJson.libraryId = libraryItem.libraryId
     }
 
-    let session = await Database.getPlaybackSession(sessionJson.id)
+    let session: PlaybackSession | null | false = await Database.getPlaybackSession(sessionJson.id)
     if (!session) {
       // New session from local
       session = new PlaybackSession(sessionJson)
@@ -185,12 +227,14 @@ class PlaybackSessionManager {
       if (session.mediaMetadata == null) {
         session.mediaMetadata = {}
       }
+      // cast(d): the media metadata object (set just above when missing) indexed by key
+      const mediaMetadata = session.mediaMetadata as Record<string, unknown>
 
       // Populate mediaMetadata with the current library items metadata for any keys not set by client
-      const libraryItemMediaMetadata = libraryItem.media.oldMetadataToJSON()
+      const libraryItemMediaMetadata: Record<string, unknown> = libraryItem.media.oldMetadataToJSON()
       for (const key in libraryItemMediaMetadata) {
-        if (session.mediaMetadata[key] === undefined) {
-          session.mediaMetadata[key] = libraryItemMediaMetadata[key]
+        if (mediaMetadata[key] === undefined) {
+          mediaMetadata[key] = libraryItemMediaMetadata[key]
         }
       }
 
@@ -210,7 +254,8 @@ class PlaybackSessionManager {
       session.updatedAt = sessionJson.updatedAt
 
       let jsDate = new Date(sessionJson.updatedAt)
-      if (isNaN(jsDate)) {
+      // cast(d): isNaN coerces the Date to its time value, as in the JS
+      if (isNaN(jsDate as unknown as number)) {
         jsDate = new Date()
       }
       session.date = date.format(jsDate, 'YYYY-MM-DD')
@@ -229,7 +274,8 @@ class PlaybackSessionManager {
     const mediaItemId = session.episodeId || libraryItem.media.id
     let userProgressForItem = user.getMediaProgress(mediaItemId)
     if (userProgressForItem) {
-      if (userProgressForItem.updatedAt.valueOf() > session.updatedAt) {
+      // cast(d): a session without updatedAt (null) compares as 0, as in the JS
+      if (userProgressForItem.updatedAt.valueOf() > (session.updatedAt as number)) {
         Logger.info(`[PlaybackSessionManager] Not updating progress for "${session.displayTitle}" because it has been updated more recently (${userProgressForItem.updatedAt.valueOf()} > ${session.updatedAt}) (incoming currentTime: ${session.currentTime}) (current currentTime: ${userProgressForItem.currentTime})`)
       } else {
         Logger.info(`[PlaybackSessionManager] Updating progress for "${session.displayTitle}" with current time ${session.currentTime} (previously ${userProgressForItem.currentTime})`)
@@ -262,25 +308,21 @@ class PlaybackSessionManager {
 
     // Update user and emit socket event
     if (result.progressSynced) {
+      // progressSynced is only true when the media progress was set
       SocketAuthority.clientEmitter(user.id, 'user_item_progress_updated', {
-        id: userProgressForItem.id,
+        id: userProgressForItem!.id,
         sessionId: session.id,
         deviceDescription: session.deviceDescription,
-        data: userProgressForItem.getOldMediaProgress()
+        data: userProgressForItem!.getOldMediaProgress()
       })
     }
 
     return result
   }
 
-  /**
-   *
-   * @param {import('../controllers/SessionController').RequestWithUser} req
-   * @param {*} res
-   */
-  async syncLocalSessionRequest(req, res) {
+  async syncLocalSessionRequest(req: PlaybackRequest, res: Response) {
     const deviceInfo = await this.getDeviceInfo(req, req.body?.deviceInfo)
-    const sessionJson = req.body
+    const sessionJson: LocalSessionJson = req.body
     const result = await this.syncLocalSession(req.user, sessionJson, deviceInfo)
     if (result.error) {
       res.status(500).send(result.error)
@@ -289,28 +331,12 @@ class PlaybackSessionManager {
     }
   }
 
-  /**
-   *
-   * @param {import('../models/User')} user
-   * @param {*} session
-   * @param {*} syncData
-   * @param {import('express').Response} res
-   */
-  async closeSessionRequest(user, session, syncData, res) {
+  async closeSessionRequest(user: User, session: PlaybackSession, syncData: SyncData | null, res: Response) {
     await this.closeSession(user, session, syncData)
     res.sendStatus(200)
   }
 
-  /**
-   *
-   * @param {import('../models/User')} user
-   * @param {DeviceInfo} deviceInfo
-   * @param {import('../models/LibraryItem')} libraryItem
-   * @param {string|null} episodeId
-   * @param {{forceDirectPlay?:boolean, forceTranscode?:boolean, mediaPlayer:string, supportedMimeTypes?:string[]}} options
-   * @returns {Promise<PlaybackSession>}
-   */
-  async startSession(user, deviceInfo, libraryItem, episodeId, options) {
+  async startSession(user: User, deviceInfo: DeviceInfo, libraryItem: LibraryItem.LibraryItemExpanded, episodeId: string | null | undefined, options: StartSessionOptions): Promise<PlaybackSession> {
     // Close any sessions already open for user and device
     const userSessions = this.sessions.filter((playbackSession) => playbackSession.userId === user.id && playbackSession.deviceId === deviceInfo.id)
     for (const session of userSessions) {
@@ -318,7 +344,8 @@ class PlaybackSessionManager {
       await this.closeSession(user, session, null)
     }
 
-    const shouldDirectPlay = options.forceDirectPlay || (!options.forceTranscode && libraryItem.media.checkCanDirectPlay(options.supportedMimeTypes, episodeId))
+    // cast(d): checkCanDirectPlay checks that supportedMimeTypes is an array
+    const shouldDirectPlay = options.forceDirectPlay || (!options.forceTranscode && libraryItem.media.checkCanDirectPlay(options.supportedMimeTypes as string[], episodeId))
     const mediaPlayer = options.mediaPlayer || 'unknown'
 
     const mediaItemId = episodeId || libraryItem.media.id
@@ -329,20 +356,23 @@ class PlaybackSessionManager {
         Logger.info(`[PlaybackSessionManager] Starting session for user "${user.username}" and resetting progress for finished item "${libraryItem.media.title}"`)
         // Keep userStartTime as 0 so the client restarts the media
       } else {
-        userStartTime = Number.parseFloat(userProgress.currentTime) || 0
+        // cast(d): parseFloat converts the number to a string first, as in the JS
+        userStartTime = Number.parseFloat(userProgress.currentTime as unknown as string) || 0
       }
     }
     const newPlaybackSession = new PlaybackSession()
     newPlaybackSession.setData(libraryItem, user.id, mediaPlayer, deviceInfo, userStartTime, episodeId)
 
-    let audioTracks = []
+    let audioTracks: (AudioTrackObject | PlaybackSession['audioTracks'][number])[] = []
     if (shouldDirectPlay) {
       Logger.debug(`[PlaybackSessionManager] "${user.username}" starting direct play session for item "${libraryItem.id}" with id ${newPlaybackSession.id} (Device: ${newPlaybackSession.deviceDescription})`)
       audioTracks = libraryItem.getTrackList(episodeId)
       newPlaybackSession.playMethod = PlayMethod.DIRECTPLAY
     } else {
       Logger.debug(`[PlaybackSessionManager] "${user.username}" starting stream session for item "${libraryItem.id}" (Device: ${newPlaybackSession.deviceDescription})`)
-      const stream = new Stream(newPlaybackSession.id, this.StreamsPath, user, libraryItem, episodeId, userStartTime)
+      // setData sets the session id
+      // cast(d): a request without an episode id passes undefined, which the stream stores as is
+      const stream = new Stream(newPlaybackSession.id!, this.StreamsPath, user, libraryItem, episodeId as string | null, userStartTime)
       await stream.generatePlaylist()
       stream.start() // Start transcode
 
@@ -355,7 +385,8 @@ class PlaybackSessionManager {
         newPlaybackSession.stream = null
       })
     }
-    newPlaybackSession.audioTracks = audioTracks
+    // cast(d): direct play tracks are plain track objects; PlaybackSession types them as AudioTrack objects (its toJSON handles both)
+    newPlaybackSession.audioTracks = audioTracks as PlaybackSession['audioTracks']
 
     this.sessions.push(newPlaybackSession)
     SocketAuthority.adminEmitter('user_stream_update', user.toJSONForPublic(this.sessions))
@@ -363,16 +394,10 @@ class PlaybackSessionManager {
     return newPlaybackSession
   }
 
-  /**
-   *
-   * @param {import('../models/User')} user
-   * @param {*} session
-   * @param {*} syncData
-   * @returns {Promise<boolean>}
-   */
-  async syncSession(user, session, syncData) {
+  async syncSession(user: User, session: PlaybackSession, syncData: SyncData): Promise<boolean> {
     // TODO: Combine libraryItem query with library query
-    const libraryItem = await Database.libraryItemModel.getExpandedById(session.libraryItemId)
+    // Open sessions have a library item id (setData)
+    const libraryItem = await Database.libraryItemModel.getExpandedById(session.libraryItemId!)
     if (!libraryItem) {
       Logger.error(`[PlaybackSessionManager] syncSession Library Item not found "${session.libraryItemId}"`)
       return false
@@ -411,14 +436,7 @@ class PlaybackSessionManager {
     return true
   }
 
-  /**
-   *
-   * @param {import('../models/User')} user
-   * @param {*} session
-   * @param {*} syncData
-   * @returns
-   */
-  async closeSession(user, session, syncData = null) {
+  async closeSession(user: User, session: PlaybackSession, syncData: SyncData | null = null) {
     if (syncData) {
       await this.syncSession(user, session, syncData)
     } else {
@@ -430,7 +448,7 @@ class PlaybackSessionManager {
     return this.removeSession(session.id)
   }
 
-  saveSession(session) {
+  saveSession(session: PlaybackSession) {
     if (!session.timeListening) return // Do not save a session with no listening time
 
     if (session.lastSave) {
@@ -441,11 +459,7 @@ class PlaybackSessionManager {
     }
   }
 
-  /**
-   *
-   * @param {string} sessionId
-   */
-  async removeSession(sessionId) {
+  async removeSession(sessionId: string | null) {
     const session = this.sessions.find((s) => s.id === sessionId)
     if (!session) return
     if (session.stream) {
@@ -462,7 +476,8 @@ class PlaybackSessionManager {
     try {
       await fs.ensureDir(this.StreamsPath)
     } catch (error) {
-      Logger.error(`[PlaybackSessionManager] Failed to create streams directory at "${this.StreamsPath}": ${error.message}`)
+      // cast(d): catch variable is unknown
+      Logger.error(`[PlaybackSessionManager] Failed to create streams directory at "${this.StreamsPath}": ${(error as Error).message}`)
       throw new Error(`[PlaybackSessionManager] Failed to create streams directory at "${this.StreamsPath}"`, { cause: error })
     }
     try {
@@ -488,12 +503,14 @@ class PlaybackSessionManager {
    */
   async closeStaleOpenSessions() {
     const updatedAtTimeCutoff = Date.now() - 1000 * 60 * 60 * 36
-    const staleSessions = this.sessions.filter((session) => session.updatedAt < updatedAtTimeCutoff)
+    // Open sessions are created with setData (startSession), which sets updatedAt
+    const staleSessions = this.sessions.filter((session) => session.updatedAt! < updatedAtTimeCutoff)
     for (const session of staleSessions) {
-      const sessionLastUpdate = new Date(session.updatedAt)
+      // Set by setData (see above)
+      const sessionLastUpdate = new Date(session.updatedAt!)
       Logger.info(`[PlaybackSessionManager] Closing stale session "${session.displayTitle}" (${session.id}) last updated at ${sessionLastUpdate}`)
       await this.removeSession(session.id)
     }
   }
 }
-module.exports = PlaybackSessionManager
+export = PlaybackSessionManager

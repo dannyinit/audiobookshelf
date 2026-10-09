@@ -1,17 +1,35 @@
-const Path = require('path')
-const fs = require('../libs/fsExtra')
-const stream = require('stream')
-const Logger = require('../Logger')
-const { resizeImage } = require('../utils/ffmpegHelpers')
-const { encodeUriPath } = require('../utils/fileUtils')
-const { isUUID } = require('../utils/index')
-const Database = require('../Database')
+import Path = require('path')
+import fs = require('../libs/fsExtra')
+import stream = require('stream')
+import Logger = require('../Logger')
+import ffmpegHelpers = require('../utils/ffmpegHelpers')
+import fileUtils = require('../utils/fileUtils')
+import utils = require('../utils/index')
+import Database = require('../Database')
+import type { Response } from 'express'
+const { resizeImage } = ffmpegHelpers
+const { encodeUriPath } = fileUtils
+const { isUUID } = utils
 
-function isValidCacheDimension(dimension) {
+/**
+ * Image options from the cover and author image requests
+ */
+interface CacheImageOptions {
+  format?: string
+  width?: number | null
+  height?: number | null
+}
+
+function isValidCacheDimension(dimension: number) {
   return Number.isSafeInteger(dimension) && dimension > 0
 }
 
 class CacheManager {
+  declare CachePath: string | null
+  declare CoverCachePath: string | null
+  declare ImageCachePath: string | null
+  declare ItemCachePath: string | null
+
   constructor() {
     this.CachePath = null
     this.CoverCachePath = null
@@ -35,12 +53,13 @@ class CacheManager {
       await fs.ensureDir(this.ImageCachePath)
       await fs.ensureDir(this.ItemCachePath)
     } catch (error) {
-      Logger.error(`[CacheManager] Failed to create cache directories at "${this.CachePath}": ${error.message}`)
+      // cast(d): catch variable is unknown
+      Logger.error(`[CacheManager] Failed to create cache directories at "${this.CachePath}": ${(error as Error).message}`)
       throw new Error(`[CacheManager] Failed to create cache directories at "${this.CachePath}"`, { cause: error })
     }
   }
 
-  async handleCoverCache(res, libraryItemId, options = {}) {
+  async handleCoverCache(res: Response, libraryItemId: string, options: CacheImageOptions = {}) {
     const format = options.format || 'webp'
     const width = options.width || 400
     const height = options.height || null
@@ -50,7 +69,8 @@ class CacheManager {
     }
     res.type(`image/${format}`)
 
-    const cachePath = Path.join(this.CoverCachePath, `${libraryItemId}_${width}${height ? `x${height}` : ''}`) + '.' + format
+    // Set by ensureCachePaths at startup
+    const cachePath = Path.join(this.CoverCachePath!, `${libraryItemId}_${width}${height ? `x${height}` : ''}`) + '.' + format
 
     // Cache exists
     if (await fs.pathExists(cachePath)) {
@@ -90,18 +110,18 @@ class CacheManager {
     readStream.pipe(res)
   }
 
-  purgeCoverCache(libraryItemId) {
+  purgeCoverCache(libraryItemId: string) {
     return this.purgeEntityCache(libraryItemId, this.CoverCachePath)
   }
 
-  purgeImageCache(entityId) {
+  purgeImageCache(entityId: string) {
     return this.purgeEntityCache(entityId, this.ImageCachePath)
   }
 
-  async purgeEntityCache(entityId, cachePath) {
+  async purgeEntityCache(entityId: string, cachePath: string | null) {
     if (!entityId || !cachePath) return []
     return Promise.all(
-      (await fs.readdir(cachePath)).reduce((promises, file) => {
+      (await fs.readdir(cachePath)).reduce<ReturnType<CacheManager['removeCache']>[]>((promises, file) => {
         if (file.startsWith(entityId)) {
           Logger.debug(`[CacheManager] Going to purge ${file}`)
           promises.push(this.removeCache(Path.join(cachePath, file)))
@@ -111,14 +131,14 @@ class CacheManager {
     )
   }
 
-  removeCache(path) {
+  removeCache(path: string) {
     if (!path) return false
     return fs.pathExists(path).then((exists) => {
       if (!exists) return false
       return fs
         .unlink(path)
         .then(() => true)
-        .catch((err) => {
+        .catch((err: Error) => {
           Logger.error(`[CacheManager] Failed to remove cache "${path}"`, err)
           return false
         })
@@ -127,8 +147,10 @@ class CacheManager {
 
   async purgeAll() {
     Logger.info(`[CacheManager] Purging all cache at "${this.CachePath}"`)
-    if (await fs.pathExists(this.CachePath)) {
-      await fs.remove(this.CachePath).catch((error) => {
+    // Set by ensureCachePaths at startup
+    if (await fs.pathExists(this.CachePath!)) {
+      // Set by ensureCachePaths at startup
+      await fs.remove(this.CachePath!).catch((error: Error) => {
         Logger.error(`[CacheManager] Failed to remove cache dir "${this.CachePath}"`, error)
       })
     }
@@ -137,22 +159,17 @@ class CacheManager {
 
   async purgeItems() {
     Logger.info(`[CacheManager] Purging items cache at "${this.ItemCachePath}"`)
-    if (await fs.pathExists(this.ItemCachePath)) {
-      await fs.remove(this.ItemCachePath).catch((error) => {
+    // Set by ensureCachePaths at startup
+    if (await fs.pathExists(this.ItemCachePath!)) {
+      // Set by ensureCachePaths at startup
+      await fs.remove(this.ItemCachePath!).catch((error: Error) => {
         Logger.error(`[CacheManager] Failed to remove items cache dir "${this.ItemCachePath}"`, error)
       })
     }
     await this.ensureCachePaths()
   }
 
-  /**
-   *
-   * @param {import('express').Response} res
-   * @param {String} authorId
-   * @param {{ format?: string, width?: number, height?: number }} options
-   * @returns
-   */
-  async handleAuthorCache(res, authorId, options = {}) {
+  async handleAuthorCache(res: Response, authorId: string, options: CacheImageOptions = {}) {
     const format = options.format || 'webp'
     const width = options.width || 400
     const height = options.height || null
@@ -162,7 +179,8 @@ class CacheManager {
     }
     res.type(`image/${format}`)
 
-    var cachePath = Path.join(this.ImageCachePath, `${authorId}_${width}${height ? `x${height}` : ''}`) + '.' + format
+    // Set by ensureCachePaths at startup
+    var cachePath = Path.join(this.ImageCachePath!, `${authorId}_${width}${height ? `x${height}` : ''}`) + '.' + format
 
     // Cache exists
     if (await fs.pathExists(cachePath)) {
@@ -189,4 +207,4 @@ class CacheManager {
     readStream.pipe(res)
   }
 }
-module.exports = new CacheManager()
+export = new CacheManager()
