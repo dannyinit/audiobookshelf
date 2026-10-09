@@ -218,3 +218,16 @@ A "kind" of cast means casts to the same target type (for example all `as number
 - Rule 14 has one more tag: `// cast(e): <why>` marks a temporary cast that exists only because a JavaScript file has not been converted yet (for example Database.js, whose `sequelize` is null until init). Name the file that removes it, for example `cast(e): remove when Database.js is converted`. Use e instead of d for these. The existing `as InitializedDatabase` casts are tagged d and are removed in batch 9 together with the InitializedDatabase type.
 - Rule 15 also bans `undefined as unknown as T`. If a parameter can receive undefined, declare it optional or `T | undefined`.
 - Do not add new shared workaround types. Use InitializedDatabase from server/utils/types.ts where Database must be non-null. If another shared type seems needed, stop and report it.
+
+## Final cleanup (batch 11, runs after batch 10; do not start it earlier)
+
+Open items collected from the type quality audit and from batches 3a and 3b. Each item is done only when its check passes. If time or usage runs out, do items 1 and 3 first.
+
+1. QueryFindOptions (server/utils/queries/types.ts): replace it with one shared type built from Sequelize's own option types (take FindOptions, omit where, attributes, limit, include, order and distinct, and add them back with the shapes Sequelize accepts at runtime: where, attributes and limit may be null; include may be a single object or an array; order items may be a literal; distinct allowed). Do not rewrite the queries. Check: no match for QueryFindOptions in server/, 0 error TS, 356 passing, compiled JS unchanged apart from comments.
+2. InitializedDatabase and every `cast(e)`: remove them when Database.js is converted (batch 9). Check: no match for InitializedDatabase and no match for `cast(e)` in server/.
+3. Replace the 8 `null as unknown as T` casts and the `undefined as unknown as number` casts (LibraryItem.ts:604) with honest types (`T | null`, optional parameters). Check: no match for `null as unknown as` and `undefined as unknown as`. New type errors may reveal bugs (for example OidcAuthStrategy.verifyCallback reads user.isActive on null); list them in Bugs, do not fix them.
+4. ApiRouter.ts: RouteHandler has `never` parameters; remove after batch 7 (rule 18). Check: no `never` parameter types left in the route handler types.
+5. FilteredLibraryItem has an index signature `[key: string]: unknown`, and req.query is cast to all-string shapes in places (rule 15). List the remaining ones and fix what can be fixed without rewriting expressions.
+6. Retag old casts that have no reason tag, if time allows.
+
+If batch 11 is not done by the report deadline, the open items above are reported as known limitations.
