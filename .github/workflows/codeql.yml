@@ -8,7 +8,7 @@ on:
       - client/**
       - server/**
       - test/**
-      - index.js
+      - index.ts
       - package.json
   pull_request:
     # The branches below must be a subset of the branches above
@@ -18,7 +18,7 @@ on:
       - client/**
       - server/**
       - test/**
-      - index.js
+      - index.ts
       - package.json
   schedule:
     - cron: '16 5 * * 4'

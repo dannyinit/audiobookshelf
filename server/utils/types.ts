@@ -27,7 +27,7 @@ interface FsExtraMethods {
 export type FsExtra = typeof fsPromises & Omit<typeof fsSync, keyof typeof fsPromises> & FsExtraMethods
 
 /**
- * Values the server stores on `global` (set in Server.js, Database.js and index.js)
+ * Values the server stores on `global` (set in Server.ts, Database.ts and index.ts)
  */
 type ServerSettingsJson = ReturnType<ServerSettingsModel['toJSON']>
 
@@ -44,7 +44,7 @@ declare global {
   var Source: string
   /** ALLOW_CORS=1, set by Server */
   var AllowCors: boolean
-  /** Directory of index.js / prod.js (set there) */
+  /** Directory of index.ts (dist-server/index.js when built) / prod.js (set there) */
   var appRoot: string
 
   namespace NodeJS {

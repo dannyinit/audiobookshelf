@@ -10,7 +10,7 @@ on:
       - client/**
       - server/**
       - test/**
-      - index.js
+      - index.ts
       - package.json
       - tsconfig.server.json
 

@@ -17,7 +17,7 @@ on:
     paths:
       - client/**
       - server/**
-      - index.js
+      - index.ts
       - package.json
       - tsconfig.server.json
       - Dockerfile

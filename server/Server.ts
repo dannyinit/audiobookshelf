@@ -520,7 +520,7 @@ class Server {
         Logger.info(`Listening on unix socket ${sockPath}`)
       })
     } else {
-      // cast(d): Node accepts the port as a string (index.js passes the --port / PORT string) and converts it; @types/node types it as a number
+      // cast(d): Node accepts the port as a string (index.ts passes the --port / PORT string) and converts it; @types/node types it as a number
       this.server.listen(this.Port as number, this.Host, () => {
         if (this.Host) Logger.info(`Listening on http://${is.ipv6(this.Host) ? `[${this.Host}]` : this.Host}:${this.Port}`)
         else Logger.info(`Listening on port :${this.Port}`)

@@ -24,7 +24,7 @@ Goal: convert every first-party .js file under server/ and index.js to TypeScrip
 | 7 | server/controllers (remaining 22) | 22 | done: 20 converted, 2 skipped (LibraryController, LibraryItemController; see Skipped files) |
 | 8 | server/migrations | 15 | done: 15 converted, none skipped |
 | 9 | server top-level files (Logger, Database, Auth, SocketAuthority, Watcher, Server) and index.js | 7 | done: 7 converted, none skipped; 9b done (InitializedDatabase removed) |
-| 10 | Packaging: package.json scripts, Dockerfile and anything else that references a .js entry point | 0 | todo |
+| 10 | Packaging: package.json scripts, Dockerfile and anything else that references a .js entry point | 9 | done: 9 files changed (configuration and comments), prod.js skipped (see Skipped files) |
 
 Already done in Phase 2: server/finders, server/providers, server/controllers/SearchController.
 
@@ -289,7 +289,7 @@ Each has a `NOTE:` comment at the line.
 - Result: `npm run build:server` (clean build) reports 0 `error TS`; `npm test` 356 passing, 0 failing.
 
 ### Batch 9: server top-level files and index.js (7 files, all converted, none skipped)
-- File count: 7, as the Progress table says: server/Logger.js, Database.js, Auth.js, SocketAuthority.js, Watcher.js, Server.js and index.js (the only `.js` files left directly in server/, plus index.js). prod.js and dev.js (gitignored, not in the repository) are not part of the batch. HEAD before the batch: `phase3 batch 8: server/migrations` (dd0b7b2f), working tree clean; clean build 0 `error TS`, 356 passing.
+- File count: 7, as the Progress table says: server/Logger.js, Database.js, Auth.js, SocketAuthority.js, Watcher.js, Server.js and index.js (the only `.js` files left directly in server/, plus index.js). prod.js (tracked by git; corrected in batch 10) and dev.js (gitignored by `/dev.js`, not in the repository) are not part of the batch. HEAD before the batch: `phase3 batch 8: server/migrations` (dd0b7b2f), working tree clean; clean build 0 `error TS`, 356 passing.
 - Converted in dependency order (Logger, Database, Auth, SocketAuthority, Watcher, Server, index), each with `git mv` and the types in the same edit; the build was 0 `error TS` and the tests 356 passing after each file.
 - devDependencies added (rule 10): `@types/passport-jwt` (Auth) and `@types/cookie-parser` (Server); package-lock.json also gets `@types/passport-strategy`, a dependency of `@types/passport-jwt`.
 - Class fields: every field the JS assigned in the constructor is a `declare` field (rule 12), so the constructors compile to the same bodies. Database's `TextSearchQuery = class {...}` was a JS class field and stays one (its own fields are `declare`d). `Logger.ConsoleMethods` stays a static field (annotated with its value type, so `console[consoleMethod]` is typed).
@@ -376,6 +376,48 @@ Each has a `NOTE:` comment at the line.
 - No bugs found, no tests changed.
 - Result: `npm run build:server` (clean build) reports 0 `error TS`; `npm test` 356 passing, 0 failing.
 
+### Batch 10: packaging (configuration and text only; no file converted, prod.js skipped)
+- HEAD before the batch: `phase3 batch 9b: remove InitializedDatabase` (2069c8db), working tree clean. Starting point: the "Entry point references" list in the Batch 9 Log.
+- No server code, cast, type or package changed. Casts (rule 17): 0 `as`, 0 `as unknown as`, 0 `!` added or removed; a 0, b 0, c 0, d 0.
+- Files changed (old line -> new line):
+  - Dockerfile:16 (compile-server stage) `COPY index.js package* tsconfig.server.json /server` -> `COPY index.ts package* tsconfig.server.json /server` (tsc needs index.ts to emit dist-server/index.js).
+  - Dockerfile:36 (build-server stage) `COPY index.js package* /server` -> `COPY index.ts package* /server`. Every other line unchanged; Dockerfile:82 `CMD ["node", "dist-server/index.js"]` left (compiled file).
+  - package.json:9 `dev`: `nodemon --watch server --watch index.js --watch test ...` -> `nodemon --watch server --watch index.ts --watch test ...` (rest of the script unchanged).
+  - .github/workflows/codeql.yml:11 and :21, docker-build.yml:20, integration-test.yml:13: `      - index.js` -> `      - index.ts` (paths filters).
+  - eslint.config.mjs:39 `files: ['index.js', 'prod.js', 'dev.js', 'server/**/*.js'],` -> `files: ['prod.js', 'dev.js', 'server/**/*.js'],`.
+  - .vscode/tasks.json:21 `"detail": "nodemon --watch server index.js",` -> `"detail": "nodemon --watch server index.ts",`.
+  - server/utils/types.ts:30 ` * Values the server stores on `global` (set in Server.js, Database.js and index.js)` -> `(set in Server.ts, Database.ts and index.ts)`; :47 `/** Directory of index.js / prod.js (set there) */` -> `/** Directory of index.ts (dist-server/index.js when built) / prod.js (set there) */` (comments only).
+  - server/Server.ts:523 (comment found by `git grep -n "index\.js"`, comment only): `// cast(d): Node accepts the port as a string (index.js passes the --port / PORT string) ...` -> `(index.ts passes ...)`.
+  - MIGRATION.md (this file): Progress row 10, Skipped files (prod.js), this entry, and the Batch 9 Log sentence that said prod.js is gitignored and not in the repository (only `/dev.js` is in .gitignore; prod.js is tracked).
+- package.json, checked, no change needed (all point at the compiled dist-server/index.js): :6 `main`, :10 `start`, :11 `start-dev`, :13 `prod` (runs `build:server` then `npm run start`), :14 `build-win`, :15 `build-win-no-compress`, :25 `bin`, :33 `pkg.scripts` (`dist-server/index.js`, plus `dist-server/server/**/*.js` and the migrations asset `dist-server/server/migrations/*.js`). `test` and `coverage` run `dist-server/test` (unchanged).
+- ESLint: `npm run lint` before the change: exit 0, no output (41 files linted, 0 errors, 0 warnings); after: exit 0, no output (41 files, 0 errors, 0 warnings). Removing `index.js` did not change the set, because the file did not exist. Files linted outside test/: .devcontainer/dev.js, eslint.config.mjs, prod.js, server/controllers/LibraryController.js, server/controllers/LibraryItemController.js, tailwind.config.js (flat config lints `.js`/`.mjs`/`.cjs` by default; the files block only adds the globals and rules). **`.ts` files are not linted**: index.ts and every server/**/*.ts file are outside this config, which only lints JavaScript; no TypeScript linter was added (the type check is `npm run build:server`).
+- prod.js: unchanged, listed under Skipped files. `git grep -n "prod\.js"` (before this entry was written): eslint.config.mjs:39 (files list, left: the file still exists and is still linted), server/utils/types.ts:47 (comment, left: it still sets `global.appRoot`), MIGRATION.md:292, :343, :346 (Batch 9 Log; :292 corrected as above). No script, workflow, Dockerfile line or packager runs it.
+- Other references checked (`git grep` for index.js, prod.js, dist-server; build/linuxpackager, deploy, .devcontainer, docker-compose.yml, readme.md, docs). File, line, decision:
+  - build/linuxpackager:52 `pkg ... dist-server/index.js`: left (compiled file); :28 `npm run build:server`: left.
+  - .github/workflows/integration-test.yml:45 `pkg ... dist-server/index.js`: left (compiled file).
+  - Dockerfile:38 `COPY --from=compile-server /server/dist-server ...`, :82 CMD: left.
+  - tsconfig.server.json:18 `include` already lists `index.ts` (batch 9), :7 `outDir`, :15 `tsBuildInfoFile`, :19 `exclude`: not needed.
+  - eslint.config.mjs:36 `ignores` (`dist-server/**`): not needed.
+  - index.ts:51 `Path.basename(__dirname) === 'dist-server'`: not needed (server code, runtime check of the compiled location).
+  - .gitignore:2 `/dev.js`, :14 `/dist-server/`, :27 `tailwind.config.js` (the file is tracked anyway); .dockerignore:11 `dev.js`: not needed.
+  - package-lock.json:34 `"audiobookshelf": "dist-server/index.js"` (bin, generated from package.json): not needed.
+  - server/utils/parsers/parseFullName.ts:3 (URL of the upstream parse-full-name `index.js` on GitHub): left, it names another project's file.
+  - docs/objects/Notification.yaml:91 and docs/openapi.json:3163: URL of `server/utils/notifications.js` on the upstream advplyr/audiobookshelf master branch: left (an external link to the upstream repository, where the file is `.js`; docs are not part of this batch). docs/README.md: no reference.
+  - deploy: no such directory (gitignored `/deploy/`); package.json:20 `deploy-linux` (`node deploy/linux`): left, not related to the entry point.
+  - .devcontainer: post-create.sh:6-8 copies .devcontainer/dev.js to dev.js (dev.js is still `.js` and still compiled through tsconfig `include`): not needed. devcontainer.json and Dockerfile: no reference.
+  - docker-compose.yml: uses the published image, no reference.
+  - readme.md:170 and :186 (`dev.js`, `npm run dev`): not needed (dev.js is unchanged and `npm run dev` now watches index.ts).
+  - client/: not touched.
+- Remaining `.js` files in the repository (excluding client/, test/ and the vendored server/libs): prod.js, tailwind.config.js, server/controllers/LibraryController.js, server/controllers/LibraryItemController.js (the four expected), plus .devcontainer/dev.js (the dev.js example that post-create.sh copies; tracked, not server code).
+- Verification:
+  - `npm run build:server` after removing dist-server (clean build): 0 `error TS`. `npm run lint`: exit 0 (see above).
+  - `npm test`: 356 passing, 0 failing.
+  - Compiled output compared with a clean build of HEAD (temporary git worktree in the scratchpad, removed afterwards): only dist-server/package.json (the `dev` script line) and the comment at dist-server/server/Server.js:423 differ; no other file differs, none added or removed.
+  - Server smoke test (`node dist-server/index.js --config <tmp> --metadata <tmp>`, empty directories, PORT 13399, `SKIP_BINARIES_CHECK=1` with `FFMPEG_PATH` / `FFPROBE_PATH`): GET /status 200 (`isInit: false`, ConfigPath / MetadataPath present), POST /init 200, /status `isInit: true`, POST /login 200 (user root, accessToken present, `Source: debian`), wrong password 401, SIGINT stopped the server cleanly (exit 0). ERROR / WARN in the log: only `[LocalAuth] Failed login attempt for username "root" ... (Invalid password)` (the wrong password).
+  - Docker: `docker --version` fails (`docker: command not found`), so `docker build --target compile-server` was not run; nothing installed. pkg and the Windows / Linux packagers were not run.
+- No bugs found, no tests changed.
+- Result: `npm run build:server` (clean build) reports 0 `error TS`; `npm test` 356 passing, 0 failing.
+
 ## Extra rules
 9. If a file cannot be typed cleanly without changing behaviour, first use the smallest possible `as` with a one-line comment and a line in the Bugs section. If that still fails, leave the file as .js, list it under Skipped with the reason, and move on.
 10. You may add missing @types packages to devDependencies in package.json (for example express, passport, cookie-parser). Mention them in the Log.
@@ -388,6 +430,7 @@ Each has a `NOTE:` comment at the line.
 ## Skipped files
 (batches 1 to 6, 3c, 8 and 9 skipped nothing)
 - server/controllers/LibraryItemController.js (batch 7): its handlers branch on `req.libraryItem.isBook` / `isPodcast` (getters, which do not narrow `media`), so 54 places need a Book or Podcast cast of the media: 26 reads of a property only Book has (authors, series, audioFiles, chapters, ...), 9 of a property only Podcast has (podcastEpisodes, autoDownloadEpisodes, ...), 19 union method calls (`media.save`, `updateFromRequest`, ...) or library item arguments typed Book/PodcastLibraryItem. That puts `Book` far over 10 in the batch (rule 17). A type guard on LibraryItem (or the getters as type predicates) is the missing shared piece. Converting it also needs the uploadCover route cast (see the Batch 7 Log).
+- prod.js (batch 10): kept exactly as it is, still `.js`. It is tracked by git, no script, workflow, Dockerfile or packager runs it (`git grep -n "prod\.js"` finds only eslint.config.mjs:39, the comment at server/utils/types.ts:47 and this file), and it cannot run from the source tree: it requires `./server/Server`, which is TypeScript since batch 9, so `node prod.js` fails at once with MODULE_NOT_FOUND. Not deleted and not converted (batch 10 is configuration and text only).
 - server/controllers/LibraryController.js (batch 7): its middleware converts `req.query.limit` / `page` to numbers in place, and the handlers then use them in arithmetic (`payload.page * payload.limit`, `startIndex + payload.limit`) and as number arguments; TypeScript types them as query strings, so 20 places need an `as number` cast (plus 1 for `getMaxDisplayOrder`), over 10 for `number` and not covered by exception 5 (which casts to string). The typed query parsing helper (batch 11 item 8) is the missing shared piece. It also needs about 6 Book/Podcast media casts.
 
 ## Rules added after the type quality audit (2026-10-09)
@@ -442,6 +485,7 @@ These rules apply from batch 3 onward. Where they conflict with rule 4 or rule 9
 - 2026-10-10: Batch 8 done: all 15 migrations converted, none skipped; only exception 1 used (6); the migration context type is a declaration file (server/migrations/types.d.ts) because a types.ts would be emitted as a .js migration. See "Batch 8" in the Log above.
 - 2026-10-10: Batch 9 done: the 7 top-level files (Logger, Database, Auth, SocketAuthority, Watcher, Server, index) converted, none skipped; exceptions 1 (2) and 5 (1) used; index.js references listed for batch 10 (the Dockerfile COPY lines break). See "Batch 9" in the Log above.
 - 2026-10-10: Batch 9b done: InitializedDatabase and the 8 `cast(e)` are removed (item 2 of the final cleanup); Database types its init-only `sequelize` as set (accessor pair, null only before init). See "Batch 9b" in the Log above.
+- 2026-10-10: Batch 10 done: Dockerfile, the dev script, the workflow path filters, the ESLint files list and the text mentions now name index.ts; compiled references to dist-server/index.js unchanged; prod.js skipped (kept as is); .ts files are not linted. Docker not available, so the image build was not checked. See "Batch 10" in the Log above.
 
 ### Clarification of rule 17 (2026-10-09, after batch 3a)
 
