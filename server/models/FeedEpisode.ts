@@ -74,10 +74,10 @@ class FeedEpisode extends Model<InferAttributes<FeedEpisode>, InferCreationAttri
 
     // Sort podcastEpisodes by pubDate. episodic is newest to oldest. serial is oldest to newest.
     if (feed.podcastType === 'episodic') {
-      // cast(d): subtracting Dates subtracts their timestamps, as in the JS
+      // cast(d) (2): subtracting Dates subtracts their timestamps, as in the JS
       libraryItemExpanded.media.podcastEpisodes.sort((a, b) => (new Date(b.pubDate) as unknown as number) - (new Date(a.pubDate) as unknown as number))
     } else {
-      // cast(d): subtracting Dates subtracts their timestamps, as in the JS
+      // cast(d) (2): subtracting Dates subtracts their timestamps, as in the JS
       libraryItemExpanded.media.podcastEpisodes.sort((a, b) => (new Date(a.pubDate) as unknown as number) - (new Date(b.pubDate) as unknown as number))
     }
 
@@ -197,7 +197,7 @@ class FeedEpisode extends Model<InferAttributes<FeedEpisode>, InferCreationAttri
         })
         numExisting = existingEpisode ? numExisting + 1 : numExisting
 
-        // earliestLibraryItemCreatedAt is set: this loop only runs when books is not empty
+        // cast(d): earliestLibraryItemCreatedAt is set: this loop only runs when books is not empty
         feedEpisodeObjs.push(this.getFeedEpisodeObjFromAudiobookTrack(book, earliestLibraryItemCreatedAt!, feed, slug, track, useChapterTitles, offsetIndex++, existingEpisode?.id))
       }
     }

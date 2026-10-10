@@ -66,7 +66,7 @@ class LibraryScanner {
       return
     }
 
-    // Libraries are loaded with their folders for scans
+    // cast(b): both callers load the library with its folders (findByIdWithFolders in CronManager and the LibraryController middleware); the association is optional in the model
     if (!library.libraryFolders!.length) {
       Logger.warn(`[LibraryScanner] Library has no folders to scan "${library.name}"`)
       return
@@ -116,7 +116,7 @@ class LibraryScanner {
         await library.save()
       }
 
-      // Set by createAndAddTask
+      // cast(d): set by createAndAddTask (with the scan data)
       task.data!.scanResults = libraryScan.scanResults
       if (canceled) {
         const taskFinishedString = {
@@ -132,7 +132,7 @@ class LibraryScanner {
 
       Logger.error(`[LibraryScanner] Library scan ${libraryScan.id} failed after ${libraryScan.elapsedTimestamp} | ${libraryScan.resultStats}.`, err)
 
-      // Set by createAndAddTask
+      // cast(d): set by createAndAddTask (with the scan data)
       task.data!.scanResults = libraryScan.scanResults
       const taskFailedString = {
         text: 'Failed',
@@ -160,9 +160,11 @@ class LibraryScanner {
     let libraryItemDataFound: LibraryItemScanData[] = []
 
     // Scan each library folder
-    // The library of the scan is loaded with its folders (setData sets the library)
+    // cast(b): setData sets the library of the scan, which is loaded with its folders; the association is optional in the model
     for (let i = 0; i < libraryScan.libraryFolders!.length; i++) {
+      // cast(b): setData sets the library of the scan, which is loaded with its folders; the association is optional in the model
       const folder = libraryScan.libraryFolders![i]
+      // cast(d): setData sets the library of the scan
       const itemDataFoundInFolder = await this.scanFolder(libraryScan.library!, folder)
       libraryScan.addLog(LogLevel.INFO, `${itemDataFoundInFolder.length} item data found in folder "${folder.path}"`)
       libraryItemDataFound = libraryItemDataFound.concat(itemDataFoundInFolder)
@@ -215,7 +217,7 @@ class LibraryScanner {
         let libraryItemDataUpdated = await libraryItemData.checkLibraryItemData(existingLibraryItem, libraryScan)
         if (libraryItemDataUpdated || forceRescan) {
           if (forceRescan || libraryItemData.hasLibraryFileChanges || libraryItemData.hasPathChange) {
-            // setData sets the library of the scan
+            // cast(d): setData sets the library of the scan
             const { libraryItem, wasUpdated } = await LibraryItemScanner.rescanLibraryItemMedia(existingLibraryItem, libraryItemData, libraryScan.library!.settings, libraryScan)
             if (!forceRescan || wasUpdated) {
               libraryScan.resultsUpdated++
@@ -275,7 +277,7 @@ class LibraryScanner {
     if (libraryItemDataFound.length) {
       let newLibraryItems: LibraryItem[] = []
       for (const libraryItemData of libraryItemDataFound) {
-        // setData sets the library of the scan
+        // cast(d): setData sets the library of the scan
         const newLibraryItem = await LibraryItemScanner.scanNewLibraryItem(libraryItemData, libraryScan.library!.settings, libraryScan)
         if (newLibraryItem) {
           newLibraryItems.push(newLibraryItem)
@@ -421,7 +423,7 @@ class LibraryScanner {
         Logger.error(`[LibraryScanner] Library "${libraryId}" not found in files changed ${libraryId}`)
         continue
       }
-      // The library folder is included above
+      // cast(b): the library folder is included in the query above; the association is optional in the model
       const folder = library.libraryFolders![0]
 
       const filePathItems = folderGroups[folderId].fileUpdates.map((fileUpdate) => fileUtils.getFilePathItemFromFileUpdate(fileUpdate))
@@ -463,7 +465,7 @@ class LibraryScanner {
     let scanResultStr = 'No changes needed'
     if (resultStrs.length) scanResultStr = resultStrs.join(', ')
 
-    // The watcher's pending task is created with data and a start time (setData)
+    // cast(d) (2): the watcher's pending task is created with data and a start time (setData)
     pendingTask.data!.scanResults = {
       ...results,
       text: scanResultStr,
@@ -476,7 +478,7 @@ class LibraryScanner {
 
     if (this.pendingFileUpdatesToScan.length) {
       Logger.debug(`[LibraryScanner] File updates finished scanning with more updates in queue (${this.pendingFileUpdatesToScan.length})`)
-      // The queue is not empty (checked above)
+      // cast(d): the queue is not empty (checked above)
       this.scanFilesChanged(...this.pendingFileUpdatesToScan.shift()!)
     }
   }

@@ -387,7 +387,7 @@ class Podcast extends Model<InferAttributes<Podcast>, InferCreationAttributes<Po
     return this.podcastEpisodes.reduce((latest, episode) => {
       // cast(d): undefined > latest is false, as in the JS
       if ((episode.publishedAt?.valueOf() as number) > latest) {
-        // publishedAt is set (the comparison above is false for null)
+        // cast(d): publishedAt is set (the comparison above is false for null)
         return episode.publishedAt!.valueOf()
       }
       return latest

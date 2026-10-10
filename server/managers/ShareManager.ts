@@ -154,10 +154,10 @@ class ShareManager {
    */
   closeStaleOpenShareSessions() {
     const updatedAtTimeCutoff = Date.now() - 1000 * 60 * 60 * 24
-    // Open share sessions are created with setData, which sets updatedAt
+    // cast(d): open share sessions are created with setData, which sets updatedAt
     const staleSessions = this.openSharePlaybackSessions.filter((session) => session.updatedAt! < updatedAtTimeCutoff)
     for (const session of staleSessions) {
-      // Set by setData (see above)
+      // cast(d): set by setData (see above)
       const sessionLastUpdate = new Date(session.updatedAt!)
       Logger.info(`[PlaybackSessionManager] Closing stale session "${session.displayTitle}" (${session.id}) last updated at ${sessionLastUpdate}`)
       this.closeSharePlaybackSession(session)

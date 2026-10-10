@@ -308,7 +308,7 @@ class PlaybackSessionManager {
 
     // Update user and emit socket event
     if (result.progressSynced) {
-      // progressSynced is only true when the media progress was set
+      // cast(d) (2): progressSynced is only true when the media progress was set
       SocketAuthority.clientEmitter(user.id, 'user_item_progress_updated', {
         id: userProgressForItem!.id,
         sessionId: session.id,
@@ -370,7 +370,7 @@ class PlaybackSessionManager {
       newPlaybackSession.playMethod = PlayMethod.DIRECTPLAY
     } else {
       Logger.debug(`[PlaybackSessionManager] "${user.username}" starting stream session for item "${libraryItem.id}" (Device: ${newPlaybackSession.deviceDescription})`)
-      // setData sets the session id
+      // cast(d): setData sets the session id
       // cast(d): a request without an episode id passes undefined, which the stream stores as is
       const stream = new Stream(newPlaybackSession.id!, this.StreamsPath, user, libraryItem, episodeId as string | null, userStartTime)
       await stream.generatePlaylist()
@@ -396,7 +396,7 @@ class PlaybackSessionManager {
 
   async syncSession(user: User, session: PlaybackSession, syncData: SyncData): Promise<boolean> {
     // TODO: Combine libraryItem query with library query
-    // Open sessions have a library item id (setData)
+    // cast(d): open sessions have a library item id (setData)
     const libraryItem = await Database.libraryItemModel.getExpandedById(session.libraryItemId!)
     if (!libraryItem) {
       Logger.error(`[PlaybackSessionManager] syncSession Library Item not found "${session.libraryItemId}"`)
@@ -503,10 +503,10 @@ class PlaybackSessionManager {
    */
   async closeStaleOpenSessions() {
     const updatedAtTimeCutoff = Date.now() - 1000 * 60 * 60 * 36
-    // Open sessions are created with setData (startSession), which sets updatedAt
+    // cast(d): open sessions are created with setData (startSession), which sets updatedAt
     const staleSessions = this.sessions.filter((session) => session.updatedAt! < updatedAtTimeCutoff)
     for (const session of staleSessions) {
-      // Set by setData (see above)
+      // cast(d): set by setData (see above)
       const sessionLastUpdate = new Date(session.updatedAt!)
       Logger.info(`[PlaybackSessionManager] Closing stale session "${session.displayTitle}" (${session.id}) last updated at ${sessionLastUpdate}`)
       await this.removeSession(session.id)

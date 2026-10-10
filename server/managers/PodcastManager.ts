@@ -187,7 +187,7 @@ class PodcastManager {
     Watcher.ignoreFilePathsDownloading.delete(this.currentDownload.targetPath)
     this.currentDownload = null
     if (this.downloadQueue.length) {
-      // The queue is not empty (checked above)
+      // cast(d): the queue is not empty (checked above)
       this.startPodcastEpisodeDownload(this.downloadQueue.shift()!)
     }
   }
@@ -199,7 +199,7 @@ class PodcastManager {
   async scanAddPodcastEpisodeAudioFile(): Promise<boolean> {
     // this.currentDownload is set by startPodcastEpisodeDownload, the only caller, until this returns
     const libraryFile = new LibraryFile()
-    // cast(d): setData sets targetFilename to a string before the download starts
+    // cast(d) (3): currentDownload is set by startPodcastEpisodeDownload, the only caller, until this returns; setData sets targetFilename to a string before the download starts
     await libraryFile.setDataFromPath(this.currentDownload!.targetPath, this.currentDownload!.targetRelPath as string)
 
     const audioFile = await this.probeAudioFile(libraryFile)
@@ -207,14 +207,15 @@ class PodcastManager {
       return false
     }
 
-    // cast(d): the library item of a podcast episode download is a podcast
+    // cast(d) (2): the library item of a podcast episode download is a podcast; currentDownload is set (see the comment at the start of this method)
     const libraryItem = (await Database.libraryItemModel.getExpandedById(this.currentDownload!.libraryItem.id)) as LibraryItem.PodcastLibraryItem | null
     if (!libraryItem) {
+      // cast(d): currentDownload is set (see the comment at the start of this method)
       Logger.error(`[PodcastManager] Podcast Episode finished but library item was not found ${this.currentDownload!.libraryItem.id}`)
       return false
     }
 
-    // cast(d): setData sets rssPodcastEpisode before the download is queued
+    // cast(d) (2): currentDownload is set (see above); setData sets rssPodcastEpisode before the download is queued
     const podcastEpisode = await Database.podcastEpisodeModel.createFromRssPodcastEpisode(this.currentDownload!.rssPodcastEpisode!, libraryItem.media.id, audioFile)
 
     libraryItem.libraryFiles.push(libraryFile.toJSON())
@@ -230,6 +231,7 @@ class PodcastManager {
 
     libraryItem.media.podcastEpisodes.push(podcastEpisode)
 
+    // cast(d): currentDownload is set (see the comment at the start of this method)
     if (this.currentDownload!.isAutoDownload) {
       // Check setting maxEpisodesToKeep and remove episode if necessary
       const numEpisodesWithPubDate = libraryItem.media.podcastEpisodes.filter((ep) => !!ep.publishedAt).length
@@ -266,6 +268,7 @@ class PodcastManager {
     podcastEpisodeExpanded.libraryItem = libraryItem.toOldJSONExpanded()
     SocketAuthority.emitter('episode_added', podcastEpisodeExpanded)
 
+    // cast(d): currentDownload is set (see the comment at the start of this method)
     if (this.currentDownload!.isAutoDownload) {
       // Notifications only for auto downloaded episodes
       NotificationManager.onPodcastEpisodeDownloaded(libraryItem, podcastEpisode)
@@ -307,7 +310,7 @@ class PodcastManager {
   }
 
   async probeAudioFile(libraryFile: LibraryFile): Promise<AudioFile | null> {
-    // setDataFromPath (called before this) sets the path
+    // cast(d): setDataFromPath (called before this) sets the path
     const path = libraryFile.metadata.path!
     const mediaProbeData = await prober.probe(path)
     if (mediaProbeData.error) {

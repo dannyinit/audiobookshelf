@@ -282,7 +282,7 @@ class AudioMetadataMangaer {
 
     if (this.tasksRunning.length < this.MAX_CONCURRENT_TASKS && this.tasksQueued.length) {
       Logger.info(`[AudioMetadataManager] Task finished and dequeueing next task. ${this.tasksQueued.length} tasks queued.`)
-      // The queue is not empty (checked above)
+      // cast(d): the queue is not empty (checked above)
       const nextTask = this.tasksQueued.shift()!
       SocketAuthority.emitter('metadata_embed_queue_update', {
         libraryItemId: nextTask.data.libraryItemId,

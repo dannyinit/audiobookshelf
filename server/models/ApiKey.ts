@@ -254,7 +254,7 @@ class ApiKey extends Model<ApiKeyAttributes, InferCreationAttributes<ApiKey>> {
   update(keys: UpdateValues<ApiKeyAttributes>, options?: InstanceUpdateOptions<ApiKeyAttributes>): Promise<this>
   async update(values: keyof ApiKeyAttributes | UpdateValues<ApiKeyAttributes>, options?: InstanceUpdateOptions<ApiKeyAttributes> | ApiKeyAttributes[keyof ApiKeyAttributes] | Utils.Col | Utils.Fn | Utils.Literal): Promise<this> {
     apiKeyCache.maybeInvalidate(this)
-    // cast(b): the two arguments are forwarded as they came (a third update(key, value, options) argument is dropped, as in the JS); the overloads above type the callers
+    // cast(b) (2): the two arguments are forwarded as they came (a third update(key, value, options) argument is dropped, as in the JS); the overloads above type the callers
     return await super.update(values as UpdateValues<ApiKeyAttributes>, options as InstanceUpdateOptions<ApiKeyAttributes>)
   }
 

@@ -197,7 +197,7 @@ class PodcastScanner {
     // Check if cover is not set and image files were found
     if (!media.coverPath && libraryItemData.imageLibraryFiles.length) {
       // Prefer using a cover image with the name "cover" otherwise use the first image
-      // Scanned library files have a path (set by setDataFromPath)
+      // cast(d): scanned library files have a path (set by setDataFromPath)
       const coverMatch = libraryItemData.imageLibraryFiles.find((iFile) => /\/cover\.[^.\/]*$/.test(iFile.metadata.path!))
       media.coverPath = coverMatch?.metadata.path || libraryItemData.imageLibraryFiles[0].metadata.path
       hasMediaChanges = true
@@ -311,7 +311,7 @@ class PodcastScanner {
     // Set cover image from library file
     if (libraryItemData.imageLibraryFiles.length) {
       // Prefer using a cover image with the name "cover" otherwise use the first image
-      // Scanned library files have a path (set by setDataFromPath)
+      // cast(d): scanned library files have a path (set by setDataFromPath)
       const coverMatch = libraryItemData.imageLibraryFiles.find((iFile) => /\/cover\.[^.\/]*$/.test(iFile.metadata.path!))
       podcastMetadata.coverPath = coverMatch?.metadata.path || libraryItemData.imageLibraryFiles[0].metadata.path
     }
@@ -356,8 +356,9 @@ class PodcastScanner {
       } as unknown as Includeable
     })
 
-    // The podcast is created with the library item (included above)
+    // cast(b): the podcast is created with the library item (included above); the association is optional in the model
     Database.addGenresToFilterData(libraryItemData.libraryId, libraryItem.podcast!.genres)
+    // cast(b): the podcast is created with the library item (included above); the association is optional in the model
     Database.addTagsToFilterData(libraryItemData.libraryId, libraryItem.podcast!.tags)
 
     // Load for emitting to client
@@ -383,7 +384,7 @@ class PodcastScanner {
    */
   async getPodcastMetadataFromScanData(podcastEpisodes: (PodcastEpisode | NewPodcastEpisode)[], libraryItemData: LibraryItemScanData, libraryScan: LibraryScan | ScanLogger, existingLibraryItemId: string | null = null): Promise<PodcastMetadataObject> {
     const podcastMetadata: PodcastMetadataObject = {
-      // The folder or file name gives the title
+      // cast(d): the folder or file name gives the title (LibraryItemScanData types it optional)
       title: libraryItemData.mediaMetadata.title!,
       titleIgnorePrefix: undefined,
       author: undefined,

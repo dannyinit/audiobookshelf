@@ -78,7 +78,7 @@ class LogManager {
     // Log buffered daily logs
     if (this.dailyLogBuffer.length) {
       this.dailyLogBuffer.forEach((logObj) => {
-        // Set just above
+        // cast(d): set just above
         this.currentDailyLog!.appendLog(logObj)
       })
       this.dailyLogBuffer = []

@@ -65,7 +65,7 @@ class MediaProbeData {
   construct(probeData: Record<string, unknown>) {
     for (const key in probeData) {
       if (key === 'audioMetaTags' && probeData[key]) {
-        // cast(d): this object indexed by the keys of the stored probe data; the stored audio meta tags are AudioMetaTags toJSON
+        // cast(d) (2): this object indexed by the keys of the stored probe data; the stored audio meta tags are AudioMetaTags toJSON
         (this as unknown as Record<string, unknown>)[key] = new AudioMetaTags(probeData[key] as ConstructorParameters<typeof AudioMetaTags>[0])
         // cast(d): this object indexed by the keys of the stored probe data
       } else if ((this as unknown as Record<string, unknown>)[key] !== undefined) {

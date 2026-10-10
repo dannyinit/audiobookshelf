@@ -200,13 +200,13 @@ class LibraryItemScanData {
 
   /** @type {LibraryItem.LibraryFileObject} */
   get metadataOpfLibraryFile() {
-    // Scanned library files have an extension (set by setDataFromPath)
+    // cast(d): scanned library files have an extension (set by setDataFromPath)
     return this.libraryFiles.find(lf => lf.metadata.ext!.toLowerCase() === '.opf')
   }
 
   /** @type {LibraryItem.LibraryFileObject} */
   get metadataNfoLibraryFile() {
-    // Scanned library files have an extension (set by setDataFromPath)
+    // cast(d): scanned library files have an extension (set by setDataFromPath)
     return this.libraryFiles.find(lf => lf.metadata.ext!.toLowerCase() === '.nfo')
   }
 
@@ -324,7 +324,7 @@ class LibraryItemScanData {
     let hasChanges = false
 
     if (existingLibraryFile.ino !== scannedLibraryFile.ino) {
-      // setDataFromPath sets the ino of scanned files
+      // cast(d): setDataFromPath sets the ino of scanned files
       existingLibraryFile.ino = scannedLibraryFile.ino!
       hasChanges = true
     }

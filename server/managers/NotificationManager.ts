@@ -193,7 +193,7 @@ class NotificationManager {
       this.sendingNotification = false
       if (this.notificationQueue.length) {
         // Send next notification in queue
-        // The queue is not empty (checked above)
+        // cast(d): the queue is not empty (checked above)
         const nextNotificationEvent = this.notificationQueue.shift()!
         this.triggerNotification(nextNotificationEvent.eventName, nextNotificationEvent.eventData)
       }

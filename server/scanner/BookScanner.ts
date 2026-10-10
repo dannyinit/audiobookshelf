@@ -210,7 +210,7 @@ class BookScanner {
     // Check if cover is not set and image files were found
     if (!media.coverPath && libraryItemData.imageLibraryFiles.length) {
       // Prefer using a cover image with the name "cover" otherwise use the first image
-      // Scanned library files have a path (set by setDataFromPath)
+      // cast(d): scanned library files have a path (set by setDataFromPath)
       const coverMatch = libraryItemData.imageLibraryFiles.find((iFile) => /\/cover\.[^.\/]*$/.test(iFile.metadata.path!))
       media.coverPath = coverMatch?.metadata.path || libraryItemData.imageLibraryFiles[0].metadata.path
       hasMediaChanges = true
@@ -224,12 +224,13 @@ class BookScanner {
 
     // Update ebook if it was modified
     if (media.ebookFile && libraryItemData.ebookLibraryFilesModified.length) {
-      // ebookFile was checked above
+      // cast(d): media.ebookFile was checked in the if condition above (narrowing does not reach the callback)
       let ebookMatch = libraryItemData.ebookLibraryFilesModified.find((eFile) => eFile.old.metadata.path === media.ebookFile!.metadata.path)
       if (ebookMatch) {
         const ebookFile = new EBookFile(ebookMatch.new)
-        // cast(d): the constructor sets metadata from the library file JSON, which has an extension (2 reads)
+        // cast(d) (2): the constructor sets metadata from the library file JSON, which has an extension
         ebookFile.ebookFormat = ebookFile.metadata!.ext!.slice(1).toLowerCase()
+        // cast(d): the constructor sets metadata from the library file JSON
         libraryScan.addLog(LogLevel.DEBUG, `Updating book ebook file "${media.ebookFile.metadata.path}" => "${ebookFile.metadata!.path}" for book "${media.title}"`)
         // cast(d): the stored ebook file JSON (EBookFile toJSON; ebookFormat was set just above)
         media.ebookFile = ebookFile.toJSON() as EBookFileObject
@@ -241,7 +242,7 @@ class BookScanner {
     // Check if ebook is not set and ebooks were found
     if (!media.ebookFile && !librarySettings.audiobooksOnly && libraryItemData.ebookLibraryFiles.length) {
       // Prefer to use an epub ebook then fallback to the first ebook found
-      // Scanned library files have an extension (set by setDataFromPath)
+      // cast(d): scanned library files have an extension (set by setDataFromPath)
       let ebookLibraryFile: LibraryFile | EbookLibraryFileJson | undefined = libraryItemData.ebookLibraryFiles.find((lf) => lf.metadata.ext!.slice(1).toLowerCase() === 'epub')
       if (!ebookLibraryFile) ebookLibraryFile = libraryItemData.ebookLibraryFiles[0]
       ebookLibraryFile = ebookLibraryFile.toJSON()
@@ -374,12 +375,12 @@ class BookScanner {
       } else if (key === 'coverPath') {
         if (media.coverPath && media.coverPath !== bookMetadata.coverPath && !(await fsExtra.pathExists(media.coverPath))) {
           libraryScan.addLog(LogLevel.DEBUG, `Updating book cover "${media.coverPath}" => "${bookMetadata.coverPath}" for book "${bookMetadata.title}" - original cover path does not exist`)
-          // Not undefined (skipped above); only set to an image file path
+          // cast(d): not undefined (undefined keys are skipped above); only set to an image file path
           media.coverPath = bookMetadata.coverPath!
           hasMediaChanges = true
         } else if (!media.coverPath) {
           libraryScan.addLog(LogLevel.DEBUG, `Updating book cover "unset" => "${bookMetadata.coverPath}" for book "${bookMetadata.title}"`)
-          // Not undefined (skipped above); only set to an image file path
+          // cast(d): not undefined (undefined keys are skipped above); only set to an image file path
           media.coverPath = bookMetadata.coverPath!
           hasMediaChanges = true
         }
@@ -496,7 +497,7 @@ class BookScanner {
     scannedAudioFiles = AudioFileScanner.runSmartTrackOrder(libraryItemData.relPath, scannedAudioFiles)
 
     // Find ebook file (prefer epub)
-    // Scanned library files have an extension (set by setDataFromPath)
+    // cast(d): scanned library files have an extension (set by setDataFromPath)
     let ebookLibraryFile: LibraryFile | EbookLibraryFileJson | null = librarySettings.audiobooksOnly ? null : libraryItemData.ebookLibraryFiles.find((lf) => lf.metadata.ext!.slice(1).toLowerCase() === 'epub') || libraryItemData.ebookLibraryFiles[0]
 
     // Do not add library items that have no valid audio files and no ebook file
@@ -589,7 +590,7 @@ class BookScanner {
 
     // Set isSupplementary flag on ebook library files
     for (const libraryFile of libraryItemObj.libraryFiles) {
-      // Scanned library files have an extension (set by setDataFromPath)
+      // cast(d): scanned library files have an extension (set by setDataFromPath)
       if (globals.SupportedEbookTypes.includes(libraryFile.metadata.ext!.slice(1).toLowerCase())) {
         libraryFile.isSupplementary = libraryFile.ino !== ebookLibraryFile?.ino
       }
@@ -642,15 +643,18 @@ class BookScanner {
     })
 
     // Update library filter data
-    // The book (with its join rows) is created with the library item (included above)
+    // cast(b): the book (with its join rows) is created with the library item (included above); the association is optional in the model
     if (libraryItem.book!.bookSeries?.length) {
+      // cast(b): the book is created with the library item (included above); the association is optional in the model
       for (const bs of libraryItem.book!.bookSeries) {
         if (bs.series) {
           Database.addSeriesToFilterData(libraryItemData.libraryId, bs.series.name, bs.series.id)
         }
       }
     }
+    // cast(b): the book is created with the library item (included above); the association is optional in the model
     if (libraryItem.book!.bookAuthors?.length) {
+      // cast(b): the book is created with the library item (included above); the association is optional in the model
       for (const ba of libraryItem.book!.bookAuthors) {
         if (ba.author) {
           Database.addAuthorToFilterData(libraryItemData.libraryId, ba.author.name, ba.author.id)
@@ -660,12 +664,18 @@ class BookScanner {
         }
       }
     }
+    // cast(b): the book is created with the library item (included above); the association is optional in the model
     Database.addNarratorsToFilterData(libraryItemData.libraryId, libraryItem.book!.narrators)
+    // cast(b): the book is created with the library item (included above); the association is optional in the model
     Database.addGenresToFilterData(libraryItemData.libraryId, libraryItem.book!.genres)
+    // cast(b): the book is created with the library item (included above); the association is optional in the model
     Database.addTagsToFilterData(libraryItemData.libraryId, libraryItem.book!.tags)
+    // cast(b): the book is created with the library item (included above); the association is optional in the model
     Database.addPublisherToFilterData(libraryItemData.libraryId, libraryItem.book!.publisher)
+    // cast(b): the book is created with the library item (included above); the association is optional in the model
     Database.addLanguageToFilterData(libraryItemData.libraryId, libraryItem.book!.language)
 
+    // cast(b): the book is created with the library item (included above); the association is optional in the model
     const publishedYear = libraryItem.book!.publishedYear
     // cast(d): the year string is coerced to a number by the division, as in the JS
     const decade = publishedYear ? `${Math.floor((publishedYear as unknown as number) / 10) * 10}` : null
@@ -710,7 +720,7 @@ class BookScanner {
   async getBookMetadataFromScanData(audioFiles: BookAudioFiles, ebookFileScanData: EBookFileScanData | null, libraryItemData: LibraryItemScanData, libraryScan: LibraryScan | ScanLogger, librarySettings: LibrarySettingsObject, existingLibraryItemId: string | null = null): Promise<BookMetadataObject> {
     // First set book metadata from folder/file names
     const bookMetadata: BookMetadataObject = {
-      // The folder or file name gives the title
+      // cast(d): the folder or file name gives the title (LibraryItemScanData types it optional)
       title: libraryItemData.mediaMetadata.title!, // required
       titleIgnorePrefix: undefined,
       subtitle: undefined,
@@ -746,7 +756,7 @@ class BookScanner {
 
     // Set cover from library file if one is found otherwise check audiofile
     if (libraryItemData.imageLibraryFiles.length) {
-      // Scanned library files have a path (set by setDataFromPath)
+      // cast(d): scanned library files have a path (set by setDataFromPath)
       const coverMatch = libraryItemData.imageLibraryFiles.find((iFile) => /\/cover\.[^.\/]*$/.test(iFile.metadata.path!))
       bookMetadata.coverPath = coverMatch?.metadata.path || libraryItemData.imageLibraryFiles[0].metadata.path
     }
@@ -790,20 +800,22 @@ class BookScanner {
     audioMetatags() {
       if (this.audioFiles.length) {
         // Modifies bookMetadata with metadata mapped from audio file meta tags
-        // The folder or file name gives the title
+        // cast(d): the folder or file name gives the title (LibraryItemScanData types it optional)
         const bookTitle = this.bookMetadata.title || this.libraryItemData.mediaMetadata.title!
         AudioFileScanner.setBookMetadataFromAudioMetaTags(bookTitle, this.audioFiles, this.bookMetadata, this.libraryScan)
       } else if (this.ebookFileScanData) {
         const ebookMetdataObject: EbookMetadataFields = this.ebookFileScanData.metadata || {}
         for (const key in ebookMetdataObject) {
           if (key === 'tags') {
-            // The key is in the ebook metadata
+            // cast(d): the key is in the ebook metadata (for...in over it)
             if (ebookMetdataObject.tags!.length) {
+              // cast(d): the key is in the ebook metadata (for...in over it)
               this.bookMetadata.tags = ebookMetdataObject.tags!
             }
           } else if (key === 'genres') {
-            // The key is in the ebook metadata
+            // cast(d): the key is in the ebook metadata (for...in over it)
             if (ebookMetdataObject.genres!.length) {
+              // cast(d): the key is in the ebook metadata (for...in over it)
               this.bookMetadata.genres = ebookMetdataObject.genres!
             }
           } else if (key === 'authors') {
@@ -840,14 +852,14 @@ class BookScanner {
     async txtFiles() {
       // If desc.txt in library item folder then use this for description
       if (this.libraryItemData.descTxtLibraryFile) {
-        // Scanned library files have a path (set by setDataFromPath)
+        // cast(d): scanned library files have a path (set by setDataFromPath)
         const description = await readTextFile(this.libraryItemData.descTxtLibraryFile.metadata.path!)
         if (description.trim()) this.bookMetadata.description = description.trim()
       }
 
       // If reader.txt in library item folder then use this for narrator
       if (this.libraryItemData.readerTxtLibraryFile) {
-        // Scanned library files have a path (set by setDataFromPath)
+        // cast(d): scanned library files have a path (set by setDataFromPath)
         let narrator = await readTextFile(this.libraryItemData.readerTxtLibraryFile.metadata.path!)
         narrator = narrator.split(/\r?\n/)[0]?.trim() || '' // Only use first line
         if (narrator) {

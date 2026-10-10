@@ -74,7 +74,7 @@ class LibraryItemScanner {
     scanLogger.setData('libraryItem', updateLibraryItemDetails?.relPath || libraryItem.relPath)
 
     const libraryItemPath = updateLibraryItemDetails?.path || fileUtils.filePathToPOSIX(libraryItem.path)
-    // The library folder is included above
+    // cast(b): the library folder is included in the query above; the association is optional in the model
     const folder = library.libraryFolders![0]
     const libraryItemScanData = await this.getLibraryItemScanData(libraryItemPath, library, folder, updateLibraryItemDetails?.isFile || false)
 

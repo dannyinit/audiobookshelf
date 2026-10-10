@@ -132,7 +132,7 @@ class MigrationManager {
       return
     }
 
-    // Both are set by init (checked above)
+    // cast(d) (2): both are set by init (checked above)
     const versionCompare = semver.compare(this.serverVersion!, this.databaseVersion!)
     if (versionCompare == 0) {
       Logger.info('[MigrationManager] Database is already up to date.')
@@ -140,9 +140,9 @@ class MigrationManager {
     }
 
     await this.initUmzug()
-    // Set by initUmzug
+    // cast(d): set by initUmzug, which runs before
     const migrations = await this.umzug!.migrations()
-    // Set by initUmzug
+    // cast(d): set by initUmzug, which runs before
     const executedMigrations = (await this.umzug!.executed()).map((m) => m.name)
 
     const migrationDirection = versionCompare == 1 ? 'up' : 'down'
@@ -162,7 +162,7 @@ class MigrationManager {
         Logger.info('Created a backup of the original database.')
 
         // Run migrations
-        // Set by initUmzug
+        // cast(d): set by initUmzug, which runs before
         await this.umzug![migrationDirection]({ migrations: migrationsToRun, rerun: 'ALLOW' })
 
         // Clean up the backup
@@ -194,13 +194,13 @@ class MigrationManager {
 
   async initUmzug(umzugStorage: unknown = new SequelizeStorage({ sequelize: this.sequelize })) {
     // This check is for dependency injection in tests
-    // migrationsDir is set by init
+    // cast(d): migrationsDir is set by init
     const files = (await fs.readdir(this.migrationsDir!))
       .filter((file) => {
         // Only include .js files and exclude dot files
         return !file.startsWith('.') && path.extname(file).toLowerCase() === '.js'
       })
-      // migrationsDir is set by init
+      // cast(d): migrationsDir is set by init
       .map((file) => path.join(this.migrationsDir!, file))
 
     // Validate migration names
@@ -248,7 +248,7 @@ class MigrationManager {
         (await parent.migrations()).sort((a, b) => {
           const versionA = this.extractVersionFromTag(a.name)
           const versionB = this.extractVersionFromTag(b.name)
-          // Migration names were validated above (each has a version)
+          // cast(d) (2): migration names were validated above (each has a version)
           return semver.compare(versionA!, versionB!)
         })
     })
@@ -328,7 +328,7 @@ class MigrationManager {
         .filter((file) => path.extname(file) === '.js')
         .map(async (file) => {
           const sourceFile = path.join(this.migrationsSourceDir, file)
-          // migrationsDir is set by init
+          // cast(d): migrationsDir is set by init
           const targetFile = path.join(this.migrationsDir!, file)
           await fs.copy(sourceFile, targetFile) // Asynchronously copy the files
         })
@@ -344,13 +344,15 @@ class MigrationManager {
   findMigrationsToRun(migrations: { name: string }[], executedMigrations: string[], direction: string): string[] {
     const migrationsToRun = migrations
       .filter((migration) => {
-        // initUmzug validated that every migration name has a version
+        // cast(d): initUmzug validated that every migration name has a version
         const migrationVersion = this.extractVersionFromTag(migration.name)!
         // The database and server versions are set by init
         if (direction === 'up') {
+          // cast(d) (2): the database and server versions are set by init
           return semver.gt(migrationVersion, this.databaseVersion!) && semver.lte(migrationVersion, this.serverVersion!) && !executedMigrations.includes(migration.name)
         } else {
           // A down migration should be run even if the associated up migration wasn't executed before
+          // cast(d) (2): the database and server versions are set by init
           return semver.lte(migrationVersion, this.databaseVersion!) && semver.gt(migrationVersion, this.serverVersion!)
         }
       })

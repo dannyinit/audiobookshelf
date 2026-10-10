@@ -69,7 +69,7 @@ class CacheManager {
     }
     res.type(`image/${format}`)
 
-    // Set by ensureCachePaths at startup
+    // cast(d): set by ensureCachePaths at startup
     const cachePath = Path.join(this.CoverCachePath!, `${libraryItemId}_${width}${height ? `x${height}` : ''}`) + '.' + format
 
     // Cache exists
@@ -147,9 +147,9 @@ class CacheManager {
 
   async purgeAll() {
     Logger.info(`[CacheManager] Purging all cache at "${this.CachePath}"`)
-    // Set by ensureCachePaths at startup
+    // cast(d): set by ensureCachePaths at startup
     if (await fs.pathExists(this.CachePath!)) {
-      // Set by ensureCachePaths at startup
+      // cast(d): set by ensureCachePaths at startup
       await fs.remove(this.CachePath!).catch((error: Error) => {
         Logger.error(`[CacheManager] Failed to remove cache dir "${this.CachePath}"`, error)
       })
@@ -159,9 +159,9 @@ class CacheManager {
 
   async purgeItems() {
     Logger.info(`[CacheManager] Purging items cache at "${this.ItemCachePath}"`)
-    // Set by ensureCachePaths at startup
+    // cast(d): set by ensureCachePaths at startup
     if (await fs.pathExists(this.ItemCachePath!)) {
-      // Set by ensureCachePaths at startup
+      // cast(d): set by ensureCachePaths at startup
       await fs.remove(this.ItemCachePath!).catch((error: Error) => {
         Logger.error(`[CacheManager] Failed to remove items cache dir "${this.ItemCachePath}"`, error)
       })
@@ -179,7 +179,7 @@ class CacheManager {
     }
     res.type(`image/${format}`)
 
-    // Set by ensureCachePaths at startup
+    // cast(d): set by ensureCachePaths at startup
     var cachePath = Path.join(this.ImageCachePath!, `${authorId}_${width}${height ? `x${height}` : ''}`) + '.' + format
 
     // Cache exists

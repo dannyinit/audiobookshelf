@@ -89,7 +89,7 @@ class Scanner {
         if (coverResult.error) {
           Logger.warn(`[Scanner] Match cover "${matchData.cover}" failed to use: ${coverResult.error}`)
         } else {
-          // The error was checked just above, so the cover path is set
+          // cast(d): the error was checked just above, so the cover path is set
           libraryItem.media.coverPath = coverResult.cover!
           // cast(d): isBook was checked above
           ;(libraryItem.media as Book).changed('coverPath', true) // Cover path may be the same but this forces the update
@@ -107,12 +107,13 @@ class Scanner {
       // Podcast quick match
       const results = await PodcastFinder.search(searchTitle)
       // NOTE: search returns null for a podcast without a title; results.length then throws a TypeError
+      // cast(c): search returns null for a podcast without a title (see NOTE above)
       if (!results!.length) {
         return {
           warning: `No ${provider} match found`
         }
       }
-      // See NOTE above
+      // cast(c): see NOTE above (results may be null)
       const matchData = results![0]
 
       // Update cover if not set OR overrideCover flag
@@ -122,7 +123,7 @@ class Scanner {
         if (coverResult.error) {
           Logger.warn(`[Scanner] Match cover "${matchData.cover}" failed to use: ${coverResult.error}`)
         } else {
-          // The error was checked just above, so the cover path is set
+          // cast(d): the error was checked just above, so the cover path is set
           libraryItem.media.coverPath = coverResult.cover!
           // cast(d): isPodcast was checked above
           ;(libraryItem.media as Podcast).changed('coverPath', true) // Cover path may be the same but this forces the update
@@ -391,7 +392,8 @@ class Scanner {
     const episodesToQuickMatch: PodcastEpisode[] = libraryItem.media.podcastEpisodes.filter((ep) => !ep.enclosureURL) // Only quick match episodes that are not already matched
     if (!episodesToQuickMatch.length) return 0
 
-    // Only called for podcasts with a feed url
+    // NOTE: the match-episodes route (PodcastController quickMatchEpisodes) does not check feedURL; for a podcast without one getPodcastFeed calls null.startsWith and throws a TypeError
+    // cast(c): quickMatchLibraryItem checks feedURL before it calls this; the route passes a podcast without one (see NOTE above)
     const feed = await getPodcastFeed(libraryItem.media.feedURL!)
     if (!feed) {
       Logger.error(`[Scanner] quickMatchPodcastEpisodes: Unable to quick match episodes feed not found for "${libraryItem.media.feedURL}"`)
@@ -400,7 +402,7 @@ class Scanner {
 
     let numEpisodesUpdated = 0
     for (const episode of episodesToQuickMatch) {
-      // Episodes without an enclosure url were scanned from audio files, which give them a title (the title tag or the file name)
+      // cast(d): episodes without an enclosure url were scanned from audio files, which give them a title (the title tag or the file name)
       const episodeMatches = findMatchingEpisodesInFeed(feed, episode.title!, 0.1)
       if (episodeMatches?.length) {
         const wasUpdated = await this.updateEpisodeWithMatch(episode, episodeMatches[0].episode, options)
@@ -548,7 +550,7 @@ class Scanner {
     } else {
       libraryScan.setComplete()
 
-      // Set by createAndAddTask
+      // cast(d): set by createAndAddTask (with the scan data)
       task.data!.scanResults = libraryScan.scanResults
       if (isCanceled) {
         const taskFinishedString = {

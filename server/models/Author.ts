@@ -83,7 +83,9 @@ class Author extends Model<InferAttributes<Author>, InferCreationAttributes<Auth
 
     const libraryItems: LibraryItem[] = []
     // NOTE: author is null when no author has this id, then reading books throws a TypeError
+    // cast(c): author is null when no author has this id (see NOTE above); read as in the JS
     if (author!.books) {
+      // cast(c): author is null when no author has this id (see NOTE above); read as in the JS
       for (const book of author!.books) {
         const libraryItem = book.libraryItem
         libraryItem.media = book

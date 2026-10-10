@@ -15,21 +15,23 @@ class NfoFileScanner {
    * Parse metadata from .nfo file found in library scan and update bookMetadata
    */
   async scanBookNfoFile(nfoLibraryFileObj: LibraryFile | LibraryFileObject, bookMetadata: BookMetadataObject) {
-    // Scanned library files have a path (set by setDataFromPath)
+    // cast(d): scanned library files have a path (set by setDataFromPath)
     const nfoText = await readTextFile(nfoLibraryFileObj.metadata.path!)
     const nfoMetadata = nfoText ? await parseNfoMetadata(nfoText) : null
     if (nfoMetadata) {
       for (const key in nfoMetadata) {
         if (key === 'tags') {
           // Add tags only if tags are empty
-          // The key is in the parsed metadata
+          // cast(d): the key is in the parsed metadata (for...in over it)
           if (nfoMetadata.tags!.length) {
+            // cast(d): the key is in the parsed metadata (for...in over it)
             bookMetadata.tags = nfoMetadata.tags!
           }
         } else if (key === 'genres') {
           // Add genres only if genres are empty
-          // The key is in the parsed metadata
+          // cast(d): the key is in the parsed metadata (for...in over it)
           if (nfoMetadata.genres!.length) {
+            // cast(d): the key is in the parsed metadata (for...in over it)
             bookMetadata.genres = nfoMetadata.genres!
           }
         } else if (key === 'authors') {

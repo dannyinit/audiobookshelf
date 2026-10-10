@@ -150,14 +150,15 @@ class AudioFileScanner {
       Logger.debug(`[AudioFileScanner] Smart track order for "${libraryItemRelPath}" using disc key ${discKey} and track key ${trackKey}`)
       audioFiles.sort((a, b) => {
         // An audio file without a disc or track number (null) sorts as 0 (only files with numbers are counted above)
-        // The disc and track keys were set above
+        // cast(d) (4): the disc and track keys were set above (TypeScript already narrows them); a null number sorts as 0 in the subtraction, as in the JS
         let Dx = a[discKey!]! - b[discKey!]!
+        // cast(d) (4): the track key was set above (TypeScript already narrows it); a null number sorts as 0 in the subtraction, as in the JS
         if (Dx === 0) Dx = a[trackKey!]! - b[trackKey!]!
         return Dx
       })
     } else {
       Logger.debug(`[AudioFileScanner] Smart track order for "${libraryItemRelPath}" using track key ${trackKey}`)
-      // The track key was set above; a file without a track number (null) sorts as 0
+      // cast(d) (4): the track key was set above (TypeScript already narrows it); a file without a track number (null) sorts as 0, as in the JS
       audioFiles.sort((a, b) => a[trackKey!]! - b[trackKey!]!)
     }
 
@@ -217,7 +218,7 @@ class AudioFileScanner {
 
   async scan(mediaType: string, libraryFile: ScannedOrStoredLibraryFile, mediaMetadataFromScan: MediaMetadataFromScan): Promise<AudioFile | null> {
     // cast(d): an error result only has error, which is checked first; the other reads come after that check
-    // setDataFromPath sets the path of scanned files
+    // cast(d): setDataFromPath sets the path of scanned files
     const probeData = (await prober.probe(libraryFile.metadata.path!)) as MediaProbeData
 
     if (probeData.error) {
@@ -231,8 +232,9 @@ class AudioFileScanner {
     }
 
     const audioFile = new AudioFile()
-    // setData sets the audio meta tags of probe data
+    // cast(d): setData sets the audio meta tags of probe data
     audioFile.trackNumFromMeta = probeData.audioMetaTags!.trackNumber
+    // cast(d): setData sets the audio meta tags of probe data
     audioFile.discNumFromMeta = probeData.audioMetaTags!.discNumber
     if (mediaType === 'book') {
       const { trackNumber, discNumber } = this.getTrackAndDiscNumberFromFilename(mediaMetadataFromScan, libraryFile)
@@ -607,7 +609,7 @@ class AudioFileScanner {
         if (file.duration) {
           let title = file.metadata.filename ? Path.basename(file.metadata.filename, Path.extname(file.metadata.filename)) : `Chapter ${currChapterId}`
           if (useMetaTagAsTitle) {
-            // cast(d): every file has meta tags with a title tag when useMetaTagAsTitle is true
+            // cast(d) (2): every file has meta tags with a title tag when useMetaTagAsTitle is true
             title = file.metaTags!.tagTitle!
           }
 

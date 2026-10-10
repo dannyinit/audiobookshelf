@@ -110,7 +110,7 @@ class ApiCacheManager {
         return next()
       }
 
-      // The cached routes are behind the auth middleware, which sets req.user
+      // cast(d): the cached routes are behind the auth middleware, which sets req.user
       const key = { user: req.user!.username, url: req.url }
       const stringifiedKey = JSON.stringify(key)
       Logger.debug(`[ApiCacheManager] count: ${this.cache.size} size: ${this.cache.calculatedSize}`)
@@ -133,7 +133,7 @@ class ApiCacheManager {
         } else {
           this.cache.set(stringifiedKey, cached)
         }
-        // Set just above, before send is replaced
+        // cast(d): set just above, before send is replaced
         res.originalSend!(body)
       }) as Response['send']
       next()

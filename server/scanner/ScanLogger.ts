@@ -62,7 +62,7 @@ class ScanLogger {
 
   setComplete() {
     this.finishedAt = Date.now()
-    // startedAt is set by setData
+    // cast(d): startedAt is set by setData, which runs before setComplete
     this.elapsed = this.finishedAt - this.startedAt!
   }
 

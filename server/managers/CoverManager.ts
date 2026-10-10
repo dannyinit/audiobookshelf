@@ -257,7 +257,7 @@ class CoverManager {
       return null
     }
 
-    // Scanned and stored audio files have a path
+    // cast(d): scanned and stored audio files have a path
     const success = await extractCoverArt(audioFileWithCover.metadata.path!, coverFilePath)
     if (success) {
       await CacheManager.purgeCoverCache(libraryItemId)

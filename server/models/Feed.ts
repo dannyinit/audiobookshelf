@@ -134,7 +134,7 @@ class Feed extends Model<InferAttributes<Feed>, InferCreationAttributes<Feed>> {
       siteURL: `/item/${libraryItem.id}`,
       title: media.title,
       description: media.description,
-      // cast(d): media is a Podcast when mediaType is "podcast" and a Book otherwise
+      // cast(d) (2): media is a Podcast when mediaType is "podcast" and a Book otherwise
       author: libraryItem.mediaType === 'podcast' ? (media as Podcast).author : (media as Book).authorName,
       // cast(d): media is a Podcast when mediaType is "podcast"
       podcastType: libraryItem.mediaType === 'podcast' ? (media as Podcast).podcastType : 'serial',
@@ -458,9 +458,11 @@ class Feed extends Model<InferAttributes<Feed>, InferCreationAttributes<Feed>> {
 
       const itemExpanded = await libraryItemModel.getExpandedById(this.entityId)
       // NOTE: itemExpanded is null when the library item no longer exists (or has no media), then getFeedObjForLibraryItem throws a TypeError outside the try below
+      // cast(c): itemExpanded may be null (see NOTE above); passed on as in the JS
       feedObj = Feed.getFeedObjForLibraryItem(this.userId, itemExpanded!, this.slug, this.serverAddress)
 
       feedEpisodeCreateFuncEntity = itemExpanded
+      // cast(c): itemExpanded may be null (see NOTE above), but then the line above has already thrown
       if (itemExpanded!.mediaType === 'podcast') {
         feedEpisodeCreateFunc = feedEpisodeModel.createFromPodcastEpisodes.bind(feedEpisodeModel)
       } else {
@@ -471,6 +473,7 @@ class Feed extends Model<InferAttributes<Feed>, InferCreationAttributes<Feed>> {
 
       const collectionExpanded = await collectionModel.getExpandedById(this.entityId)
       // NOTE: collectionExpanded is null when the collection no longer exists, then getFeedObjForCollection throws a TypeError outside the try below
+      // cast(c): collectionExpanded may be null (see NOTE above); passed on as in the JS
       const feedObjData = Feed.getFeedObjForCollection(this.userId, collectionExpanded!, this.slug, this.serverAddress)
       feedObj = feedObjData.feedObj
       feedEpisodeCreateFuncEntity = feedObjData.booksWithTracks
@@ -480,6 +483,7 @@ class Feed extends Model<InferAttributes<Feed>, InferCreationAttributes<Feed>> {
 
       const seriesExpanded = await seriesModel.getExpandedById(this.entityId)
       // NOTE: seriesExpanded is null when the series no longer exists, then getFeedObjForSeries throws a TypeError outside the try below
+      // cast(c): seriesExpanded may be null (see NOTE above); passed on as in the JS
       const feedObjData = Feed.getFeedObjForSeries(this.userId, seriesExpanded!, this.slug, this.serverAddress)
       feedObj = feedObjData.feedObj
       feedEpisodeCreateFuncEntity = feedObjData.booksWithTracks
@@ -497,7 +501,7 @@ class Feed extends Model<InferAttributes<Feed>, InferCreationAttributes<Feed>> {
 
       // Create new feed episodes
       // cast(d): each branch above pairs the create function with the entity it takes (a podcast or book library item, or books)
-      // The entity is only null in the library item case noted above, which has already thrown
+      // cast(d): the entity is only null in the library item case noted above, which has already thrown
       updatedFeed.feedEpisodes = await (feedEpisodeCreateFunc as FeedEpisodeCreateFunc)(feedEpisodeCreateFuncEntity!, updatedFeed, this.slug, transaction)
 
       const newFeedEpisodeIds = updatedFeed.feedEpisodes.map((ep) => ep.id)

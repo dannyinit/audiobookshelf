@@ -27,7 +27,7 @@ class AbsMetadataFileScanner {
    */
   async scanBookMetadataFile(libraryScan: LibraryScan | ScanLogger, libraryItemData: LibraryItemScanData, bookMetadata: BookMetadataObject, existingLibraryItemId: string | null = null) {
     const metadataLibraryFile = libraryItemData.metadataJsonLibraryFile
-    // Scanned library files have a path (set by setDataFromPath)
+    // cast(d): scanned library files have a path (set by setDataFromPath)
     let metadataText = metadataLibraryFile ? await readTextFile(metadataLibraryFile.metadata.path!) : null
     let metadataFilePath = metadataLibraryFile?.metadata.path
 
@@ -65,7 +65,7 @@ class AbsMetadataFileScanner {
    */
   async scanPodcastMetadataFile(libraryScan: LibraryScan | ScanLogger, libraryItemData: LibraryItemScanData, podcastMetadata: PodcastMetadataObject, existingLibraryItemId: string | null = null) {
     const metadataLibraryFile = libraryItemData.metadataJsonLibraryFile
-    // Scanned library files have a path (set by setDataFromPath)
+    // cast(d): scanned library files have a path (set by setDataFromPath)
     let metadataText = metadataLibraryFile ? await readTextFile(metadataLibraryFile.metadata.path!) : null
     let metadataFilePath = metadataLibraryFile?.metadata.path
 

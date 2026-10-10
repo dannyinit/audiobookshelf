@@ -62,15 +62,19 @@ class LibraryScan {
 
   // The library getters and toJSON are used after setData, which sets the library
   get libraryId() {
+    // cast(d): the library getters are used after setData, which sets the library
     return this.library!.id
   }
   get libraryName() {
+    // cast(d): the library getters are used after setData, which sets the library
     return this.library!.name
   }
   get libraryMediaType() {
+    // cast(d): the library getters are used after setData, which sets the library
     return this.library!.mediaType
   }
   get libraryFolders() {
+    // cast(d): the library getters are used after setData, which sets the library
     return this.library!.libraryFolders
   }
 
@@ -82,7 +86,7 @@ class LibraryScan {
     return `${this.resultsAdded} Added | ${this.resultsUpdated} Updated | ${this.resultsMissing} Missing`
   }
   get elapsedTimestamp() {
-    // Set by setComplete, which runs before the results are read
+    // cast(d): set by setComplete, which runs before the results are read
     return secondsToTimestamp(this.elapsed! / 1000)
   }
   get logFilename() {
@@ -94,7 +98,7 @@ class LibraryScan {
     if (this.resultsUpdated) strs.push(`${this.resultsUpdated} updated`)
     if (this.resultsMissing) strs.push(`${this.resultsMissing} missing`)
     const changesDetected = strs.length > 0 ? strs.join(', ') : 'No changes needed'
-    // Set by setComplete, which runs before the results are read
+    // cast(d): set by setComplete, which runs before the results are read
     const timeElapsed = `(${elapsedPretty(this.elapsed! / 1000)})`
     return `${changesDetected} ${timeElapsed}`
   }
@@ -113,6 +117,7 @@ class LibraryScan {
     return {
       id: this.id,
       type: this.type,
+      // cast(d): toJSON is used after setData, which sets the library
       library: this.library!.toJSON(),
       startedAt: this.startedAt,
       finishedAt: this.finishedAt,
@@ -133,7 +138,7 @@ class LibraryScan {
 
   setComplete() {
     this.finishedAt = Date.now()
-    // startedAt is set by setData
+    // cast(d): startedAt is set by setData, which runs before setComplete
     this.elapsed = this.finishedAt - this.startedAt!
   }
 

@@ -15,7 +15,7 @@ class OpfFileScanner {
    * Parse metadata from .opf file found in library scan and update bookMetadata
    */
   async scanBookOpfFile(opfLibraryFileObj: LibraryFile | LibraryFileObject, bookMetadata: BookMetadataObject) {
-    // Scanned library files have a path (set by setDataFromPath)
+    // cast(d): scanned library files have a path (set by setDataFromPath)
     const xmlText = await readTextFile(opfLibraryFileObj.metadata.path!)
     const opfMetadata = xmlText ? await parseOpfMetadataXML(xmlText) : null
     if (opfMetadata) {

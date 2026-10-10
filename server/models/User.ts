@@ -993,7 +993,7 @@ class User extends Model<UserAttributes, InferCreationAttributes<User>> {
   update(keys: UpdateValues<UserAttributes>, options?: InstanceUpdateOptions<UserAttributes>): Promise<this>
   async update(values: keyof UserAttributes | UpdateValues<UserAttributes>, options?: InstanceUpdateOptions<UserAttributes> | UserAttributes[keyof UserAttributes] | Utils.Col | Utils.Fn | Utils.Literal): Promise<this> {
     userCache.maybeInvalidate(this)
-    // cast(b): the two arguments are forwarded as they came (a third update(key, value, options) argument is dropped, as in the JS); the overloads above type the callers
+    // cast(b) (2): the two arguments are forwarded as they came (a third update(key, value, options) argument is dropped, as in the JS); the overloads above type the callers
     return await super.update(values as UpdateValues<UserAttributes>, options as InstanceUpdateOptions<UserAttributes>)
   }
 

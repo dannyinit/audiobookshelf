@@ -126,7 +126,7 @@ class BackupManager {
       this.scheduleCron()
     } else if (this.backupSchedule) {
       Logger.info(`[BackupManager] Restarting backup schedule ${this.backupSchedule}`)
-      // Set: the branch above handles a missing task
+      // cast(d) (2): set: the branch above handles a missing task
       if (this.scheduleTask!.stop) this.scheduleTask!.stop()
       this.scheduleCron()
     }
@@ -198,7 +198,7 @@ class BackupManager {
 
     await zip.close().catch(() => {})
 
-    // Set from the constructor data
+    // cast(d): fullPath is set from the constructor data (the backup was loaded from its file)
     backup.fileSize = await getFileSize(backup.fullPath!)
 
     const existingBackupIndex = this.backups.findIndex((b) => b.id === backup.id)
@@ -329,7 +329,7 @@ class BackupManager {
             continue
           }
 
-          // Set in the try block (it continues on failure)
+          // cast(d): set in the try block (the catch continues the loop on failure)
           const details = data!.toString('utf8').split('\n')
 
           const backup = new Backup({ details, fullPath: fullFilePath })
@@ -342,7 +342,7 @@ class BackupManager {
             Logger.warn(`[BackupManager] Old unsupported backup was found "${backup.filename}" (pre sqlite migration)`)
           }
 
-          // Set from the constructor data
+          // cast(d): fullPath is set from the constructor data (the backup was loaded from its file)
           backup.fileSize = await getFileSize(backup.fullPath!)
           const existingBackupWithId = this.backups.find((b) => b.id === backup.id)
           if (existingBackupWithId) {
@@ -352,7 +352,7 @@ class BackupManager {
           }
 
           Logger.debug(`[BackupManager] Backup found "${backup.id}"`)
-          // Set in the try block (it continues on failure)
+          // cast(d): set in the try block (the catch continues the loop on failure)
           await zip!.close()
         }
       }
@@ -397,7 +397,7 @@ class BackupManager {
 
     Logger.info(`[BackupManager] Backup successful ${newBackup.id}`)
 
-    // Set by setData
+    // cast(d): fullPath is set by setData
     newBackup.fileSize = await getFileSize(newBackup.fullPath!)
 
     const existingIndex = this.backups.findIndex((b) => b.id === newBackup.id)
@@ -410,10 +410,10 @@ class BackupManager {
     // Check remove oldest backup
     const removeOldest = this.backups.length > this.backupsToKeep
     if (removeOldest) {
-      // Loaded and new backups have createdAt
+      // cast(d) (2): loaded and new backups have createdAt
       this.backups.sort((a, b) => a.createdAt! - b.createdAt!)
 
-      // There are more backups than backupsToKeep
+      // cast(d): there are more backups than backupsToKeep (the loop condition), so shift returns one
       const oldBackup = this.backups.shift()!
       Logger.debug(`[BackupManager] Removing old backup ${oldBackup.id}`)
       this.removeBackup(oldBackup)
@@ -428,7 +428,7 @@ class BackupManager {
   async removeBackup(backup: Backup) {
     try {
       Logger.debug(`[BackupManager] Removing Backup "${backup.fullPath}"`)
-      // Loaded and new backups have a fullPath
+      // cast(d): loaded and new backups have a fullPath
       await fs.remove(backup.fullPath!)
       this.backups = this.backups.filter((b) => b.id !== backup.id)
       Logger.info(`[BackupManager] Backup "${backup.id}" Removed`)
@@ -441,8 +441,8 @@ class BackupManager {
    * @see https://github.com/TryGhost/node-sqlite3/pull/1116
    */
   backupSqliteDb(backup: Backup) {
-    // dbPath is set by Database.init
     // cast(a): the sqlite3 types do not include the backup API (https://github.com/TryGhost/node-sqlite3/pull/1116)
+    // cast(d): dbPath is set by Database.init, which runs before backups are made
     const db = new sqlite3.Database(Database.dbPath!) as sqlite3.Database & { backup(filename: string): SqliteBackup }
     const dbFilePath = Path.join(global.ConfigPath, `absdatabase.${backup.id}.sqlite`)
     return new Promise<string>(async (resolve, reject) => {
@@ -468,7 +468,7 @@ class BackupManager {
   zipBackup(sqliteBackupPath: string, backup: Backup) {
     return new Promise<boolean>((resolve, reject) => {
       // create a file to stream archive data to
-      // Set by setData
+      // cast(d): fullPath is set by setData
       const output = fs.createWriteStream(backup.fullPath!)
       const archive = archiver('zip', {
         zlib: { level: 9 } // Sets the compression level.

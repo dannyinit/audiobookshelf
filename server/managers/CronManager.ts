@@ -85,7 +85,7 @@ class CronManager {
    */
   startCronForLibrary(_library: Library) {
     Logger.debug(`[CronManager] Init library scan cron for ${_library.name} on schedule ${_library.settings.autoScanCronExpression}`)
-    // Only called when the library has a cron expression
+    // cast(d): only called when the library has a cron expression
     const libScanCron = cron.schedule(_library.settings.autoScanCronExpression!, async () => {
       const library = await Database.libraryModel.findByIdWithFolders(_library.id)
       if (!library) {
@@ -144,14 +144,15 @@ class CronManager {
     })
 
     for (const podcast of podcastsWithAutoDownload) {
-      // The query only returns podcasts with a schedule (autoDownloadSchedule not null)
+      // cast(d): the query only returns podcasts with a schedule (autoDownloadSchedule not null)
       if (!cronExpressionMap[podcast.autoDownloadSchedule!]) {
+        // cast(d) (2): the query only returns podcasts with a schedule (autoDownloadSchedule not null)
         cronExpressionMap[podcast.autoDownloadSchedule!] = {
           expression: podcast.autoDownloadSchedule!,
           libraryItemIds: []
         }
       }
-      // libraryItem is included above
+      // cast(d): the query only returns podcasts with a schedule; cast(b): libraryItem is included above, the association is optional in the model
       cronExpressionMap[podcast.autoDownloadSchedule!].libraryItemIds.push(podcast.libraryItem!.id)
     }
 
