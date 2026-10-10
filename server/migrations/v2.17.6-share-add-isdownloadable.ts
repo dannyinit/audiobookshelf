@@ -1,4 +1,3 @@
-import type { DataTypes as SequelizeDataTypes, Sequelize } from 'sequelize'
 import type { MigrationOptions } from './types'
 
 const migrationVersion = '2.17.6'
@@ -19,8 +18,7 @@ async function up({ context: { queryInterface, logger } }: MigrationOptions): Pr
     if (!tableDescription.isDownloadable) {
       logger.info(`${loggerPrefix} Adding isDownloadable column to mediaItemShares table`)
       await queryInterface.addColumn('mediaItemShares', 'isDownloadable', {
-        // cast(b): sequelize sets DataTypes on the Sequelize class at runtime; its types only export it from the module
-        type: (queryInterface.sequelize.Sequelize as typeof Sequelize & { DataTypes: typeof SequelizeDataTypes }).DataTypes.BOOLEAN,
+        type: queryInterface.sequelize.Sequelize.DataTypes.BOOLEAN,
         defaultValue: false,
         allowNull: false
       })

@@ -1,4 +1,4 @@
-import type { ColumnDescription, QueryInterface, QueryTypes, Sequelize } from 'sequelize'
+import type { ColumnDescription, QueryInterface } from 'sequelize'
 import type { MigrationOptions } from './types'
 
 /**
@@ -248,8 +248,7 @@ async function changeConstraints(queryInterface: QueryInterface, tableName: stri
 
     // Validate that all foreign key constraints are correct
     const result = await execQuery(`PRAGMA foreign_key_check(${quotedTableName});`, {
-      // cast(b): sequelize sets QueryTypes on the Sequelize class at runtime; its types only export it from the module
-      type: (queryInterface.sequelize.Sequelize as typeof Sequelize & { QueryTypes: typeof QueryTypes }).QueryTypes.SELECT
+      type: queryInterface.sequelize.Sequelize.QueryTypes.SELECT
     })
 
     // There are foreign key violations, exit

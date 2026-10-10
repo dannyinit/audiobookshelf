@@ -1,6 +1,5 @@
 // util is not used; kept as a side-effect import so the module still requires it, as the JavaScript did
 import 'util'
-import type { DataTypes as SequelizeDataTypes, Sequelize } from 'sequelize'
 import type { ModelAttributeColumnOptions, QueryInterface } from 'sequelize'
 import type { MigrationContext, MigrationOptions } from './types'
 
@@ -22,15 +21,13 @@ async function up({ context: { queryInterface, logger } }: MigrationOptions): Pr
   logger.info(`${loggerPrefix} UPGRADE BEGIN: ${migrationName}`)
 
   // Add numEpisodes column to podcasts table
-  // cast(b): sequelize copies the data types onto the Sequelize class at runtime; its types only export them from the module
-  await addColumn(queryInterface, logger, 'podcasts', 'numEpisodes', { type: (queryInterface.sequelize.Sequelize as typeof Sequelize & typeof SequelizeDataTypes).INTEGER, allowNull: false, defaultValue: 0 })
+  await addColumn(queryInterface, logger, 'podcasts', 'numEpisodes', { type: queryInterface.sequelize.Sequelize.INTEGER, allowNull: false, defaultValue: 0 })
 
   // Populate numEpisodes column with the number of episodes for each podcast
   await populateNumEpisodes(queryInterface, logger)
 
   // Add podcastId column to mediaProgresses table
-  // cast(b): sequelize copies the data types onto the Sequelize class at runtime; its types only export them from the module
-  await addColumn(queryInterface, logger, 'mediaProgresses', 'podcastId', { type: (queryInterface.sequelize.Sequelize as typeof Sequelize & typeof SequelizeDataTypes).UUID, allowNull: true })
+  await addColumn(queryInterface, logger, 'mediaProgresses', 'podcastId', { type: queryInterface.sequelize.Sequelize.UUID, allowNull: true })
 
   // Populate podcastId column with the podcastId for each mediaProgress
   await populatePodcastId(queryInterface, logger)

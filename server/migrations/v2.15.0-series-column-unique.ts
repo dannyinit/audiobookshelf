@@ -1,4 +1,3 @@
-import type { QueryTypes, Sequelize } from 'sequelize'
 import type { MigrationOptions } from './types'
 
 /**
@@ -132,8 +131,7 @@ async function up({ context: { queryInterface, logger } }: MigrationOptions): Pr
           name: duplicate.name,
           libraryId: duplicate.libraryId
         },
-        // cast(b): sequelize sets QueryTypes on the Sequelize prototype at runtime; its types only export it from the module
-        type: (queryInterface.sequelize as Sequelize & { QueryTypes: typeof QueryTypes }).QueryTypes.SELECT
+        type: queryInterface.sequelize.QueryTypes.SELECT
       }
     )
 

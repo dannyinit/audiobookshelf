@@ -2,6 +2,7 @@
  * Types shared by the files in server/utils.
  */
 /// <reference path="./ssrf-req-filter.d.ts" />
+/// <reference path="./sequelizeStatics.d.ts" />
 import type * as fsPromises from 'fs/promises'
 import type * as fsSync from 'fs'
 type ServerSettingsModel = import('../objects/settings/ServerSettings')

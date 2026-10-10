@@ -5,8 +5,7 @@ import path = require('path')
 import Module = require('module')
 import fs = require('../libs/fsExtra')
 import Logger = require('../Logger')
-// cast(b): sequelize sets QueryTypes on the Sequelize class at runtime; its types only export it from the module
-const { Sequelize, DataTypes } = sequelizeModule as typeof sequelizeModule & { Sequelize: { QueryTypes: typeof sequelizeModule.QueryTypes } }
+const { Sequelize, DataTypes } = sequelizeModule
 
 /**
  * Migration as the vendored umzug lists it

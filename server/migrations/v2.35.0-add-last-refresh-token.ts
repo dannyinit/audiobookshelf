@@ -1,4 +1,3 @@
-import type { DataTypes as SequelizeDataTypes, Sequelize } from 'sequelize'
 import type { MigrationOptions } from './types'
 
 const migrationVersion = '2.35.0'
@@ -20,8 +19,7 @@ async function up({ context: { queryInterface, logger } }: MigrationOptions): Pr
     if (!tableDescription.lastRefreshToken) {
       logger.info(`${loggerPrefix} Adding lastRefreshToken column to sessions table`)
       await queryInterface.addColumn('sessions', 'lastRefreshToken', {
-        // cast(b): sequelize sets DataTypes on the Sequelize class at runtime; its types only export it from the module
-        type: (queryInterface.sequelize.Sequelize as typeof Sequelize & { DataTypes: typeof SequelizeDataTypes }).DataTypes.STRING,
+        type: queryInterface.sequelize.Sequelize.DataTypes.STRING,
         allowNull: true
       })
     } else {
@@ -31,8 +29,7 @@ async function up({ context: { queryInterface, logger } }: MigrationOptions): Pr
     if (!tableDescription.lastRefreshTokenExpiresAt) {
       logger.info(`${loggerPrefix} Adding lastRefreshTokenExpiresAt column to sessions table`)
       await queryInterface.addColumn('sessions', 'lastRefreshTokenExpiresAt', {
-        // cast(b): sequelize sets DataTypes on the Sequelize class at runtime; its types only export it from the module
-        type: (queryInterface.sequelize.Sequelize as typeof Sequelize & { DataTypes: typeof SequelizeDataTypes }).DataTypes.DATE,
+        type: queryInterface.sequelize.Sequelize.DataTypes.DATE,
         allowNull: true
       })
     } else {

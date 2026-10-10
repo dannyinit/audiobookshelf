@@ -18,7 +18,7 @@ import type NotificationSettings = require('./objects/settings/NotificationSetti
 import type EmailSettings = require('./objects/settings/EmailSettings')
 import type { ModelsSequelize, ModelRegistry } from './models/types'
 import type { LibraryFilterData } from './utils/types'
-import type { DataTypes as SequelizeDataTypes, WhereOptions } from 'sequelize'
+import type { WhereOptions } from 'sequelize'
 import type sqlite3 = require('sqlite3')
 import type oldPlaybackSession = require('./objects/PlaybackSession')
 const { Sequelize, Op } = sequelize
@@ -663,8 +663,7 @@ class Database {
     this.libraryFilterData[libraryId].numIssues = await this.libraryItemModel.count({
       where: {
         libraryId,
-        // cast(b): sequelize.js sets Op on the Sequelize class, its types do not declare it
-        [(Sequelize as typeof Sequelize & { Op: typeof Op }).Op.or]: [
+        [Sequelize.Op.or]: [
           {
             isMissing: true
           },
@@ -898,10 +897,8 @@ WHERE EXISTS (
     const bookAuthors = 'bookAuthors'
     const authors = 'authors'
     const columns = [
-      // cast(b): sequelize.js sets the data types on the Sequelize class, its types do not declare them
-      { name: 'authorNamesFirstLast', source: `${authors}.name`, spec: { type: (Sequelize as typeof Sequelize & typeof SequelizeDataTypes).STRING, allowNull: true } },
-      // cast(b): as above
-      { name: 'authorNamesLastFirst', source: `${authors}.lastFirst`, spec: { type: (Sequelize as typeof Sequelize & typeof SequelizeDataTypes).STRING, allowNull: true } }
+      { name: 'authorNamesFirstLast', source: `${authors}.name`, spec: { type: Sequelize.STRING, allowNull: true } },
+      { name: 'authorNamesLastFirst', source: `${authors}.lastFirst`, spec: { type: Sequelize.STRING, allowNull: true } }
     ]
     const authorsSort = `${bookAuthors}.createdAt ASC`
     const columnNames = columns.map((column) => column.name).join(', ')

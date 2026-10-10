@@ -1,4 +1,3 @@
-import type { DataTypes as SequelizeDataTypes, Sequelize } from 'sequelize'
 import type { MigrationOptions } from './types'
 
 const migrationVersion = '2.26.0'
@@ -21,8 +20,7 @@ async function up({ context: { queryInterface, logger } }: MigrationOptions): Pr
   } else {
     // Create table
     logger.info(`${loggerPrefix} creating table "sessions"`)
-    // cast(b): sequelize sets DataTypes on the Sequelize class at runtime; its types only export it from the module
-    const DataTypes = (queryInterface.sequelize.Sequelize as typeof Sequelize & { DataTypes: typeof SequelizeDataTypes }).DataTypes
+    const DataTypes = queryInterface.sequelize.Sequelize.DataTypes
     await queryInterface.createTable('sessions', {
       id: {
         type: DataTypes.UUID,
@@ -68,8 +66,7 @@ async function up({ context: { queryInterface, logger } }: MigrationOptions): Pr
   } else {
     // Create table
     logger.info(`${loggerPrefix} creating table "apiKeys"`)
-    // cast(b): sequelize sets DataTypes on the Sequelize class at runtime; its types only export it from the module
-    const DataTypes = (queryInterface.sequelize.Sequelize as typeof Sequelize & { DataTypes: typeof SequelizeDataTypes }).DataTypes
+    const DataTypes = queryInterface.sequelize.Sequelize.DataTypes
     await queryInterface.createTable('apiKeys', {
       id: {
         type: DataTypes.UUID,

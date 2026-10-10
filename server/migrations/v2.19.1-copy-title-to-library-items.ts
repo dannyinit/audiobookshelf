@@ -1,5 +1,4 @@
 import util = require('util')
-import type { DataTypes as SequelizeDataTypes, Sequelize } from 'sequelize'
 import type { ModelAttributeColumnOptions, QueryInterface } from 'sequelize'
 import type { MigrationContext, MigrationOptions } from './types'
 
@@ -24,14 +23,12 @@ async function up({ context: { queryInterface, logger } }: MigrationOptions): Pr
   // Upwards migration script
   logger.info(`${loggerPrefix} UPGRADE BEGIN: ${migrationName}`)
 
-  // cast(b): sequelize copies the data types onto the Sequelize class at runtime; its types only export them from the module
-  await addColumn(queryInterface, logger, 'libraryItems', 'title', { type: (queryInterface.sequelize.Sequelize as typeof Sequelize & typeof SequelizeDataTypes).STRING, allowNull: true })
+  await addColumn(queryInterface, logger, 'libraryItems', 'title', { type: queryInterface.sequelize.Sequelize.STRING, allowNull: true })
   await copyColumn(queryInterface, logger, 'books', 'title', 'id', 'libraryItems', 'title', 'mediaId')
   await addTrigger(queryInterface, logger, 'books', 'title', 'id', 'libraryItems', 'title', 'mediaId')
   await addIndex(queryInterface, logger, 'libraryItems', ['libraryId', 'mediaType', { name: 'title', collate: 'NOCASE' }])
 
-  // cast(b): sequelize copies the data types onto the Sequelize class at runtime; its types only export them from the module
-  await addColumn(queryInterface, logger, 'libraryItems', 'titleIgnorePrefix', { type: (queryInterface.sequelize.Sequelize as typeof Sequelize & typeof SequelizeDataTypes).STRING, allowNull: true })
+  await addColumn(queryInterface, logger, 'libraryItems', 'titleIgnorePrefix', { type: queryInterface.sequelize.Sequelize.STRING, allowNull: true })
   await copyColumn(queryInterface, logger, 'books', 'titleIgnorePrefix', 'id', 'libraryItems', 'titleIgnorePrefix', 'mediaId')
   await addTrigger(queryInterface, logger, 'books', 'titleIgnorePrefix', 'id', 'libraryItems', 'titleIgnorePrefix', 'mediaId')
   await addIndex(queryInterface, logger, 'libraryItems', ['libraryId', 'mediaType', { name: 'titleIgnorePrefix', collate: 'NOCASE' }])

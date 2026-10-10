@@ -1,6 +1,6 @@
 import util = require('util')
 import sequelize = require('sequelize')
-import type { DataTypes as SequelizeDataTypes, ModelAttributeColumnOptions, QueryInterface } from 'sequelize'
+import type { ModelAttributeColumnOptions, QueryInterface } from 'sequelize'
 import type { MigrationContext, MigrationOptions } from './types'
 const { Sequelize } = sequelize
 
@@ -14,10 +14,8 @@ const bookAuthors = 'bookAuthors'
 const authors = 'authors'
 const podcastEpisodes = 'podcastEpisodes'
 const columns = [
-  // cast(b): sequelize copies the data types onto the Sequelize class at runtime; its types only export them from the module
-  { name: 'authorNamesFirstLast', source: `${authors}.name`, spec: { type: (Sequelize as typeof Sequelize & typeof SequelizeDataTypes).STRING, allowNull: true } },
-  // cast(b): sequelize copies the data types onto the Sequelize class at runtime; its types only export them from the module
-  { name: 'authorNamesLastFirst', source: `${authors}.lastFirst`, spec: { type: (Sequelize as typeof Sequelize & typeof SequelizeDataTypes).STRING, allowNull: true } }
+  { name: 'authorNamesFirstLast', source: `${authors}.name`, spec: { type: Sequelize.STRING, allowNull: true } },
+  { name: 'authorNamesLastFirst', source: `${authors}.lastFirst`, spec: { type: Sequelize.STRING, allowNull: true } }
 ]
 const authorsSort = `${bookAuthors}.createdAt ASC`
 const columnNames = columns.map((column) => column.name).join(', ')
