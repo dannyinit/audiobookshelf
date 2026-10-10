@@ -98,7 +98,7 @@ class CbrComicBookExtractor extends AbstractComicBookExtractor {
   async removeEmptyParentDirs(file: string) {
     let dir = Path.dirname(file)
     while (dir !== '.') {
-      // tmpDir is set in open() before files are extracted
+      // cast(d): tmpDir is set in open() before files are extracted
       const fullDirPath = Path.join(this.tmpDir as string, dir)
       const files = await fs.readdir(fullDirPath)
       if (files.length > 0) break
@@ -110,7 +110,7 @@ class CbrComicBookExtractor extends AbstractComicBookExtractor {
   getExtractedFilePath(file: string) {
     const sanitizedFile = sanitizeArchivePath(file)
     return {
-      // tmpDir is set in open() before files are extracted
+      // cast(d): tmpDir is set in open() before files are extracted
       filePath: Path.join(this.tmpDir as string, sanitizedFile),
       relativePath: sanitizedFile
     }
@@ -164,7 +164,7 @@ class CbzComicBookExtractor extends AbstractComicBookExtractor {
   async open() {
     const buffer = await this.getBuffer()
     // NOTE: getBuffer() returns null when the comic cannot be read, which is passed on to Archive.open unchecked
-    // Archive.open resolves to the opened archive; its JSDoc return type is wrong. null buffer is passed through as before
+    // cast(a): Archive.open resolves to the opened archive, its JSDoc return type is wrong; cast(c): a null buffer is passed through as before (see NOTE above)
     this.archive = (await Archive.open(buffer as Buffer)) as unknown as LibArchive
     Logger.debug(`[CbzComicBookExtractor] Opened comic book "${this.comicPath}"`)
   }

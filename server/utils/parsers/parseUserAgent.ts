@@ -25,7 +25,7 @@ function parseUserAgent(userAgent: string | null | undefined): DeviceInfo | null
   }
 
   for (const key in deviceInfo) {
-    // for...in only yields keys of deviceInfo
+    // cast(d) (2): for...in only yields keys of deviceInfo
     if (deviceInfo[key as keyof DeviceInfo] === undefined) delete deviceInfo[key as keyof DeviceInfo]
   }
 

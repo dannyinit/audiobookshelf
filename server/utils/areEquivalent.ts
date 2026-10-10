@@ -19,9 +19,9 @@
  */
 function areEquivalent(value1: unknown, value2: unknown, numToString = false, stack: unknown[] = []): boolean {
   if (numToString) {
-    // isNaN coerces its argument, so any value is accepted at runtime
+    // cast(d): value1 is unknown; isNaN coerces its argument, so any value is accepted at runtime
     if (value1 !== null && !isNaN(value1 as number)) value1 = String(value1)
-    // isNaN coerces its argument, so any value is accepted at runtime
+    // cast(d): value2 is unknown; isNaN coerces its argument, so any value is accepted at runtime
     if (value2 !== null && !isNaN(value2 as number)) value2 = String(value2)
   }
 
@@ -50,7 +50,7 @@ function areEquivalent(value1: unknown, value2: unknown, numToString = false, st
   // (only way they can still be equivalent but not equal)
   if (type1 === 'number') {
     // Failed initial equals test, but could still both be NaN
-    // type1 === 'number' and the types match, so both are numbers
+    // cast(d) (2): type1 === 'number' and the types match, so both are numbers
     return (isNaN(value1 as number) && isNaN(value2 as number));
   }
 
@@ -59,12 +59,12 @@ function areEquivalent(value1: unknown, value2: unknown, numToString = false, st
     // Failed initial equals test, but could still have equivalent
     // implementations - note, will match on functions that have same name
     // and are native code: `function abc() { [native code] }`
-    // type1 === 'function' and the types match, so both are functions
+    // cast(d) (2): type1 === 'function' and the types match, so both are functions
     return (value1 as Function).toString() === (value2 as Function).toString()
   }
 
   // For these types, cannot still be equal at this point, so fast-fail
-  // type1 is widened to string so the already handled 'function' check stays as it was
+  // cast(d): type1 is widened to string so the already handled 'function' check stays as it was (TypeScript has narrowed 'function' out)
   if (type1 === 'bigint' || type1 === 'boolean' ||
     (type1 as string) === 'function' || type1 === 'string' ||
     type1 === 'symbol') {
@@ -95,9 +95,9 @@ function areEquivalent(value1: unknown, value2: unknown, numToString = false, st
   // breadcrumb
   stack.push(value1)
 
-  // Only objects remain (null was handled by the falsy checks above)
+  // cast(d): only non-null objects remain (null was handled by the falsy checks above)
   const obj1 = value1 as Record<string, unknown>
-  // Same type as value1, so also a non-null object
+  // cast(d): same type as value1 (checked above), so also a non-null object
   const obj2 = value2 as Record<string, unknown>
 
   // Handle arrays

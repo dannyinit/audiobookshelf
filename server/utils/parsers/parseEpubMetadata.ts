@@ -106,7 +106,7 @@ async function parse(ebookFile: EBookFileObject): Promise<EBookFileScanData | nu
   }
 
   // Parse metadata from package document opf file
-  // The package document is the OPF package json parseOpfMetadataJson reads
+  // cast(a): xml2js output is untyped; the package document is the OPF package json parseOpfMetadataJson reads
   const opfMetadata = parseOpfMetadata.parseOpfMetadataJson(structuredClone(packageJson) as Parameters<typeof parseOpfMetadata.parseOpfMetadataJson>[0])
   if (!opfMetadata) {
     Logger.error(`Unable to parse metadata in package doc with json`, JSON.stringify(packageJson, null, 2))

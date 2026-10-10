@@ -104,7 +104,7 @@ function parseJsonMetadataText(text: string, mediaType: 'book' | 'podcast'): Val
       if (abmetadataData.chapters === null) {
         validated.chapters = []
       } else if (Array.isArray(abmetadataData.chapters)) {
-        // validated.title is a validated string value or null
+        // cast(d): validated.title is a validated string value or null (the cast changes no type)
         const cleanedChapters = cleanChaptersArray(abmetadataData.chapters, (validated.title as string | null | undefined) ?? abmetadataData.title)
         if (cleanedChapters) {
           validated.chapters = cleanedChapters

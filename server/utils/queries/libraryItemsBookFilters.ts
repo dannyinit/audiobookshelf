@@ -101,7 +101,7 @@ export = {
         explicit: false
       })
     }
-    // permissions is a JSON column
+    // cast(d): permissions is the User JSON column, typed UserPermissions since batch 3a; the cast only adds null (the ?. reads below allow it)
     const permissions = user.permissions as UserPermissions | null
     if (!permissions?.accessAllTags && permissions?.itemTagsSelected?.length) {
       replacements['userTagsSelected'] = permissions.itemTagsSelected
@@ -293,17 +293,17 @@ export = {
         }
       }
     } else if (group === 'missing') {
-      // includes() is false for a null value
+      // cast(d): value is string | null | undefined (the decoded filter value); includes() is false for null or undefined
       if (['asin', 'isbn', 'subtitle', 'publishedYear', 'description', 'publisher', 'language', 'cover'].includes(value as string)) {
-        // value is one of the strings above
+        // cast(d): value is one of the strings of the list checked just above
         let key = value as string
         if (value === 'cover') key = 'coverPath'
         mediaWhereHash[key] = {
           [Sequelize.Op.or]: [null, '']
         }
-        // includes() is false for a null value
+        // cast(d): value is string | null | undefined (the decoded filter value); includes() is false for null or undefined
       } else if (['genres', 'tags', 'narrators', 'chapters'].includes(value as string)) {
-        // value is one of the strings above
+        // cast(d): value is one of the strings of the list checked just above
         const column = value as string
         mediaWhereHash[column] = {
           [Sequelize.Op.or]: [null, Sequelize.where(Sequelize.fn('json_array_length', Sequelize.col(column)), 0)]
@@ -314,9 +314,9 @@ export = {
         mediaWhereHash['$series.id$'] = null
       }
     } else if (group === 'publishedDecades') {
-      // parseInt(null) is NaN, as in the JS
+      // cast(d): value may be null or undefined; parseInt of it is NaN, as in the JS
       const startYear = parseInt(value as string)
-      // parseInt(null) is NaN, as in the JS
+      // cast(d): value may be null or undefined; parseInt of it is NaN, as in the JS
       const endYear = parseInt(value as string, 10) + 9
       mediaWhere = Sequelize.where(Sequelize.literal('CAST(publishedYear AS INTEGER)'), {
         [Sequelize.Op.between]: [startYear, endYear]
@@ -406,7 +406,7 @@ export = {
       order: [Sequelize.literal('CAST(`books.bookSeries.sequence` AS FLOAT) ASC NULLS LAST')]
       // cast(b): checked as RuntimeFindOptions (the shapes Sequelize accepts at runtime); its FindOptions type is stricter; distinct is a count option, which findAll ignores
     } satisfies RuntimeFindOptions as FindOptions)
-    // books (with their book_series row and libraryItem) are included above
+    // cast(b): Sequelize types findAll rows without their includes; the books (with their book_series row and libraryItem) are included above
     const allSeries = allSeriesRows as CollapseSeriesRow[]
     const bookSeriesToInclude: CollapseSeriesBookSeries[] = []
     const booksToInclude: string[] = []
@@ -448,18 +448,18 @@ export = {
       }
 
       findOptions.limit = limit || null
-      // A null or undefined offset is passed through, as in the JS
+      // cast(d): offset is number | null | undefined; a null or undefined offset is passed through to findAll, as in the JS
       findOptions.offset = offset as number
 
       // cast(b): RuntimeFindOptions relaxes options to the shapes Sequelize accepts at runtime; its FindOptions type is stricter
       const rows = await model.findAll(findOptions as FindOptions)
 
-      // Set above when missing
+      // cast(d): Map.get is typed as possibly undefined; the count for this key is set just above when missing
       return { rows, count: countCache.get(countCacheKey) as number }
     }
 
     findOptions.limit = limit || null
-    // A null or undefined offset is passed through, as in the JS
+    // cast(d): offset is number | null | undefined; a null or undefined offset is passed through to findAll, as in the JS
     findOptions.offset = offset as number
 
     // cast(b): RuntimeFindOptions relaxes options to the shapes Sequelize accepts at runtime; its FindOptions type is stricter
@@ -493,7 +493,7 @@ export = {
     const includeRSSFeed = include.includes('rssfeed')
     const includeMediaItemShare = !!user?.isAdminOrUp && include.includes('share')
 
-    // Typed by assertion so the null check below is not narrowed away
+    // cast(d): with a plain null initialiser TypeScript narrows bookAttributes to null, so the later assignment and null check would not type check
     let bookAttributes = null as { include: [ReturnType<typeof Sequelize.literal>, string][] } | null
 
     const libraryItemWhere: Record<string | symbol, unknown> = {
@@ -622,13 +622,13 @@ export = {
     }
 
     // When sorting by progress but not filtering by progress, include media progresses
-    // includes() is false for a null sortBy
+    // cast(d): sortBy is string | null (no sort); includes() is false for null
     if (filterGroup !== 'progress' && ['progress.createdAt', 'progress.finishedAt', 'progress'].includes(sortBy as string)) {
       bookIncludes.push({
         model: Database.mediaProgressModel,
         attributes: ['id', 'isFinished', 'currentTime', 'ebookProgress', 'updatedAt', 'createdAt', 'finishedAt'],
         where: {
-          // Sorting by progress is only requested with a user
+          // cast(d): the only caller without a user (getLibraryItemsForSeries) passes sortBy null, so a progress sort always has a user
           userId: (user as User).id
         },
         required: false
@@ -714,9 +714,9 @@ export = {
     const findAndCountAll = process.env.QUERY_PROFILING ? profile(this.findAndCountAll) : this.findAndCountAll
     const { rows: books, count } = await findAndCountAll(findOptions, limit, offset, !filterGroup && !userPermissionBookWhere.bookWhere.length)
 
-    // The rows are books with the includes above
+    // cast(b): Sequelize types findAll rows without their includes; the rows are books with the includes above
     const libraryItems = (books as BookRow[]).map((bookExpanded) => {
-      // libraryItem is a required include
+      // cast(b): libraryItem is a required include of the query above; the Book model declares it optional
       const libraryItem = bookExpanded.libraryItem as FilteredLibraryItem
       const book = bookExpanded
 
@@ -733,7 +733,7 @@ export = {
 
       book.series =
         book.bookSeries?.map((bs) => {
-          // series is included through bookSeries
+          // cast(b): series is included through bookSeries in the query above; the BookSeries model declares it optional
           const series = bs.series as SeriesRow
           delete bs.series
           series.bookSeries = bs
@@ -818,7 +818,7 @@ export = {
       where: [
         {
           id: {
-            // extraData is a JSON column
+            // cast(d): extraData is the User JSON column, already typed UserExtraData | null with this key; the cast changes no type
             [Sequelize.Op.notIn]: (user.extraData as { seriesHideFromContinueListening?: string[] } | null)?.seriesHideFromContinueListening || []
           },
           libraryId
@@ -885,7 +885,7 @@ export = {
       // cast(b): checked as RuntimeFindOptions (the shapes Sequelize accepts at runtime); its FindAndCountOptions type is stricter, and TypeScript does not compare the nested single include objects of the literal with it
     } satisfies RuntimeFindOptions as unknown as FindAndCountOptions)
 
-    // bookSeries (with book, libraryItem, authors and progress) is included above
+    // cast(b): Sequelize types findAndCountAll rows without their includes; bookSeries (with book, libraryItem, authors and progress) is included above
     const libraryItems = (series as SeriesWithBookSeries[])
       .map((s) => {
         if (!s.bookSeries.length) return null // this is only possible if user has restricted books in series
@@ -903,7 +903,7 @@ export = {
           }
         }
 
-        // libraryItem is included above
+        // cast(b): libraryItem is included with the book in the query above; the Book model declares it optional
         const libraryItem = s.bookSeries[bookIndex].book.libraryItem as FilteredLibraryItem
         const book = s.bookSeries[bookIndex].book
         delete book.libraryItem
@@ -968,7 +968,7 @@ export = {
       // cast(b): checked as RuntimeFindOptions (the shapes Sequelize accepts at runtime); its FindOptions type is stricter, and TypeScript does not compare the nested single include objects of the literal with it
     } satisfies RuntimeFindOptions as unknown as FindOptions)
 
-    // bookSeries is included above
+    // cast(b): Sequelize types findAll rows without their includes; bookSeries is included above
     const booksFromSeriesToInclude = (seriesNotStarted as SeriesWithBookSeries[]).map((se) => se.bookSeries?.[0]?.bookId).filter((bid) => bid)
 
     // optional include rssFeed
@@ -1084,19 +1084,19 @@ export = {
     } satisfies RuntimeFindOptions as FindOptions)
 
     const booksById = new Map(books.map((b) => [b.id, b]))
-    // Books with the includes above; filter(Boolean) removes ids that were not found
+    // cast(d): filter(Boolean) removes the ids that were not found, but TypeScript keeps undefined in the element type; the books have the includes above
     const orderedBooks = selectedIds.map((id) => booksById.get(id)).filter(Boolean) as BookRow[]
 
     // Step 3: Map books to library items
     const libraryItems = orderedBooks.map((bookExpanded) => {
-      // libraryItem is included above
+      // cast(b): libraryItem is a required include of the query above; the Book model declares it optional
       const libraryItem = bookExpanded.libraryItem as FilteredLibraryItem
       const book = bookExpanded
       delete book.libraryItem
 
       book.series =
         book.bookSeries?.map((bs) => {
-          // series is included through bookSeries
+          // cast(b): series is included through bookSeries in the query above; the BookSeries model declares it optional
           const series = bs.series as SeriesRow
           delete bs.series
           series.bookSeries = bs
@@ -1161,7 +1161,7 @@ export = {
 
     // libraryItem is included above
     return books.map((book) => {
-      // libraryItem is a required include
+      // cast(b): libraryItem is a required include of the query above; the Book model declares it optional
       const libraryItem = book.libraryItem as FilteredLibraryItem
       delete book.libraryItem
       libraryItem.media = book
@@ -1241,15 +1241,15 @@ export = {
 
     const itemMatches: { libraryItem: ReturnType<LibraryItem['toOldJSONExpanded']> }[] = []
 
-    // libraryItem, bookSeries and bookAuthors are included above
+    // cast(b): Sequelize types findAll rows without their includes; libraryItem, bookSeries and bookAuthors are included above
     for (const book of books as BookRow[]) {
-      // libraryItem is a required include
+      // cast(b): libraryItem is a required include of the query above; the Book model declares it optional
       const libraryItem = book.libraryItem as FilteredLibraryItem
       delete book.libraryItem
 
-      // bookSeries is a separate include, so it is always an array
+      // cast(b): bookSeries is a separate include of the query above, so it is always an array; the model declares it optional
       book.series = (book.bookSeries as BookSeriesRow[]).map((bs) => {
-        // series is included through bookSeries
+        // cast(b): series is included through bookSeries in the query above; the BookSeries model declares it optional
         const series = bs.series as SeriesRow
         delete bs.series
         series.bookSeries = bs
@@ -1257,7 +1257,7 @@ export = {
       })
       delete book.bookSeries
 
-      // bookAuthors is a separate include, so it is always an array
+      // cast(b): bookAuthors is a separate include of the query above, so it is always an array; the model declares it optional
       book.authors = (book.bookAuthors as BookAuthorRow[]).map((ba) => ba.author)
       delete book.bookAuthors
 
@@ -1281,7 +1281,7 @@ export = {
       },
       raw: true
     })
-    // Rows of the query above
+    // cast(b): query() types the rows as unknown[]; the rows have the selected columns (value, numBooks)
     for (const row of narratorResultRows as ValueCountRow[]) {
       narratorMatches.push({
         name: row.value,
@@ -1299,7 +1299,7 @@ export = {
       },
       raw: true
     })
-    // Rows of the query above
+    // cast(b): query() types the rows as unknown[]; the rows have the selected columns (value, numBooks)
     for (const row of tagResultRows as ValueCountRow[]) {
       tagMatches.push({
         name: row.value,
@@ -1317,7 +1317,7 @@ export = {
       },
       raw: true
     })
-    // Rows of the query above
+    // cast(b): query() types the rows as unknown[]; the rows have the selected columns (value, numBooks)
     for (const row of genreResultRows as ValueCountRow[]) {
       genreMatches.push({
         name: row.value,
@@ -1355,15 +1355,15 @@ export = {
       // cast(b): checked as RuntimeFindOptions (the shapes Sequelize accepts at runtime); its FindOptions type is stricter, and TypeScript does not compare the nested single include objects of the literal with it; distinct is a count option, which findAll ignores
     } satisfies RuntimeFindOptions as unknown as FindOptions)
     const seriesMatches: { series: ReturnType<Series['toOldJSON']>; books: ReturnType<LibraryItem['toOldJSON']>[] }[] = []
-    // bookSeries (with book and libraryItem) is included above
+    // cast(b): Sequelize types findAll rows without their includes; bookSeries (with book and libraryItem) is included above
     for (const series of allSeries as SeriesWithBookSeries[]) {
       const books = series.bookSeries.map((bs) => {
-        // libraryItem is included above
+        // cast(b): libraryItem is included with the book in the query above; the Book model declares it optional
         const libraryItem = bs.book.libraryItem as FilteredLibraryItem
         libraryItem.media = bs.book
-        // media is the book set above
+        // cast(d): media is the book set on the line above; the cast only names it BookExpanded (authors and series are set here)
         ;(libraryItem.media as BookExpanded).authors = []
-        // media is the book set above
+        // cast(d): media is the book set two lines above; the cast only names it BookExpanded (authors and series are set here)
         ;(libraryItem.media as BookExpanded).series = []
         return libraryItem.toOldJSON()
       })
@@ -1399,7 +1399,7 @@ export = {
       },
       raw: true
     })
-    // Rows of the query above
+    // cast(b): query() types the rows as unknown[]; the rows have the selected columns (value, numBooks)
     for (const row of genreResultRows as ValueCountRow[]) {
       genres.push({
         genre: row.value,
@@ -1418,7 +1418,7 @@ export = {
         libraryId
       }
     })
-    // Rows of the query above
+    // cast(b): query() types the rows as unknown[]; the row has the selected sums and the count
     const statResults = statResultRows as { totalSize: number | null; totalDuration: number | null; numAudioFiles: number | null; totalItems: number }[]
     return {
       totalSize: statResults?.[0]?.totalSize || 0,
@@ -1444,7 +1444,7 @@ export = {
       order: [['duration', 'DESC']],
       limit
     })
-    // libraryItem is included above
+    // cast(b): Sequelize types findAll rows without their includes; libraryItem is included above
     return (books as (Book & { libraryItem: LibraryItem })[]).map((book) => {
       return {
         id: book.libraryItem.id,

@@ -29,7 +29,7 @@ export = {
     try {
       return Buffer.from(decodeURIComponent(text), 'base64').toString()
     } catch (error) {
-      // decodeURIComponent throws a URIError
+      // cast(d): catch variable is unknown; decodeURIComponent throws a URIError
       Logger.warn(`[seriesFilters] Failed to decode filter value "${text}": ${(error as Error).message}`)
       return null
     }
@@ -76,7 +76,7 @@ export = {
     // Handle filters
     // TODO: Simplify and break-out
     let attrQuery: string | null = null
-    // includes() is false for a null filterGroup
+    // cast(d): filterGroup is string | null; includes() is false for null
     if (['genres', 'tags', 'narrators'].includes(filterGroup as string)) {
       attrQuery = `SELECT count(*) FROM books b, bookSeries bs WHERE bs.seriesId = series.id AND bs.bookId = b.id AND (SELECT count(*) FROM json_each(b.${filterGroup}) WHERE json_valid(b.${filterGroup}) AND json_each.value = :filterValue) > 0`
       userPermissionBookWhere.replacements.filterValue = filterValue
@@ -115,7 +115,7 @@ export = {
       if (!user.canAccessExplicitContent) {
         attrQuery += ' AND b.explicit = 0'
       }
-      // permissions is a JSON column
+      // cast(d): permissions is the User JSON column, typed UserPermissions since batch 3a; the cast only adds null (the ?. reads below allow it)
       const permissions = user.permissions as UserPermissions | null
       if (!permissions?.accessAllTags && permissions?.itemTagsSelected?.length) {
         if (permissions.selectedTagsNotAccessible) {
@@ -201,7 +201,7 @@ export = {
 
     // Map series to old series
     const allOldSeries: (ReturnType<Series['toOldJSON']> & { totalDuration?: number; rssFeed?: unknown; books?: unknown[] })[] = []
-    // bookSeries (with book and libraryItem) and feeds are included above
+    // cast(b): Sequelize types findAll rows without their includes; bookSeries (with book and libraryItem) and feeds are included above
     for (const s of series as SeriesWithBooks[]) {
       const oldSeries: (typeof allOldSeries)[number] = s.toOldJSON()
 
@@ -223,10 +223,10 @@ export = {
         })
       })
       oldSeries.books = s.bookSeries.map((bs) => {
-        // libraryItem is included above
+        // cast(b): libraryItem is included with the book in the query above; the Book model declares it optional
         const libraryItem = bs.book.libraryItem as FilteredLibraryItem
         delete bs.book.libraryItem
-        // The book is the media of its library item
+        // cast(d): the book is the media of its library item; the cast drops the libraryItem the BookExpandedWithLibraryItem row type adds
         libraryItem.media = bs.book as unknown as FilteredLibraryItem['media']
         const oldLibraryItem = libraryItem.toOldJSONMinified()
         return oldLibraryItem

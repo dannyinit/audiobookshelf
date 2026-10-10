@@ -80,7 +80,7 @@ function groupFileItemsIntoLibraryItemDirs(mediaType: string, fileItems: FilePat
     } else {
       // Iterate over directories in path
       for (let i = 0; i < numparts; i++) {
-        // i < numparts, so dirparts is not empty
+        // cast(d): i < numparts, so dirparts is not empty and shift returns a string
         const dirpart = dirparts.shift() as string
         _path = Path.posix.join(_path, dirpart)
 
@@ -88,7 +88,7 @@ function groupFileItemsIntoLibraryItemDirs(mediaType: string, fileItems: FilePat
           // Directory already has files, add file
           const relpath = Path.posix.join(dirparts.join('/'), item.name)
           // NOTE: if a root media file has the same name as this directory the group is a string and push throws
-          // Groups for directories are arrays; a root file group is a string (see NOTE above)
+          // cast(c): groups for directories are arrays; a root file group is a string (see NOTE above)
           ;(libraryItemGroup[_path] as string[]).push(relpath)
           return
         } else if (!dirparts.length) {
@@ -112,14 +112,14 @@ function groupFileItemsIntoLibraryItemDirs(mediaType: string, fileItems: FilePat
 
     // Iterate over directories in path
     for (let i = 0; i < numparts; i++) {
-      // i < numparts, so dirparts is not empty
+      // cast(d): i < numparts, so dirparts is not empty and shift returns a string
       const dirpart = dirparts.shift() as string
       _path = Path.posix.join(_path, dirpart)
       if (libraryItemGroup[_path]) {
         // Directory is audiobook group
         const relpath = Path.posix.join(dirparts.join('/'), item.name)
         // NOTE: if a root media file has the same name as this directory the group is a string and push throws
-        // Groups for directories are arrays; a root file group is a string (see NOTE above)
+        // cast(c): groups for directories are arrays; a root file group is a string (see NOTE above)
         ;(libraryItemGroup[_path] as string[]).push(relpath)
         return
       }
@@ -148,7 +148,7 @@ function buildLibraryFile(libraryItemPath: string, files: string[]): Promise<Lib
 function getBookDataFromDir(relPath: string, parseSubtitle = false): LibraryItemFilenameMetadata {
   const splitDir = relPath.split('/')
 
-  // split always returns at least one element
+  // cast(d): split always returns at least one element, so pop is not undefined
   const titleFolder = splitDir.pop() as string // Audio files will always be in the directory named for the title
   const series = splitDir.length > 1 ? splitDir.pop() : null // If there are at least 2 more directories, next furthest will be the series
   const author = splitDir.length > 0 ? splitDir.pop() : null // There could be many more directories, but only the top 3 are used for naming /author/series/title/
@@ -180,7 +180,7 @@ function getBookDataFromDir(relPath: string, parseSubtitle = false): LibraryItem
 function getNarrator(folder: string): [string, string | null] {
   const pattern = /^(?<title>.*) \{(?<narrators>.*)\}$/
   const match = folder.match(pattern)
-  // The pattern has named groups, so groups is set when it matches
+  // cast(d) (2): the pattern has the named groups title and narrators, so groups is set when it matches
   return match ? [match.groups!.title, match.groups!.narrators] : [folder, null]
 }
 
@@ -207,15 +207,15 @@ function getSequence(folder: string): [string, string | null] {
   let volumeNumber: string | null = null
   const parts: (string | undefined)[] = folder.split(' - ')
   for (let i = 0; i < parts.length; i++) {
-    // Parts are only set to undefined right before the loop breaks
+    // cast(d): parts are only set to undefined right before the loop breaks, so this part is a string
     const match = (parts[i] as string).match(pattern)
-    // The pattern has named groups, so groups is set when it matches
+    // cast(d): the pattern has named groups, so groups is set when it matches (undefined only without a match)
     const groups = match?.groups as Record<string, string | undefined> | undefined
     // This excludes '101 Dalmations' but includes '101. Dalmations'
     if (match && groups && !(groups.suffix && !(groups.volumeLabel || groups.trailingDot))) {
-      // The sequence group always participates in the match; isNaN coerces the string
+      // cast(d): the sequence group always takes part in the match (it may match the empty string)
       const sequenceMatch = groups.sequence as string
-      // isNaN coerces the string
+      // cast(d): isNaN coerces the string, as in the JS
       volumeNumber = isNaN(sequenceMatch as unknown as number) ? sequenceMatch : Number(sequenceMatch).toString()
       parts[i] = groups.suffix
       if (!parts[i]) {

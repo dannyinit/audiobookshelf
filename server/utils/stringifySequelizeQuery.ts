@@ -6,7 +6,7 @@ function stringifySequelizeQuery(findOptions: unknown): string {
   function replacer(key: string, value: unknown): unknown {
     if (typeof value === 'object' && value !== null) {
       const symbols = Object.getOwnPropertySymbols(value).reduce((acc: Record<string, unknown>, sym) => {
-        // Indexing by a symbol own property of the object
+        // cast(d): indexing by a symbol own property of the object (Object.getOwnPropertySymbols)
         acc[sym.toString()] = (value as Record<symbol, unknown>)[sym]
         return acc
       }, {})

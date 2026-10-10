@@ -51,7 +51,7 @@ const comparePaths = (path1: string, path2: string): boolean => {
 }
 
 const isNullOrNaN = (num: unknown): boolean => {
-  // isNaN coerces its argument, so any value is accepted at runtime
+  // cast(d): num is unknown; isNaN coerces its argument, so any value is accepted at runtime
   return num === null || isNaN(num as number)
 }
 
@@ -70,7 +70,7 @@ const xmlToJSON = <T = unknown>(xml: string): Promise<T | null> => {
         Logger.error(`[xmlToJSON] Error`, err)
         resolve(null)
       } else {
-        // The xml2js output shape is described by the caller
+        // cast(d): assumed: the parsed XML has the shape the caller names in T (xml2js output is not checked)
         resolve(results as T)
       }
     })
@@ -149,7 +149,7 @@ const copyValue = (val: unknown): unknown => {
   } else {
     var final: Record<string, unknown> = {}
     for (const key in val) {
-      // key comes from for...in over val
+      // cast(d): val is an object here and key comes from for...in over it
       final[key] = utils.copyValue((val as Record<string, unknown>)[key])
     }
     return final
@@ -157,7 +157,7 @@ const copyValue = (val: unknown): unknown => {
 }
 
 const toNumber = (val: unknown, fallback = 0): number => {
-  // isNaN coerces its argument, so any value is accepted at runtime
+  // cast(d): val is unknown; isNaN coerces its argument, so any value is accepted at runtime
   if (isNaN(val as number) || val === null) return fallback
   return Number(val)
 }

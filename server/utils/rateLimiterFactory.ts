@@ -32,9 +32,9 @@ class RateLimiterFactory {
     }
 
     let windowMs = RateLimiterFactory.DEFAULT_WINDOW_MS
-    // parseInt(undefined) is NaN, which fails the check
+    // cast(d): the variable may be unset; parseInt(undefined) is NaN, which fails the check
     if (parseInt(process.env.RATE_LIMIT_AUTH_WINDOW as string) > 0) {
-      // Set when the check above passes
+      // cast(d): the variable is set, the check above passed
       windowMs = parseInt(process.env.RATE_LIMIT_AUTH_WINDOW as string)
       if (windowMs !== RateLimiterFactory.DEFAULT_WINDOW_MS) {
         Logger.info(`[RateLimiterFactory] Authentication rate limiting window set to ${windowMs}ms by ENV variable`)
@@ -42,9 +42,9 @@ class RateLimiterFactory {
     }
 
     let max = RateLimiterFactory.DEFAULT_MAX
-    // parseInt(undefined) is NaN, which fails the check
+    // cast(d): the variable may be unset; parseInt(undefined) is NaN, which fails the check
     if (parseInt(process.env.RATE_LIMIT_AUTH_MAX as string) > 0) {
-      // Set when the check above passes
+      // cast(d): the variable is set, the check above passed
       max = parseInt(process.env.RATE_LIMIT_AUTH_MAX as string)
       if (max !== RateLimiterFactory.DEFAULT_MAX) {
         Logger.info(`[RateLimiterFactory] Authentication rate limiting max set to ${max} by ENV variable`)
@@ -63,7 +63,7 @@ class RateLimiterFactory {
       legacyHeaders: false,
       keyGenerator: (req) => {
         // Override keyGenerator to handle proxy IPs
-        // req.ip is set by express for socket requests
+        // cast(d): assumed: express sets req.ip from the socket for every request (its type allows undefined)
         return (requestIp.getClientIp(req) || req.ip) as string
       },
       handler: (req, res) => {

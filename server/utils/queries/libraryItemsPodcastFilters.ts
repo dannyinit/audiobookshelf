@@ -48,7 +48,7 @@ export = {
       })
     }
 
-    // permissions is a JSON column
+    // cast(d): permissions is the User JSON column, typed UserPermissions since batch 3a; the cast only adds null (the ?. reads below allow it)
     const permissions = user.permissions as UserPermissions | null
     if (!permissions?.accessAllTags && permissions?.itemTagsSelected?.length) {
       replacements['userTagsSelected'] = permissions.itemTagsSelected
@@ -110,7 +110,7 @@ export = {
       return [[Sequelize.literal('libraryItem.mtime'), dir]]
     } else if (sortBy === 'media.metadata.author') {
       const nullDir = sortDesc ? 'DESC NULLS FIRST' : 'ASC NULLS LAST'
-      // sequelize accepts an order item with only a literal; its types require a direction
+      // cast(b): sequelize accepts an order item with only a literal; its types require a direction
       return [[Sequelize.literal(`\`podcast\`.\`author\` COLLATE NOCASE ${nullDir}`)]] as unknown as Order
     } else if (sortBy === 'media.metadata.title') {
       if (global.ServerSettings.sortingIgnorePrefix) {
@@ -147,7 +147,7 @@ export = {
       // cast(b): RuntimeFindOptions relaxes options to the shapes Sequelize accepts at runtime; its FindOptions type is stricter
       const rows = await model.findAll(findOptions as FindOptions)
 
-      // Set above when missing
+      // cast(d): Map.get is typed as possibly undefined; the count for this key is set just above when missing
       return { rows, count: countCache.get(countCacheKey) as number }
     }
 
@@ -227,10 +227,10 @@ export = {
 
     const { rows: podcasts, count } = await findAndCountAll(findOptions, Database.podcastModel, limit, offset, !filterGroup && !userPermissionPodcastWhere.podcastWhere.length)
 
-    // libraryItem is included above
+    // cast(b): Sequelize types findAll rows without their includes; libraryItem is included above
     const libraryItems = (podcasts as PodcastWithLibraryItem[]).map((podcastExpanded) => {
       const libraryItem = podcastExpanded.libraryItem
-      // Typed as optional so it can be deleted
+      // cast(d): typed with an optional libraryItem so it can be deleted below (same object)
       const podcast = podcastExpanded as Podcast & { libraryItem?: FilteredLibraryItem }
 
       delete podcast.libraryItem
@@ -240,7 +240,7 @@ export = {
       }
 
       if (includeNumEpisodesIncomplete) {
-        // mediaProgresses is loaded with the user for requests
+        // cast(d): mediaProgresses is already typed as set (NonAttribute<MediaProgress[]>); the cast changes no type
         const numEpisodesComplete = (user.mediaProgresses as NonNullable<User['mediaProgresses']>).reduce((acc, mp) => {
           if (mp.podcastId === podcast.id && mp.isFinished) {
             acc += 1
@@ -345,10 +345,10 @@ export = {
 
     const { rows: podcastEpisodes, count } = await findAndCountAll(findOptions, Database.podcastEpisodeModel, limit, offset, !filterGroup)
 
-    // The podcast and its libraryItem are included above
+    // cast(b): Sequelize types findAll rows without their includes; the podcast and its libraryItem are included above
     const libraryItems = (podcastEpisodes as EpisodeWithPodcast[]).map((ep) => {
       const libraryItem = ep.podcast.libraryItem
-      // Typed as optional so it can be deleted
+      // cast(d): typed with an optional libraryItem so it can be deleted below (same object)
       const podcast = ep.podcast as Podcast & { libraryItem?: FilteredLibraryItem }
       delete podcast.libraryItem
       libraryItem.media = podcast
@@ -375,6 +375,7 @@ export = {
     const matchAuthor = textSearchQuery.matchExpression('podcast.author')
 
     // Search title, author, itunesId, itunesArtistId
+    // cast(b): distinct is not a findAll option (sequelize ignores it, see below); FindOptions rejects it
     const podcasts = await Database.podcastModel.findAll({
       where: [
         {
@@ -413,9 +414,9 @@ export = {
 
     const itemMatches: { libraryItem: ReturnType<LibraryItem['toOldJSONExpanded']> }[] = []
 
-    // libraryItem is included above; typed as optional so it can be deleted
+    // cast(d): libraryItem is included above; typed as optional so it can be deleted below (findAll already types the rows as Podcast)
     for (const podcast of podcasts as (Podcast & { libraryItem?: FilteredLibraryItem })[]) {
-      // Included above
+      // cast(b): libraryItem is included in the query above; the cast types it as set
       const libraryItem = podcast.libraryItem as FilteredLibraryItem
       delete podcast.libraryItem
       libraryItem.media = podcast
@@ -426,6 +427,7 @@ export = {
     }
 
     // Search podcast episode title
+    // cast(b): distinct is not a findAll option (sequelize ignores it, see below); FindOptions rejects it
     const podcastEpisodes = await Database.podcastEpisodeModel.findAll({
       where: [
         Sequelize.literal(textSearchQuery.matchExpression('podcastEpisode.title')),
@@ -451,7 +453,7 @@ export = {
       // distinct is not a findAll option (sequelize ignores it); kept as before
     } as FindOptions)
     const episodeMatches: { libraryItem: ReturnType<LibraryItem['toOldJSONExpanded']> & { recentEpisode?: unknown } }[] = []
-    // The podcast and its libraryItem are included above
+    // cast(b): Sequelize types findAll rows without their includes; the podcast and its libraryItem are included above
     for (const episode of podcastEpisodes as EpisodeWithPodcast[]) {
       const libraryItem = episode.podcast.libraryItem
       libraryItem.media = episode.podcast
@@ -476,7 +478,7 @@ export = {
       },
       raw: true
     })
-    // Rows of the query above
+    // cast(b): query() types the rows as unknown[]; the rows have the selected columns (value, numItems)
     for (const row of tagResultRows as ValueCountRow[]) {
       tagMatches.push({
         name: row.value,
@@ -494,7 +496,7 @@ export = {
       },
       raw: true
     })
-    // Rows of the query above
+    // cast(b): query() types the rows as unknown[]; the rows have the selected columns (value, numItems)
     for (const row of genreResultRows as ValueCountRow[]) {
       genreMatches.push({
         name: row.value,
@@ -554,7 +556,7 @@ export = {
     // cast(b): RuntimeFindOptions relaxes options to the shapes Sequelize accepts at runtime; its FindOptions type is stricter
     const episodes = await findtAll(findOptions as FindOptions)
 
-    // The podcast and its libraryItem are included above
+    // cast(b): Sequelize types findAll rows without their includes; the podcast and its libraryItem are included above
     const episodeResults = (episodes as EpisodeWithPodcast[]).map((ep) => {
       ep.podcast.podcastEpisodes = [] // Not needed
       const oldPodcastJson = ep.podcast.toOldJSON(ep.podcast.libraryItem.id)
@@ -583,9 +585,9 @@ export = {
         libraryId
       }
     })
-    // Rows of the queries above
+    // cast(b): query() types the rows as unknown[]; the row has the selected sum
     const sizeResults = sizeResultRows as { totalSize: number | null }[]
-    // Rows of the queries above
+    // cast(b): query() types the rows as unknown[]; the row has the selected sums and the count
     const statResults = statResultRows as { totalDuration: number | null; numAudioFiles: number; totalItems: number }[]
     return {
       totalDuration: statResults?.[0]?.totalDuration || 0,
@@ -606,7 +608,7 @@ export = {
       },
       raw: true
     })
-    // Rows of the query above
+    // cast(b): query() types the rows as unknown[]; the rows have the selected columns (value, numItems)
     for (const row of genreResultRows as ValueCountRow[]) {
       genres.push({
         genre: row.value,
@@ -632,7 +634,7 @@ export = {
       order: [['duration', 'DESC']],
       limit
     })
-    // libraryItem is included above
+    // cast(b): Sequelize types findAll rows without their includes; libraryItem is included above
     return (podcasts as PodcastWithLibraryItem[]).map((podcast) => {
       return {
         id: podcast.libraryItem.id,

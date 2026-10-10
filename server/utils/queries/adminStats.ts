@@ -68,7 +68,7 @@ export = {
       },
       order: Database.sequelize.random()
     })
-    // libraryItem is included above
+    // cast(b): Sequelize types findAll rows without their includes; libraryItem is included above
     return books as unknown as BookWithLibraryItem[]
   },
 
@@ -107,7 +107,7 @@ export = {
     for (const ls of listeningSessions) {
       totalListeningTime += ls.timeListening || 0
 
-      // mediaMetadata is a JSON column
+      // cast(d): mediaMetadata is the PlaybackSession JSON column, typed PlaybackMediaMetadata | null since batch 3a; the cast changes no type
       const mediaMetadata = ls.mediaMetadata as PlaybackMediaMetadata | null
       const authors = mediaMetadata?.authors || []
       authors.forEach((au) => {
@@ -162,7 +162,7 @@ export = {
         nextYear: year + 1
       }
     })
-    // Row of the SUM/COUNT query above
+    // cast(b): query() types the rows as unknown[]; the first row has the selected sums and the count (undefined when there is no row)
     const totalStatResults = totalStatResultsRow[0] as { totalSize: number | null; totalDuration: number | null; totalItems: number } | undefined
 
     return {
@@ -187,7 +187,7 @@ export = {
    */
   async getTotalSize() {
     const [mediaTypeStatsRows] = await Database.sequelize.query(`SELECT li.mediaType, SUM(li.size) AS totalSize, COUNT(*) AS numItems FROM libraryItems li group by li.mediaType;`)
-    // Rows of the query above
+    // cast(b): query() types the rows as unknown[]; the rows have the selected columns (mediaType, totalSize, numItems)
     const mediaTypeStats = mediaTypeStatsRows as { mediaType: string; totalSize: number | null; numItems: number }[]
     const bookStats = mediaTypeStats.find((m) => m.mediaType === 'book')
     const podcastStats = mediaTypeStats.find((m) => m.mediaType === 'podcast')
@@ -215,7 +215,7 @@ export = {
    */
   async getNumAudioFiles() {
     const [numBookAudioFilesRow] = await Database.sequelize.query(`SELECT SUM(json_array_length(b.audioFiles)) AS numAudioFiles FROM books b;`)
-    // Row of the SUM query above
+    // cast(b): query() types the rows as unknown[]; the first row has the selected sum (undefined when there is no row)
     const numBookAudioFiles = (numBookAudioFilesRow[0] as { numAudioFiles: number | null } | undefined)?.numAudioFiles || 0
     const numPodcastAudioFiles = await Database.podcastEpisodeModel.count()
     return {

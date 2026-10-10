@@ -4,7 +4,7 @@ import MediaProbeData = require('../scanner/MediaProbeData')
 import Logger = require('../Logger')
 import type { ProbeChapter, ProbeStreamInfo, ProbeTags, RawProbeData } from './types'
 
-// isNaN coerces its argument; ffprobe reports most numbers as strings
+// cast(d): isNaN coerces its argument; ffprobe reports most numbers as strings
 const isNaN = globalThis.isNaN as (value: unknown) => boolean
 
 
@@ -72,7 +72,7 @@ interface FfprobeOutput {
  */
 type Ffprobe = ((file: string) => Promise<FfprobeOutput>) & { FFPROBE_PATH?: string }
 
-// The vendored module is an IIFE so its inferred type does not describe the output
+// cast(a): the vendored module is an IIFE, so its inferred type does not describe the output (see Ffprobe)
 const ffprobe = nodeFfprobe as unknown as Ffprobe
 
 
@@ -149,7 +149,7 @@ function tryGrabTags(stream: { tags?: ProbeTags }, ...tags: string[]): string | 
   if (!stream.tags) return null
   for (let i = 0; i < tags.length; i++) {
     const tagKey = Object.keys(stream.tags).find((t) => t.toLowerCase() === tags[i].toLowerCase())
-    // A missing key reads undefined, as in the JS
+    // cast(d): find returns undefined when no tag matches; the undefined key reads undefined, as in the JS
     const value = stream.tags[tagKey as string]
     if (value && value.trim()) return value.trim()
   }
@@ -221,7 +221,7 @@ function parseChapters(_chapters: FfprobeChapter[] | undefined): ProbeChapter[] 
       if (!title && chap.tags?.title) title = chap.tags.title
       title = title.trim()
 
-      // time_base was checked above
+      // cast(d): time_base was checked in the same expression (the cast changes no type)
       const timebase = chap.time_base?.includes('/') ? Number((chap.time_base as string).split('/')[1]) : 1
       const start = !isNullOrNaN(chap.start_time) ? Number(chap.start_time) : !isNullOrNaN(chap.start) ? Number(chap.start) / timebase : 0
       const end = !isNullOrNaN(chap.end_time) ? Number(chap.end_time) : !isNullOrNaN(chap.end) ? Number(chap.end) / timebase : 0
@@ -339,7 +339,7 @@ function parseProbeData(data: FfprobeOutput, verbose = false): RawProbeData | nu
     if (cleanedData.audio_stream && cleanedData.video_stream) {
       const videoBitrate = cleanedData.video_stream.bit_rate
       // If audio stream bitrate larger then video, most likely incorrect
-      // null compares as 0, as in the JS
+      // cast(d) (2): the bit rates may be null; null compares as 0, as in the JS
       if ((cleanedData.audio_stream.bit_rate as number) > (videoBitrate as number)) {
         cleanedData.video_stream.bit_rate = cleanedData.bit_rate
       }

@@ -43,7 +43,7 @@ async function parse(ebookFile: EBookFileObject): Promise<EBookFileScanData | nu
       Logger.error(`[parseComicMetadata] Failed to get file paths from comic at "${comicPath}"`, error)
     })
 
-    // filePaths is undefined when getFilePaths fails; sort then throws and the catch below returns null, as in the JS
+    // cast(d): filePaths is undefined when getFilePaths fails; sort then throws and the catch below returns null, as in the JS
     const comicFilePaths = filePaths as string[]
 
     // Sort the file paths in a natural order to get the first image

@@ -40,7 +40,7 @@ export = {
       order: [[Sequelize.literal('count'), 'DESC']],
       limit: limit
     })
-    // author is included above
+    // cast(b): Sequelize types findAll rows without their includes; author is included above
     return (authors as (BookAuthor & { author: Author })[]).map((au) => {
       return {
         id: au.authorId,

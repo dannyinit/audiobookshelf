@@ -20,17 +20,17 @@ const histograms = new Map<string, ProfilerHistogram>()
 function profile<A extends unknown[], R>(asyncFunc: (...args: A) => Promise<R>, isFindQuery = true, funcName = asyncFunc.name): (...args: A) => Promise<R> {
   if (!histograms.has(funcName)) {
     const histogram = createHistogram()
-    // values is added on the next line
+    // cast(d): values is added on the next line
     const profilerHistogram = histogram as ProfilerHistogram
     profilerHistogram.values = []
     histograms.set(funcName, profilerHistogram)
   }
-  // Set above when missing
+  // cast(d): Map.get is typed as possibly undefined; the histogram is set above when missing
   const histogram = histograms.get(funcName) as ProfilerHistogram
 
   return async (...args: A) => {
     if (isFindQuery) {
-      // When isFindQuery is set the first argument is a sequelize find options object
+      // cast(d): with isFindQuery (the default) the first argument of the profiled findAll or count is its options object
       const findOptions = args[0] as ProfiledFindOptions
       Logger.info(`[${funcName}] findOptions:`, util.inspect(findOptions, { depth: null }))
       findOptions.logging = (query, time) => Logger.info(`[${funcName}] ${query} Elapsed time: ${time}ms`)

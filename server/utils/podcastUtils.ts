@@ -14,7 +14,7 @@ type FuseConstructor = new <T>(
   options: { ignoreDiacritics?: boolean; threshold?: number; keys?: { name: string; weight: number }[] }
 ) => { search(pattern: string): { item: T; refIndex: number }[] }
 
-// See FuseConstructor
+// cast(a): fuse.js is required as a module object; see FuseConstructor
 const Fuse = FuseLib as unknown as FuseConstructor
 
 /**
@@ -145,7 +145,7 @@ interface RssPodcast {
 }
 
 function extractFirstArrayItem(json: XmlElement, key: string): unknown {
-  // xml2js puts child elements in arrays
+  // cast(a): xml2js output is untyped; it puts child elements in arrays
   const values = json[key] as unknown[] | undefined
   if (!values?.length) return null
   return values[0]
@@ -153,7 +153,7 @@ function extractFirstArrayItem(json: XmlElement, key: string): unknown {
 
 function extractStringOrStringify(json: XmlElement): string {
   try {
-    // xml2js puts child elements in arrays
+    // cast(a): xml2js output is untyped; it puts child elements in arrays
     const firstValue = json[Object.keys(json)[0]] as unknown[] | undefined
     if (typeof firstValue?.[0] === 'string') {
       return firstValue[0]
@@ -169,7 +169,7 @@ function extractFirstArrayItemString(json: XmlElement, key: string): string {
   const item = extractFirstArrayItem(json, key)
   if (!item) return ''
   if (typeof item === 'object') {
-    // Objects in xml2js output are elements
+    // cast(a): xml2js output is untyped; objects in it are elements
     const element = item as XmlElement
     if (element?.['_'] && typeof element['_'] === 'string') return element['_']
 
@@ -180,7 +180,7 @@ function extractFirstArrayItemString(json: XmlElement, key: string): string {
 
 function extractImage(channel: RssChannel): string | null {
   // NOTE: xml2js puts <image> in an array, so channel.image.url is always undefined and the itunes:image fallback is always used
-  // Read as the object the code expects (see NOTE)
+  // cast(c): read as the object the code expects (see NOTE above)
   const channelImage = channel.image as { url?: string[] } | undefined
   if (!channelImage || !channelImage.url || !channelImage.url.length) {
     if (!channel['itunes:image'] || !channel['itunes:image'].length || !channel['itunes:image'][0]['$']) {
@@ -237,10 +237,10 @@ function extractPodcastMetadata(channel: RssChannel): RssPodcastMetadata {
 
   const arrayFields = ['title', 'language', 'itunes:explicit', 'itunes:author', 'pubDate', 'link', 'itunes:type']
   arrayFields.forEach((key) => {
-    // split always returns at least one element
+    // cast(d): split always returns at least one element, so pop is not undefined
     const cleanKey = key.split(':').pop() as string
     let value = extractFirstArrayItem(channel, key)
-    // Reads `_` of an element value; strings and null read undefined, as in the JS
+    // cast(d) (2): reads `_` of an element value; strings and null read undefined, as in the JS
     if ((value as XmlElement | null)?.['_']) value = (value as XmlElement)['_']
     metadata[cleanKey] = value
   })
@@ -252,11 +252,11 @@ function extractEpisodeData(item: RssItem): RssEpisodeData | null {
   let enclosure: RssPodcastEnclosure
 
   if (item.enclosure?.[0]?.['$']?.url) {
-    // url was checked above
+    // cast(a): xml2js output is untyped; url was checked above, so these are the enclosure attributes
     enclosure = item.enclosure[0]['$'] as RssPodcastEnclosure
   } else if (item['media:content']?.find((c) => c?.['$']?.url && (c?.['$']?.type ?? '').startsWith('audio'))) {
     // NOTE: this second find does not require a url, so it can pick an audio media:content without one and url.trim() below throws
-    // The check above found an audio media:content
+    // cast(c): the enclosure attributes may lack url (see NOTE above); cast(d): the check above found an audio media:content, so this find finds one too
     enclosure = (item['media:content'].find((c) => (c['$']?.type ?? '').startsWith('audio')) as XmlElement)['$'] as RssPodcastEnclosure
   } else {
     Logger.error(`[podcastUtils] Invalid podcast episode data`)
@@ -290,7 +290,7 @@ function extractEpisodeData(item: RssItem): RssEpisodeData | null {
   }
 
   if (item['pubDate']) {
-    // A non-string value is an element (or null when missing)
+    // cast(a): xml2js output is untyped; a non-string value is an element (or null when missing)
     const pubDate = extractFirstArrayItem(item, 'pubDate') as string | XmlElement | null
     if (typeof pubDate === 'string') {
       episode.pubDate = pubDate
@@ -302,7 +302,7 @@ function extractEpisodeData(item: RssItem): RssEpisodeData | null {
   }
 
   if (item['guid']) {
-    // A non-string value is an element (or null when missing)
+    // cast(a): xml2js output is untyped; a non-string value is an element (or null when missing)
     const guidItem = extractFirstArrayItem(item, 'guid') as string | XmlElement | null
     if (typeof guidItem === 'string') {
       episode.guid = guidItem
@@ -315,7 +315,7 @@ function extractEpisodeData(item: RssItem): RssEpisodeData | null {
 
   const arrayFields = ['title', 'itunes:episodeType', 'itunes:season', 'itunes:episode', 'itunes:author', 'itunes:duration', 'itunes:explicit', 'itunes:subtitle']
   arrayFields.forEach((key) => {
-    // split always returns at least one element
+    // cast(d): split always returns at least one element, so pop is not undefined
     const cleanKey = key.split(':').pop() as string
     episode[cleanKey] = extractFirstArrayItemString(item, key)
   })
@@ -331,13 +331,13 @@ function extractEpisodeData(item: RssItem): RssEpisodeData | null {
     // Example chapter:
     // {"id":0,"start":0,"end":43.004286,"title":"chapter 1"}
 
-    // psc:chapter was checked above
+    // cast(d): psc:chapter was checked above (the RssItem type already says XmlElement[], the cast changes no type)
     const cleanedChapters = (item['psc:chapters'][0]['psc:chapter'] as XmlElement[]).map((chapter, index) => {
       if (!chapter['$']?.title || !chapter['$']?.start || typeof chapter['$']?.start !== 'string' || typeof chapter['$']?.title !== 'string') {
         return null
       }
 
-      // start was checked above
+      // cast(d): start was checked above (the cast to XmlAttributes changes no type)
       const start = timestampToSeconds((chapter['$'] as XmlAttributes).start)
       if (start === null) {
         return null
@@ -345,7 +345,7 @@ function extractEpisodeData(item: RssItem): RssEpisodeData | null {
 
       return {
         id: index,
-        // title was checked above
+        // cast(d) (2): title was checked above to be a string (the cast to XmlAttributes changes no type)
         title: (chapter['$'] as XmlAttributes).title as string,
         start
       }
@@ -354,11 +354,11 @@ function extractEpisodeData(item: RssItem): RssEpisodeData | null {
     if (cleanedChapters.some((chapter) => !chapter)) {
       Logger.warn(`[podcastUtils] Invalid chapter data for ${episode.enclosure.url}`)
     } else {
-      // No chapter is null here
+      // cast(d): the some() check above found no null chapter
       const validChapters = cleanedChapters as { id: number; title: string; start: number }[]
       episode.chapters = validChapters.map((chapter, index) => {
         const nextChapter = validChapters[index + 1]
-        // durationSeconds was checked above
+        // cast(d): durationSeconds was checked in the if condition above (it is not null here)
         const end = nextChapter ? nextChapter.start : (episode.durationSeconds as number)
         return {
           id: chapter.id,
@@ -375,7 +375,7 @@ function extractEpisodeData(item: RssItem): RssEpisodeData | null {
 
 function cleanEpisodeData(data: RssEpisodeData): RssPodcastEpisode {
   const pubJsDate = data.pubDate ? new Date(data.pubDate) : null
-  // isNaN coerces the date to its timestamp
+  // cast(d): isNaN coerces the date to its timestamp, as in the JS
   const publishedAt = pubJsDate && !isNaN(pubJsDate as unknown as number) ? pubJsDate.valueOf() : null
 
   return {

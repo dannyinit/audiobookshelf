@@ -19,7 +19,7 @@ import type { FilteredLibraryItem, QueryInclude, RuntimeFindOptions, WhereItem, 
 const { createNewSortInstance } = fastSort
 const { profile } = profiler
 
-// The vendored fast-sort has untyped parameters, see SortInstance
+// cast(a): the vendored fast-sort has untyped parameters (see SortInstance)
 const naturalSort = createNewSortInstance({
   comparer: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare
 }) as SortInstance
@@ -74,7 +74,7 @@ export = {
     try {
       return Buffer.from(decodeURIComponent(text), 'base64').toString()
     } catch (error) {
-      // decodeURIComponent throws a URIError
+      // cast(d): catch variable is unknown; decodeURIComponent throws a URIError
       Logger.warn(`[libraryFilters] Failed to decode filter value "${text}": ${(error as Error).message}`)
       return null
     }
@@ -147,7 +147,7 @@ export = {
             oldLibraryItem.rssFeed = li.rssFeed.toOldJSONMinified()
           }
           if (li.size && !oldLibraryItem.media.size) {
-            // size is a BIGINT column that sqlite returns as a number (the model JSDoc says BigInt)
+            // cast(d): size is typed number since batch 3a (sqlite returns the BIGINT as a number), so the cast changes no type
             oldLibraryItem.media.size = li.size as unknown as number
           }
           if (li.mediaItemShare) {
@@ -166,7 +166,7 @@ export = {
             oldLibraryItem.rssFeed = li.rssFeed.toOldJSONMinified()
           }
           if (li.size && !oldLibraryItem.media.size) {
-            // size is a BIGINT column that sqlite returns as a number (the model JSDoc says BigInt)
+            // cast(d): size is typed number since batch 3a (sqlite returns the BIGINT as a number), so the cast changes no type
             oldLibraryItem.media.size = li.size as unknown as number
           }
           if (li.numEpisodesIncomplete) {
@@ -276,7 +276,7 @@ export = {
       if (!user.canAccessExplicitContent) {
         attrQuery += ' AND b.explicit = 0'
       }
-      // permissions is a JSON column
+      // cast(d): permissions is the User JSON column, typed UserPermissions since batch 3a; the cast only adds null (the ?. reads below allow it)
       const permissions = user.permissions as UserPermissions | null
       if (!permissions?.accessAllTags && permissions?.itemTagsSelected?.length) {
         if (permissions.selectedTagsNotAccessible) {
@@ -318,7 +318,7 @@ export = {
     } satisfies RuntimeFindOptions as FindAndCountOptions)
 
     const allOldSeries: (ReturnType<Series['toOldJSON']> & { rssFeed?: unknown; books?: unknown[] })[] = []
-    // bookSeries (with book and libraryItem) and feeds are included above
+    // cast(b): Sequelize types findAll rows without their includes; bookSeries (with book and libraryItem) and feeds are included above
     for (const s of series as SeriesWithBooks[]) {
       const oldSeries: (typeof allOldSeries)[number] = s.toOldJSON()
 
@@ -394,7 +394,7 @@ export = {
     } satisfies RuntimeFindOptions as FindAndCountOptions)
 
     return {
-      // books are included above
+      // cast(b): Sequelize types findAll rows without their includes; books are included above
       authors: (authors as (Author & { books: Book[] })[]).map((au) => {
         const numBooks = au.books.length || 0
         return au.toOldJSONExpanded(numBooks)
@@ -499,7 +499,7 @@ export = {
       // This is done to handle the edge case of podcasts having been deleted and not having
       // an updatedAt timestamp to trigger a reload of the filter data
       const podcastModelCount = process.env.QUERY_PROFILING ? profile(Database.podcastModel.count.bind(Database.podcastModel)) : Database.podcastModel.count.bind(Database.podcastModel)
-      // count options; this cast is not needed (the options are valid CountOptions), kept as before
+      // cast(b): count options; this cast is not needed (the options are valid CountOptions), kept as before
       const podcastCountFromDatabase = await podcastModelCount({
         include: {
           model: Database.libraryItemModel,
@@ -515,6 +515,7 @@ export = {
       // data was loaded. If so, we can skip loading all of the data.
       // Because many items could change, just check the count of items instead
       // of actually loading the data twice
+      // cast(b): limit is not a count option, which sequelize ignores and CountOptions rejects
       const changedPodcasts = await podcastModelCount({
         include: {
           model: Database.libraryItemModel,
@@ -558,7 +559,7 @@ export = {
         },
         attributes: ['tags', 'genres', 'language']
       })
-      // Rows of the podcast model
+      // cast(d): findAll is bound (or wrapped by profile) above, which loses its generic row type; the rows are Podcast models
       for (const podcast of podcasts as import('../../models/Podcast')[]) {
         if (podcast.tags?.length) {
           podcast.tags.forEach((tag) => data.tags.add(tag))
@@ -602,6 +603,7 @@ export = {
       // Because many items could change, just check the count of items instead
       // of actually loading the data twice
 
+      // cast(b): limit is not a count option, which sequelize ignores and CountOptions rejects
       const changedBooks = await Database.bookModel.count({
         include: {
           model: Database.libraryItemModel,
@@ -622,6 +624,7 @@ export = {
         // limit is not a count option (sequelize ignores it); kept as before
       } as CountOptions)
 
+      // cast(b): limit is not a count option, which sequelize ignores and CountOptions rejects
       const changedSeries = await Database.seriesModel.count({
         where: {
           libraryId: libraryId,
@@ -633,6 +636,7 @@ export = {
         // limit is not a count option (sequelize ignores it); kept as before
       } as CountOptions)
 
+      // cast(b): limit is not a count option, which sequelize ignores and CountOptions rejects
       const changedAuthors = await Database.authorModel.count({
         where: {
           libraryId: libraryId,
@@ -670,7 +674,7 @@ export = {
         },
         attributes: ['tags', 'genres', 'publisher', 'publishedYear', 'narrators', 'language']
       })
-      // libraryItem is included above
+      // cast(b): Sequelize types findAll rows without their includes; libraryItem is included above
       for (const book of books as (Book & { libraryItem: LibraryItem })[]) {
         if (book.libraryItem.isMissing || book.libraryItem.isInvalid) data.numIssues++
         if (book.tags?.length) {
@@ -684,7 +688,7 @@ export = {
         }
         if (book.publisher) data.publishers.add(book.publisher)
         // Check if published year exists and is valid
-        // publishedYear is a string; isNaN, the comparisons and the division coerce it to a number
+        // cast(d): publishedYear is a string; isNaN, the comparisons and the division coerce it to a number
         const publishedYear = book.publishedYear as unknown as number
         if (publishedYear && !isNaN(publishedYear) && publishedYear > 0 && publishedYear < 3000) {
           const decade = (Math.floor(publishedYear / 10) * 10).toString()
@@ -710,7 +714,7 @@ export = {
       authors.forEach((a) => data.authors.push({ id: a.id, name: a.name }))
     }
 
-    // Same object as data; its sets are replaced by sorted arrays below
+    // cast(d): same object as data; its sets are replaced by sorted arrays below, which is the LibraryFilterData shape
     const filterData = data as unknown as LibraryFilterData
     filterData.authors = naturalSort(data.authors).asc((au) => au.name)
     filterData.genres = naturalSort([...data.genres]).asc()

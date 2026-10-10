@@ -19,7 +19,7 @@ const generate = (podcasts: Podcast[], indent = true): string => {
       feedAttributes.description = escapeForXML(podcast.description)
     }
     // NOTE: the Podcast model field is itunesPageURL, so itunesPageUrl is always undefined and htmlUrl is never set
-    // Podcast has no itunesPageUrl property; widened so the existing (always undefined) read compiles
+    // cast(c): Podcast has no itunesPageUrl property; widened so the existing (always undefined) read compiles (see NOTE above)
     const podcastWithPageUrl = podcast as Podcast & { itunesPageUrl?: string }
     if (podcastWithPageUrl.itunesPageUrl) {
       feedAttributes.htmlUrl = escapeForXML(podcastWithPageUrl.itunesPageUrl)

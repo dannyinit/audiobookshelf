@@ -182,7 +182,7 @@ const recurseFiles = async (path: string, relPathToReplace: string | null = null
     realPath: true,
     normalizePath: false
   }
-  // list() resolves to the items, or to an { error, path } object when the dir cannot be read
+  // cast(a): the vendored recursive-readdir-async list() resolves to the items, or to an { error, path } object when the dir cannot be read
   const list = (await rra.list(path, options)) as RraListItem[] & { error?: unknown }
   if (list.error) {
     Logger.error('[fileUtils] Recurse files error', list.error)
@@ -200,7 +200,7 @@ const recurseFiles = async (path: string, relPathToReplace: string | null = null
 
       item.fullname = filePathToPOSIX(item.fullname)
       item.path = filePathToPOSIX(item.path)
-      // relPathToReplace is set above
+      // cast(d): relPathToReplace is set above (it is already typed string, the cast changes no type)
       const relpath = item.fullname.replace(relPathToReplace as string, '')
       let reldirname = Path.dirname(relpath)
       if (reldirname === '.') reldirname = ''
@@ -234,9 +234,9 @@ const recurseFiles = async (path: string, relPathToReplace: string | null = null
       var isInRoot = item.path + '/' === relPathToReplace
       return {
         name: item.name,
-        // relPathToReplace is set above
+        // cast(d): relPathToReplace is set above (it is already typed string, the cast changes no type)
         path: item.fullname.replace(relPathToReplace as string, ''),
-        // relPathToReplace is set above
+        // cast(d): relPathToReplace is set above (it is already typed string, the cast changes no type)
         reldirpath: isInRoot ? '' : item.path.replace(relPathToReplace as string, ''),
         fullpath: item.fullname,
         extension: item.extension,
@@ -288,12 +288,12 @@ const downloadFile = (url: string, filepath: string, contentTypeFilter: ((conten
     })
       .then((response) => {
         // Validate content type
-        // content-type is a single header string
+        // cast(d): axios types a header as string | string[] | number...; content-type is a single header string
         if (contentTypeFilter && !contentTypeFilter?.(response.headers?.['content-type'] as string | undefined)) {
           return reject(new Error(`Invalid content type "${response.headers?.['content-type'] || ''}"`))
         }
 
-        // content-length is a single header string
+        // cast(d): axios types a header as possibly undefined; content-length is a single header string (parseInt(undefined) is NaN)
         const totalSize = parseInt(response.headers['content-length'] as string, 10)
         let downloadedSize = 0
 
@@ -399,7 +399,7 @@ const sanitizeFilename = (filename: string | null | undefined, colonReplacement 
 // Returns null if extname is not in our defined list of audio extnames
 const getAudioMimeTypeFromExtname = (extname: string | null | undefined): string | null => {
   if (!extname || !extname.length) return null
-  // Unknown keys read undefined and return null below
+  // cast(d): an unknown key reads undefined and returns null below
   const formatUpper = extname.slice(1).toUpperCase() as keyof typeof AudioMimeType
   if (AudioMimeType[formatUpper]) return AudioMimeType[formatUpper]
   return null

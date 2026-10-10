@@ -34,7 +34,7 @@ function parseFullName(nameToParse: string | null | undefined, partToReturn?: st
   if (fixCase === false) fixCase = 0;
   if (fixCase === true) fixCase = 1;
   // NOTE: compares against the string 'undefined' instead of using typeof, so this check is always true
-  // fixCase is never a string; widened so the comparison compiles
+  // cast(c): fixCase is never a string; widened so the comparison compiles (see NOTE above)
   fixCase = (fixCase as unknown) !== 'undefined' && (fixCase === 0 || fixCase === 1) ?
     fixCase : -1; // -1 = fix case only if input is all upper or lowercase
   if (stopOnError === true) stopOnError = 1;
@@ -61,7 +61,7 @@ function parseFullName(nameToParse: string | null | undefined, partToReturn?: st
     var namePartLabels: Exclude<keyof ParsedName, 'error'>[] = [];
     var namePartWords: string[];
     if (fixCaseNow) {
-      // Object.keys of a ParsedName with 'error' filtered out
+      // cast(d): Object.keys returns string[]; these are the keys of a ParsedName with 'error' filtered out
       namePartLabels = Object.keys(parsedName)
         .filter(function (v) { return v !== 'error'; }) as Exclude<keyof ParsedName, 'error'>[];
       for (i = 0, l = namePartLabels.length; i < l; i++) {
@@ -111,7 +111,7 @@ function parseFullName(nameToParse: string | null | undefined, partToReturn?: st
   if (!nameToParse || typeof nameToParse !== 'string') {
     handleError('No input');
     parsedName = fixParsedNameCase(parsedName, fixCase);
-    // partToReturn is 'all' or one of the ParsedName keys after validation above
+    // cast(d): partToReturn is 'all' or one of the ParsedName keys after the validation above
     return partToReturn === 'all' ? parsedName : parsedName[partToReturn as keyof ParsedName];
   } else {
     nameToParse = nameToParse.trim();
@@ -208,7 +208,7 @@ function parseFullName(nameToParse: string | null | undefined, partToReturn?: st
   }
   if (!nameToParse.trim().length) {
     parsedName = fixParsedNameCase(parsedName, fixCase);
-    // partToReturn is 'all' or one of the ParsedName keys after validation above
+    // cast(d): partToReturn is 'all' or one of the ParsedName keys after the validation above
     return partToReturn === 'all' ? parsedName : parsedName[partToReturn as keyof ParsedName];
   }
 
@@ -251,7 +251,7 @@ function parseFullName(nameToParse: string | null | undefined, partToReturn?: st
   }
   if (!nameParts.length) {
     parsedName = fixParsedNameCase(parsedName, fixCase);
-    // partToReturn is 'all' or one of the ParsedName keys after validation above
+    // cast(d): partToReturn is 'all' or one of the ParsedName keys after the validation above
     return partToReturn === 'all' ? parsedName : parsedName[partToReturn as keyof ParsedName];
   }
 
@@ -282,7 +282,7 @@ function parseFullName(nameToParse: string | null | undefined, partToReturn?: st
   }
   if (!nameParts.length) {
     parsedName = fixParsedNameCase(parsedName, fixCase);
-    // partToReturn is 'all' or one of the ParsedName keys after validation above
+    // cast(d): partToReturn is 'all' or one of the ParsedName keys after the validation above
     return partToReturn === 'all' ? parsedName : parsedName[partToReturn as keyof ParsedName];
   }
 
@@ -348,7 +348,7 @@ function parseFullName(nameToParse: string | null | undefined, partToReturn?: st
   }
   if (!nameParts.length) {
     parsedName = fixParsedNameCase(parsedName, fixCase);
-    // partToReturn is 'all' or one of the ParsedName keys after validation above
+    // cast(d): partToReturn is 'all' or one of the ParsedName keys after the validation above
     return partToReturn === 'all' ? parsedName : parsedName[partToReturn as keyof ParsedName];
   }
 
@@ -356,7 +356,7 @@ function parseFullName(nameToParse: string | null | undefined, partToReturn?: st
   parsedName.first = nameParts.shift();
   if (!nameParts.length) {
     parsedName = fixParsedNameCase(parsedName, fixCase);
-    // partToReturn is 'all' or one of the ParsedName keys after validation above
+    // cast(d): partToReturn is 'all' or one of the ParsedName keys after the validation above
     return partToReturn === 'all' ? parsedName : parsedName[partToReturn as keyof ParsedName];
   }
 
@@ -367,7 +367,7 @@ function parseFullName(nameToParse: string | null | undefined, partToReturn?: st
   parsedName.middle = nameParts.join(' ');
 
   parsedName = fixParsedNameCase(parsedName, fixCase);
-  // partToReturn is 'all' or one of the ParsedName keys after validation above
+  // cast(d): partToReturn is 'all' or one of the ParsedName keys after the validation above
     return partToReturn === 'all' ? parsedName : parsedName[partToReturn as keyof ParsedName];
 }
 

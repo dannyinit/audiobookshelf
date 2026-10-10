@@ -49,7 +49,7 @@ export = {
         [Database.seriesModel, 'bookSeries', 'createdAt', 'ASC']
       ]
     })
-    // libraryItem is included above
+    // cast(b): Sequelize types findAll rows without their includes; libraryItem is included above
     for (const book of booksWithTag as MediaWithLibraryItem[]) {
       const libraryItem = book.libraryItem
       libraryItem.media = book
@@ -71,7 +71,7 @@ export = {
         }
       ]
     })
-    // libraryItem is included above
+    // cast(b): Sequelize types findAll rows without their includes; libraryItem is included above
     for (const podcast of podcastsWithTag as MediaWithLibraryItem[]) {
       const libraryItem = podcast.libraryItem
       libraryItem.media = podcast
@@ -110,7 +110,7 @@ export = {
         }
       ]
     })
-    // libraryItem is included above
+    // cast(b): Sequelize types findAll rows without their includes; libraryItem is included above
     for (const book of booksWithGenre as MediaWithLibraryItem[]) {
       const libraryItem = book.libraryItem
       libraryItem.media = book
@@ -132,7 +132,7 @@ export = {
         }
       ]
     })
-    // libraryItem is included above
+    // cast(b): Sequelize types findAll rows without their includes; libraryItem is included above
     for (const podcast of podcastsWithGenre as MediaWithLibraryItem[]) {
       const libraryItem = podcast.libraryItem
       libraryItem.media = podcast
@@ -172,7 +172,7 @@ export = {
         }
       ]
     })
-    // libraryItem is included above
+    // cast(b): Sequelize types findAll rows without their includes; libraryItem is included above
     for (const book of booksWithGenre as MediaWithLibraryItem[]) {
       const libraryItem = book.libraryItem
       libraryItem.media = book

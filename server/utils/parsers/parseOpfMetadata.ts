@@ -46,7 +46,7 @@ interface MetadataCreatorObject {
  * <dc:creator opf:role="aut" opf:file-as="Orwell, George">George Orwell</dc:creator>
  */
 function parseCreators(metadata: OpfMetadata): (MetadataCreatorObject | false)[] | null {
-  // xml2js puts child elements in arrays
+  // cast(a): xml2js output is untyped; it puts child elements in arrays
   const dcCreators = metadata['dc:creator'] as (string | XmlElement)[] | undefined
   if (!dcCreators?.length) return null
   return dcCreators.map((c) => {
@@ -77,13 +77,13 @@ function parseCreators(metadata: OpfMetadata): (MetadataCreatorObject | false)[]
 
 function fetchCreators(creators: (MetadataCreatorObject | false)[] | null, role: string): string[] | null {
   if (!creators?.length) return null
-  // false entries read undefined properties here and are filtered out, as in the JS
+  // cast(d): false entries read undefined properties here and are filtered out, as in the JS
   const creatorObjects = creators as MetadataCreatorObject[]
   return [...new Set(creatorObjects.filter((c) => c.role === role && c.value).map((c) => c.value))]
 }
 
 function fetchTagString(metadata: XmlTagMap, tag: string): string | null {
-  // xml2js puts child elements in arrays
+  // cast(a): xml2js output is untyped; it puts child elements in arrays
   const tagValues = metadata[tag] as (string | XmlElement)[] | undefined
   if (!tagValues || !tagValues.length) return null
   let value: string | XmlElement | undefined = tagValues[0]
@@ -115,7 +115,7 @@ function fetchDate(metadata: XmlTagMap): string | null {
   const date = fetchTagString(metadata, 'dc:date')
   if (!date) return null
   const dateSplit = date.split('-')
-  // isNaN coerces the string
+  // cast(d): isNaN coerces the string, as in the JS
   if (!dateSplit.length || dateSplit[0].length !== 4 || isNaN(dateSplit[0] as unknown as number)) return null
   return dateSplit[0]
 }
@@ -130,7 +130,7 @@ function fetchPublisher(metadata: XmlTagMap): string | null {
  * <dc:identifier opf:scheme="ISBN">9780141187761</dc:identifier>
  */
 function fetchIdentifier(metadata: XmlTagMap, scheme: string): string | null {
-  // xml2js puts child elements in arrays; identifiers with a scheme attribute are elements
+  // cast(a): xml2js output is untyped; it puts child elements in arrays, identifiers with a scheme attribute are elements
   const identifiers = metadata['dc:identifier'] as XmlElement[] | undefined
   if (!identifiers?.length) return null
   const identifierObj = identifiers.find((i) => {
@@ -139,7 +139,7 @@ function fetchIdentifier(metadata: XmlTagMap, scheme: string): string | null {
       Object.keys(i['$'])
         .find((key) => key.startsWith('xmlns:'))
         ?.split(':')[1] || 'opf'
-    // i['$'] was checked above
+    // cast(d): i['$'] was checked above (the cast changes no type)
     return (i['$'] as Record<string, string>)[`${namespace}:scheme`] === scheme
   })
   return identifierObj?.['_'] || null
@@ -171,7 +171,7 @@ function fetchDescription(metadata: XmlTagMap): string | null {
 }
 
 function fetchGenres(metadata: XmlTagMap): string[] {
-  // xml2js puts child elements in arrays
+  // cast(a): xml2js output is untyped; it puts child elements in arrays
   const subjects = metadata['dc:subject'] as unknown[] | undefined
   if (!subjects || !subjects.length) return []
   return [...new Set(subjects.filter((g): g is string => !!(g && typeof g === 'string')))]
@@ -202,7 +202,7 @@ function fetchSeries(metadataMeta: XmlElement[] | undefined): { name: string; se
   if (result.length === 1 && !result[0].sequence) {
     const seriesIndexMeta = metadataMeta.find((m) => m.$?.name === 'calibre:series_index' && m.$.content?.trim())
     if (seriesIndexMeta) {
-      // find() above only matches metas with $ set
+      // cast(d): find() above only matches metas with $ set
       result[0].sequence = (seriesIndexMeta.$ as Record<string, string>).content.trim()
     }
   }
@@ -217,7 +217,7 @@ function fetchNarrators(creators: (MetadataCreatorObject | false)[] | null, meta
   const narrators = fetchCreators(creators, 'nrt')
   if (narrators?.length) return narrators
   try {
-    // A null tag string throws here and is caught below, as in the JS
+    // cast(d): a null tag string throws here and is caught below, as in the JS
     const narratorsJSON = JSON.parse((fetchTagString(metadata.meta, 'calibre:user_metadata:#narrators') as string).replace(/&quot;/g, '"'))
     return narratorsJSON['#value#']
   } catch {
@@ -226,7 +226,7 @@ function fetchNarrators(creators: (MetadataCreatorObject | false)[] | null, meta
 }
 
 function fetchTags(metadata: XmlTagMap): string[] {
-  // xml2js puts child elements in arrays
+  // cast(a): xml2js output is untyped; it puts child elements in arrays
   const tags = metadata['dc:tag'] as unknown[] | undefined
   if (!tags || !tags.length) return []
   return [...new Set(tags.filter((tag): tag is string => !!(tag && typeof tag === 'string')))]
@@ -247,7 +247,7 @@ const parseOpfMetadataJson = (json: OpfPackageJson) => {
   const packageKey = Object.keys(json).find((key) => stripPrefix(key) === 'package')
   if (!packageKey) return null
   const prefix = packageKey.split(':').shift()
-  // The <metadata> element of the OPF package as parsed by xml2js
+  // cast(a): xml2js output is untyped; this is the <metadata> element of the OPF package
   let metadata = (prefix ? json[packageKey][`${prefix}:metadata`] || json[packageKey].metadata : json[packageKey].metadata) as OpfMetadata | OpfMetadata[] | undefined
   if (!metadata) return null
   if (Array.isArray(metadata)) {
@@ -255,7 +255,7 @@ const parseOpfMetadataJson = (json: OpfPackageJson) => {
     metadata = metadata[0]
   }
 
-  // Before it is replaced below, meta holds the raw <meta> elements
+  // cast(a): xml2js output is untyped; before it is replaced below, meta holds the raw <meta> elements
   const metadataMeta = (prefix ? metadata[`${prefix}:meta`] || metadata.meta : metadata.meta) as unknown as XmlElement[] | undefined
 
   const opfMetadata = metadata

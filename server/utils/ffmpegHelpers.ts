@@ -158,7 +158,7 @@ const downloadPodcastEpisode = (podcastEpisodeDownload: PodcastEpisodeDownload):
 
     for (const userAgent of userAgents) {
       try {
-        // cast(d): setData sets url before the download is queued (5 reads below)
+        // cast(d) (5): setData sets url before the download is queued (the url! reads of this axios call)
         response = await axios({
           url: podcastEpisodeDownload.url!,
           method: 'GET',
@@ -176,7 +176,7 @@ const downloadPodcastEpisode = (podcastEpisodeDownload: PodcastEpisodeDownload):
         break
       } catch (error) {
         lastError = error
-        // axios rejects with an Error
+        // cast(d): catch variable is unknown; axios rejects with an Error
         Logger.warn(`[ffmpegHelpers] Failed to download podcast episode with User-Agent "${userAgent}" for url "${podcastEpisodeDownload.url}"`, (error as Error).message)
 
         // If this is the last attempt, log the full error
@@ -197,7 +197,7 @@ const downloadPodcastEpisode = (podcastEpisodeDownload: PodcastEpisodeDownload):
     ffmpeg.addOption('-loglevel debug') // Debug logs printed on error
     ffmpeg.outputOptions('-c:a', 'copy', '-map', '0:a', '-metadata', 'podcast=1')
 
-    // Episodes are only downloaded for podcast library items
+    // cast(d): episodes are only downloaded for podcast library items (PodcastManager queues downloads of podcasts)
     const podcast = podcastEpisodeDownload.libraryItem.media as import('../models/Podcast')
     // cast(d): setData sets rssPodcastEpisode before the download is queued
     const podcastEpisode = podcastEpisodeDownload.rssPodcastEpisode!
@@ -230,7 +230,7 @@ const downloadPodcastEpisode = (podcastEpisodeDownload: PodcastEpisodeDownload):
     for (const tag in taggings) {
       const tagValue = taggings[tag]
       if (tagValue) {
-        // The year is a number: its length is undefined so the check is false, as in the JS
+        // cast(d): the year is a number: its length is undefined so the check is false, as in the JS
         const tagString = tagValue as string
         if (tagString.length > 10000) {
           Logger.warn(`[ffmpegHelpers] Episode download tag "${tag}" is too long (${tagString.length} characters) - trimming it down`)

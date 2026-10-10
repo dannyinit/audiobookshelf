@@ -99,12 +99,12 @@ function objectValuesArrayToString(arrayOfObjects: Record<string, unknown>[]): O
   Logger.debug('[parseOverdriveMediaMarkers] Converting Marker object values from arrays to strings')
   arrayOfObjects.forEach((item) => {
     Object.keys(item).forEach((key) => {
-      // xml2js values are arrays (never null)
+      // cast(a): xml2js output is untyped; its values are arrays (never null)
       item[key] = (item[key] as unknown[]).toString()
     })
   })
 
-  // Every value was converted to a string above; Name and Time come from the MediaMarker XML
+  // cast(d): every value was converted to a string above; Name and Time come from the MediaMarker XML
   return arrayOfObjects as OverdriveMediaMarker[]
 }
 
@@ -152,16 +152,16 @@ function generateParsedChapters(includedAudioFiles: OverdriveAudioFile[], cleane
     cleanedOverdriveMediaMarkers[track_index].forEach((chapter) => {
       let timeParts = chapter.Time.split(':')
       // add seconds
-      // split always returns at least one element
+      // cast(d): split always returns at least one element, so pop is not undefined
       time = length + parseFloat(timeParts.pop() as string)
       if (timeParts.length) {
         // add minutes
-        // timeParts.length was checked above
+        // cast(d): timeParts.length was checked above, so pop is not undefined
         time += parseFloat(timeParts.pop() as string) * 60
       }
       if (timeParts.length) {
         // add hours
-        // timeParts.length was checked above
+        // cast(d): timeParts.length was checked above, so pop is not undefined
         time += parseFloat(timeParts.pop() as string) * 3600
       }
       var newChapterData = {

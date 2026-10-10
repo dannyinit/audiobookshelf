@@ -4,7 +4,7 @@ import Logger = require('../Logger')
 import archiverLib = require('../libs/archiver')
 import type { ArchiverFactory } from './types'
 
-// The vendored archiver function is inferred as a non-callable class
+// cast(a): the vendored archiver function is inferred as a non-callable class (see ArchiverFactory)
 const archiver = archiverLib as unknown as ArchiverFactory
 
 const zipDirectoryPipe = (path: string, filename: string, res: Response): Promise<void> => {

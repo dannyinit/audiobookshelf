@@ -9,7 +9,7 @@ import type { SortByObject, SortInstance } from './types'
 const { createNewSortInstance } = fastSort
 
 const { getTitlePrefixAtEnd, isNullOrNaN, getTitleIgnorePrefix } = utils
-// The vendored fast-sort has untyped parameters, see SortInstance
+// cast(a): the vendored fast-sort has untyped parameters (see SortInstance)
 const naturalSort = createNewSortInstance({
   comparer: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare
 }) as SortInstance
@@ -101,11 +101,11 @@ const libraryHelpers = {
       if (!allBookSeries.length) return
 
       allBookSeries.forEach((bookSeries) => {
-        // Book library items give book json
+        // cast(d): toOldJSONMinified of a book library item; SeriesBookJson adds the sequence fields set below
         const abJson = libraryItem.toOldJSONMinified() as SeriesBookJson
         abJson.sequence = bookSeries.bookSeries.sequence
         if (filterSeries) {
-          // The items are the books of filterSeries (see handleCollapseSubseries), so the series is found
+          // cast(d): find is typed as possibly undefined; the items are the books of filterSeries (see handleCollapseSubseries), so the series is found
           const series = libraryItem.media.series.find((se) => se.id === filterSeries) as SeriesExpanded
           abJson.filterSeriesSequence = series.bookSeries.sequence
         }
@@ -204,13 +204,13 @@ const libraryHelpers = {
       return []
     }
 
-    // The series is loaded with its books, each with its library item, authors and series
+    // cast(b): Sequelize types the include as Book[]; the series is loaded with its books, each with its library item, authors and series
     const books = seriesWithBooks.books as (BookMediaExpanded & { libraryItem?: BookLibraryItem })[]
     payload.total = books.length
 
     let libraryItems = books
       .map((book) => {
-        // libraryItem is included in the query above
+        // cast(b): libraryItem is included in the query above; typed optional so it can be deleted below
         const libraryItem = book.libraryItem as BookLibraryItem
         delete book.libraryItem
         libraryItem.media = book
@@ -234,7 +234,7 @@ const libraryHelpers = {
       sortArray = [
         {
           [direction]: (li: BookLibraryItem) => {
-            // The items are the books of this series
+            // cast(d): find is typed as possibly undefined; the items are the books of this series, so the series is found
             const series = li.media.series.find((se) => se.id === seriesId) as SeriesExpanded
             return series.bookSeries.sequence
           }
@@ -275,7 +275,7 @@ const libraryHelpers = {
           } else {
             if (payload.sortBy === 'media.metadata.authorName') return li.authorNamesFirstLast ?? ''
             if (payload.sortBy === 'media.metadata.authorNameLF') return li.authorNamesLastFirst ?? ''
-            // sortBy is set in this branch; nested properties are read by path
+            // cast(d) (2): this is the else branch of !payload.sortBy, so sortBy is set (narrowing does not reach the callback); each step of the path is an object or undefined
             return (payload.sortBy as string).split('.').reduce<unknown>((a, b) => (a as Record<string, unknown> | undefined)?.[b], li) ?? ''
           }
         }
@@ -285,16 +285,16 @@ const libraryHelpers = {
     libraryItems = naturalSort(libraryItems).by(sortArray)
 
     if (payload.limit) {
-      // An undefined page gives NaN, as in the JS
+      // cast(d): page is optional; an undefined page gives NaN, as in the JS
       const startIndex = (payload.page as number) * payload.limit
       libraryItems = libraryItems.slice(startIndex, startIndex + payload.limit)
     }
 
     return Promise.all(
       libraryItems.map(async (li) => {
-        // The items are the books of this series
+        // cast(d): find is typed as possibly undefined; the items are the books of this series, so the series is found
         const filteredSeries = li.media.series.find((se) => se.id === seriesId) as SeriesExpanded
-        // Book json; series and collapsedSeries are added below
+        // cast(d): toOldJSONMinified of a book library item; CollapsedItemJson adds the series and collapsedSeries set below
         const json = li.toOldJSONMinified() as CollapsedItemJson
         json.media.metadata.series = {
           id: filteredSeries.id,
@@ -316,13 +316,13 @@ const libraryHelpers = {
           json.collapsedSeries.seriesSequenceList = naturalSort(li.collapsedSeries.books.filter((b) => b.filterSeriesSequence).map((b) => b.filterSeriesSequence))
             .asc()
             .reduce<SequenceRange[]>((ranges, sequence) => {
-              // Only books with a filterSeriesSequence are kept above
+              // cast(d): the sequences are filtered by filterSeriesSequence above, so each is a set string
               let currentSequence: string | number = sequence as string
               let lastRange = ranges.at(-1)
               let isNumber = /^(\d+|\d+\.\d*|\d*\.\d+)$/.test(currentSequence)
               if (isNumber) currentSequence = parseFloat(currentSequence)
 
-              // lastRange.isNumber is checked so end is a number
+              // cast(d): lastRange.isNumber is checked in the same condition, and a range with isNumber has a number end
               if (lastRange && isNumber && lastRange.isNumber && (lastRange.end as number) + 1 == currentSequence) {
                 lastRange.end = currentSequence
               } else {

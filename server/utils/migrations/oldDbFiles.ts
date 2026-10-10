@@ -10,7 +10,7 @@ const { once } = events
 const { createInterface } = readline
 
 const fs = fsExtra
-// The vendored archiver function is inferred as a non-callable class
+// cast(a): the vendored archiver function is inferred as a non-callable class (see ArchiverFactory)
 const archiver = archiverLib as unknown as ArchiverFactory
 
 /**

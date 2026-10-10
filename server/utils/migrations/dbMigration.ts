@@ -617,7 +617,7 @@ function migrateLibraryItems(oldLibraryItems: OldLibraryItem[]): Record<string, 
     //
     if (oldLibraryItem.mediaType === 'book') {
       const bookRecords = migrateBook(oldLibraryItem, LibraryItem)
-      // migrateBook always sets book
+      // cast(d): migrateBook starts with book null and always sets it before it returns
       _newRecords.book.push(bookRecords.book as NewRecord)
       _newRecords.bookAuthor.push(...bookRecords.bookAuthor)
       _newRecords.bookSeries.push(...bookRecords.bookSeries)
@@ -625,7 +625,7 @@ function migrateLibraryItems(oldLibraryItems: OldLibraryItem[]): Record<string, 
       LibraryItem.mediaId = oldDbIdMap.books[oldLibraryItem.id]
     } else if (oldLibraryItem.mediaType === 'podcast') {
       const podcastRecords = migratePodcast(oldLibraryItem, LibraryItem)
-      // migratePodcast always sets podcast
+      // cast(d): migratePodcast starts with podcast null and always sets it before it returns
       _newRecords.podcast.push(podcastRecords.podcast as NewRecord)
       _newRecords.podcastEpisode.push(...podcastRecords.podcastEpisode)
 
@@ -645,7 +645,7 @@ function migrateLibraries(oldLibraries: OldLibrary[]): Record<string, NewRecord[
     libraryFolder: []
   }
   for (const oldLibrary of oldLibraries) {
-    // includes() is false for a missing mediaType
+    // cast(d): mediaType of the old library JSON may be missing; includes() is false for undefined
     if (!['book', 'podcast'].includes(oldLibrary.mediaType as string)) {
       Logger.error(`[dbMigration] migrateLibraries: Not migrating library with mediaType=${oldLibrary.mediaType}`)
       continue
@@ -906,7 +906,7 @@ function migrateSessions(oldSessions: OldSession[]): Record<string, NewRecord[]>
     let deviceId: string | null = null
     if (oldSession.deviceInfo) {
       const oldDeviceInfo = oldSession.deviceInfo
-      // deviceInfo is set, so the device string is too
+      // cast(d): getDeviceInfoString returns null only for a missing deviceInfo, which is checked just above
       const deviceDeviceId = getDeviceInfoString(oldDeviceInfo, userId) as string
       deviceId = oldDbIdMap.devices[deviceDeviceId]
       if (!deviceId) {
@@ -970,7 +970,7 @@ function migrateSessions(oldSessions: OldSession[]): Record<string, NewRecord[]>
     let mediaItemId: string | null = null
     let mediaItemType = 'book'
     if (oldSession.mediaType === 'podcast') {
-      // A missing episodeId reads undefined, as in the JS
+      // cast(d): episodeId is optional in the old session; a missing one reads the key "undefined" (undefined || null), as in the JS
       mediaItemId = oldDbIdMap.podcastEpisodes[oldSession.episodeId as string] || null
       mediaItemType = 'podcastEpisode'
     } else {
@@ -1264,7 +1264,7 @@ function migrateSettings(oldSettings: OldSetting[]): NewRecord[] {
  * Load old libraries and bulkCreate new Library and LibraryFolder rows
  */
 async function handleMigrateLibraries(DatabaseModels: DatabaseModels) {
-  // Entities of the old libraries db
+  // cast(d): assumed: the old libraries db files hold old library objects (loadOldData parses the JSON without checking it)
   const oldLibraries = await oldDbFiles.loadOldData('libraries') as OldLibrary[]
   const newLibraryRecords = migrateLibraries(oldLibraries)
   for (const model in newLibraryRecords) {
@@ -1277,7 +1277,7 @@ async function handleMigrateLibraries(DatabaseModels: DatabaseModels) {
  * Load old EmailSettings, NotificationSettings and ServerSettings and bulkCreate new Setting rows
  */
 async function handleMigrateSettings(DatabaseModels: DatabaseModels) {
-  // Entities of the old settings db
+  // cast(d): assumed: the old settings db files hold old settings objects (loadOldData parses the JSON without checking it)
   const oldSettings = await oldDbFiles.loadOldData('settings') as OldSetting[]
   const newSettings = migrateSettings(oldSettings)
   Logger.info(`[dbMigration] Inserting ${newSettings.length} setting rows`)
@@ -1288,7 +1288,7 @@ async function handleMigrateSettings(DatabaseModels: DatabaseModels) {
  * Load old authors and bulkCreate new Author rows
  */
 async function handleMigrateAuthors(DatabaseModels: DatabaseModels, oldLibraryItems: OldLibraryItem[]) {
-  // Entities of the old authors db
+  // cast(d): assumed: the old authors db files hold old author objects (loadOldData parses the JSON without checking it)
   const oldAuthors = await oldDbFiles.loadOldData('authors') as OldAuthor[]
   const newAuthors = migrateAuthors(oldAuthors, oldLibraryItems)
   Logger.info(`[dbMigration] Inserting ${newAuthors.length} author rows`)
@@ -1299,7 +1299,7 @@ async function handleMigrateAuthors(DatabaseModels: DatabaseModels, oldLibraryIt
  * Load old series and bulkCreate new Series rows
  */
 async function handleMigrateSeries(DatabaseModels: DatabaseModels, oldLibraryItems: OldLibraryItem[]) {
-  // Entities of the old series db
+  // cast(d): assumed: the old series db files hold old series objects (loadOldData parses the JSON without checking it)
   const oldSeries = await oldDbFiles.loadOldData('series') as OldSeries[]
   const newSeries = migrateSeries(oldSeries, oldLibraryItems)
   Logger.info(`[dbMigration] Inserting ${newSeries.length} series rows`)
@@ -1322,7 +1322,7 @@ async function handleMigrateLibraryItems(DatabaseModels: DatabaseModels, oldLibr
  * Authors and series require old library items loaded first
  */
 async function handleMigrateAuthorsSeriesAndLibraryItems(DatabaseModels: DatabaseModels) {
-  // Entities of the old library items db
+  // cast(d): assumed: the old library items db files hold old library item objects (loadOldData parses the JSON without checking it)
   const oldLibraryItems = await oldDbFiles.loadOldData('libraryItems') as OldLibraryItem[]
   await handleMigrateAuthors(DatabaseModels, oldLibraryItems)
 
@@ -1340,7 +1340,7 @@ async function handleMigrateAuthorsSeriesAndLibraryItems(DatabaseModels: Databas
  * Load old users and bulkCreate new User rows
  */
 async function handleMigrateUsers(DatabaseModels: DatabaseModels) {
-  // Entities of the old users db
+  // cast(d): assumed: the old users db files hold old user objects (loadOldData parses the JSON without checking it)
   const oldUsers = await oldDbFiles.loadOldData('users') as OldUser[]
   const newUserRecords = migrateUsers(oldUsers)
   for (const model in newUserRecords) {
@@ -1353,7 +1353,7 @@ async function handleMigrateUsers(DatabaseModels: DatabaseModels) {
  * Load old sessions and bulkCreate new PlaybackSession & Device rows
  */
 async function handleMigrateSessions(DatabaseModels: DatabaseModels) {
-  // Entities of the old sessions db
+  // cast(d): assumed: the old sessions db files hold old session objects (loadOldData parses the JSON without checking it)
   const oldSessions = await oldDbFiles.loadOldData('sessions') as OldSession[]
 
   let chunkSize = 1000
@@ -1373,7 +1373,7 @@ async function handleMigrateSessions(DatabaseModels: DatabaseModels) {
  * Load old collections and bulkCreate new Collection, CollectionBook models
  */
 async function handleMigrateCollections(DatabaseModels: DatabaseModels) {
-  // Entities of the old collections db
+  // cast(d): assumed: the old collections db files hold old collection objects (loadOldData parses the JSON without checking it)
   const oldCollections = await oldDbFiles.loadOldData('collections') as OldCollection[]
   const newCollectionRecords = migrateCollections(oldCollections)
   for (const model in newCollectionRecords) {
@@ -1386,7 +1386,7 @@ async function handleMigrateCollections(DatabaseModels: DatabaseModels) {
  * Load old playlists and bulkCreate new Playlist, PlaylistMediaItem models
  */
 async function handleMigratePlaylists(DatabaseModels: DatabaseModels) {
-  // Entities of the old playlists db
+  // cast(d): assumed: the old playlists db files hold old playlist objects (loadOldData parses the JSON without checking it)
   const oldPlaylists = await oldDbFiles.loadOldData('playlists') as OldPlaylist[]
   const newPlaylistRecords = migratePlaylists(oldPlaylists)
   for (const model in newPlaylistRecords) {
@@ -1399,7 +1399,7 @@ async function handleMigratePlaylists(DatabaseModels: DatabaseModels) {
  * Load old feeds and bulkCreate new Feed, FeedEpisode models
  */
 async function handleMigrateFeeds(DatabaseModels: DatabaseModels) {
-  // Entities of the old feeds db
+  // cast(d): assumed: the old feeds db files hold old feed objects (loadOldData parses the JSON without checking it)
   const oldFeeds = await oldDbFiles.loadOldData('feeds') as OldFeed[]
   const newFeedRecords = migrateFeeds(oldFeeds)
   for (const model in newFeedRecords) {
@@ -1506,7 +1506,7 @@ async function migrationPatchNewColumns(queryInterface: QueryInterface) {
 async function handleOldLibraryItems(ctx: typeof DatabaseModule) {
   // sequelize.models, keyed by model name
   const models = ctx.models
-  // Entities of the old library items db
+  // cast(d): assumed: the old library items db files hold old library item objects (loadOldData parses the JSON without checking it)
   const oldLibraryItems = (await oldDbFiles.loadOldData('libraryItems')) as OldLibraryItem[]
   const libraryItems = await models.libraryItem.findAllExpandedWhere()
 
@@ -1526,7 +1526,7 @@ async function handleOldLibraryItems(ctx: typeof DatabaseModule) {
         }
       })
 
-      // Books have no podcastEpisodes
+      // cast(d): media is Book | Podcast; Book has no podcastEpisodes, so for a book the read is undefined, as in the JS
       const libraryItemMedia = libraryItem.media as { podcastEpisodes?: { id: string; audioFile?: { ino?: string } }[] }
       if (libraryItemMedia.podcastEpisodes?.length && matchingOldLibraryItem.media.episodes?.length) {
         for (const podcastEpisode of libraryItemMedia.podcastEpisodes) {
@@ -1570,7 +1570,7 @@ async function handleOldLibraryItems(ctx: typeof DatabaseModule) {
 async function handleOldLibraries(ctx: typeof DatabaseModule) {
   // sequelize.models, keyed by model name
   const models = ctx.models
-  // Entities of the old libraries db
+  // cast(d): assumed: the old libraries db files hold old library objects (loadOldData parses the JSON without checking it)
   const oldLibraries = (await oldDbFiles.loadOldData('libraries')) as OldLibrary[]
   const libraries = await models.library.getAllWithFolders()
 
@@ -1582,19 +1582,19 @@ async function handleOldLibraries(ctx: typeof DatabaseModule) {
         return false
       }
       const folderPaths = ol.folders?.map((f) => f.fullPath) || []
-      // getAllWithFolders includes the folders
+      // cast(b): getAllWithFolders includes the folders; the Library model declares libraryFolders optional
       return folderPaths.join(',') === (library.libraryFolders as { path: string }[]).map((f) => f.path).join(',')
     })
 
     if (matchingOldLibrary) {
-      // extraData is a JSON column
+      // cast(d): extraData is the Library JSON column (LibraryExtraData | null); the cast lets it take the oldLibraryId key set below
       const newExtraData = (library.extraData || {}) as Record<string, unknown>
       newExtraData.oldLibraryId = matchingOldLibrary.id
       library.extraData = newExtraData
       library.changed('extraData', true)
 
       // NOTE: the Library model has no oldLibraryId property (it was just set on extraData), so this maps the key "undefined" instead of matchingOldLibrary.id
-      // Read as before (see NOTE above)
+      // cast(c): the Library model has no oldLibraryId; read as in the JS (see NOTE above)
       oldDbIdMap.libraries[(library as unknown as { oldLibraryId: string }).oldLibraryId] = library.id
       await library.save()
       librariesUpdated++
@@ -1632,13 +1632,13 @@ async function handleOldUsers(ctx: typeof DatabaseModule) {
       }
     }
 
-    // permissions is a JSON column
+    // cast(d): permissions is the User JSON column; the cast types the ids as possibly undefined, which they become when mapped below
     const permissions = user.permissions as { librariesAccessible?: (string | undefined)[] } | null
     const librariesAccessible = permissions?.librariesAccessible || []
 
     // Convert old library ids to new library ids
     if (librariesAccessible.length) {
-      // librariesAccessible came from permissions, so it is set; its ids are strings
+      // cast(d) (2): permissions is set when librariesAccessible has items (it came from permissions); its ids are strings before the mapping
       ;(permissions as { librariesAccessible?: (string | undefined)[] }).librariesAccessible = (librariesAccessible as string[])
         .map((lid) => {
           if (!lid.startsWith('lib_') && lid !== 'main') return lid // Already not an old library id so dont change
@@ -1651,12 +1651,12 @@ async function handleOldUsers(ctx: typeof DatabaseModule) {
       }
     }
 
-    // extraData is a JSON column
+    // cast(d): extraData is the User JSON column; the cast types the ids as possibly null, which they become when mapped below
     const userExtraData = user.extraData as { seriesHideFromContinueListening?: (string | null)[] } | null
     const seriesHideFromContinueListening = userExtraData?.seriesHideFromContinueListening || []
 
     if (seriesHideFromContinueListening.length) {
-      // seriesHideFromContinueListening came from extraData, so it is set; its ids are strings
+      // cast(d) (2): userExtraData is set when the list has items (it came from extraData); its ids are strings before the mapping
       ;(userExtraData as { seriesHideFromContinueListening?: (string | null)[] }).seriesHideFromContinueListening = (seriesHideFromContinueListening as string[])
         .map((seriesId) => {
           if (seriesId.startsWith('se_')) {

@@ -34,7 +34,7 @@ export = {
       include: {
         model: Database.bookModel,
         attributes: ['id', 'coverPath'],
-        // sequelize accepts a single nested include object; its types only allow an array
+        // cast(b): sequelize accepts a single model or include object as a nested include, its types only allow an array
         include: {
           model: Database.libraryItemModel,
           attributes: ['id', 'mediaId', 'mediaType']
@@ -43,7 +43,7 @@ export = {
       },
       order: Database.sequelize.random()
     })
-    // The book (mediaItem) is included above
+    // cast(b): Sequelize types findAll rows without their includes; the book (mediaItem) is included above
     return sessions as (PlaybackSession & { mediaItem?: IncludedBook | null })[]
   },
 
@@ -64,7 +64,7 @@ export = {
       include: {
         model: Database.bookModel,
         attributes: ['id', 'title', 'coverPath'],
-        // sequelize accepts a single nested include object; its types only allow an array
+        // cast(b): sequelize accepts a single model or include object as a nested include, its types only allow an array
         include: {
           model: Database.libraryItemModel,
           attributes: ['id', 'mediaId', 'mediaType']
@@ -73,7 +73,7 @@ export = {
       },
       order: Database.sequelize.random()
     })
-    // The book (mediaItem) is included above
+    // cast(b): Sequelize types findAll rows without their includes; the book (mediaItem) is included above
     return progresses as (MediaProgress & { mediaItem: IncludedBook })[]
   },
 
@@ -139,7 +139,7 @@ export = {
           bookListeningMap[ls.displayTitle] += listeningSessionListeningTime
         }
 
-        // mediaMetadata is a JSON column
+        // cast(d): mediaMetadata is the PlaybackSession JSON column, typed PlaybackMediaMetadata | null since batch 3a; the cast changes no type
         const mediaMetadata = ls.mediaMetadata as PlaybackMediaMetadata | null
         const authors = mediaMetadata?.authors || []
         authors.forEach((au) => {
