@@ -17,6 +17,8 @@ import type LibraryItemScanData = require('./LibraryItemScanData')
 import type { AudioFileObject, ChapterObject, LibraryFileObject } from '../models/types'
 import type { BookMetadataObject, PodcastMetadataObject } from './types'
 import type AudioMetaTags = require('../objects/metadata/AudioMetaTags')
+import dynamicKey = require('./dynamicKey')
+const { getKey, setKey } = dynamicKey
 const { LogLevel } = constants
 
 /**
@@ -392,8 +394,7 @@ class AudioFileScanner {
             ]
           }
         } else {
-          // cast(d): dynamic metadata key
-          (bookMetadata as Record<string, unknown>)[mapping.key] = value
+          setKey(bookMetadata, mapping.key, value)
         }
       }
     })
@@ -456,10 +457,8 @@ class AudioFileScanner {
           podcastMetadata.genres = this.parseGenresString(value)
           libraryScan.addLog(LogLevel.DEBUG, `Mapping metadata to key ${tagToUse} => ${mapping.key}: ${podcastMetadata.genres.join(', ')}`)
         } else {
-          // cast(d): dynamic metadata key
-          (podcastMetadata as Record<string, unknown>)[mapping.key] = value
-          // cast(d): dynamic metadata key
-          libraryScan.addLog(LogLevel.DEBUG, `Mapping metadata to key ${tagToUse} => ${mapping.key}: ${(podcastMetadata as Record<string, unknown>)[mapping.key]}`)
+          setKey(podcastMetadata, mapping.key, value)
+          libraryScan.addLog(LogLevel.DEBUG, `Mapping metadata to key ${tagToUse} => ${mapping.key}: ${getKey(podcastMetadata, mapping.key)}`)
         }
       }
     })
@@ -521,24 +520,21 @@ class AudioFileScanner {
           if (pubJsDate && !isNaN(pubJsDate as unknown as number)) {
             podcastEpisode.publishedAt = pubJsDate.valueOf()
             podcastEpisode.pubDate = value
-            // cast(d): dynamic metadata key
-            scanLogger.addLog(LogLevel.DEBUG, `Mapping metadata to key ${tagToUse} => ${mapping.key}: ${(podcastEpisode as unknown as Record<string, unknown>)[mapping.key]}`)
+            scanLogger.addLog(LogLevel.DEBUG, `Mapping metadata to key ${tagToUse} => ${mapping.key}: ${getKey(podcastEpisode, mapping.key)}`)
           } else {
             scanLogger.addLog(LogLevel.WARN, `Mapping pubDate with tag ${tagToUse} has invalid date "${value}"`)
           }
         } else if (mapping.key === 'episodeType') {
           if (['full', 'trailer', 'bonus'].includes(value)) {
             podcastEpisode.episodeType = value
-            // cast(d): dynamic metadata key
-            scanLogger.addLog(LogLevel.DEBUG, `Mapping metadata to key ${tagToUse} => ${mapping.key}: ${(podcastEpisode as unknown as Record<string, unknown>)[mapping.key]}`)
+            scanLogger.addLog(LogLevel.DEBUG, `Mapping metadata to key ${tagToUse} => ${mapping.key}: ${getKey(podcastEpisode, mapping.key)}`)
           } else {
             scanLogger.addLog(LogLevel.WARN, `Mapping episodeType with invalid value "${value}". Must be one of [full, trailer, bonus].`)
           }
         } else {
-          // cast(d): dynamic metadata key (description, subtitle, season, episode, title: string columns)
-          (podcastEpisode as unknown as Record<string, unknown>)[mapping.key] = value
-          // cast(d): dynamic metadata key
-          scanLogger.addLog(LogLevel.DEBUG, `Mapping metadata to key ${tagToUse} => ${mapping.key}: ${(podcastEpisode as unknown as Record<string, unknown>)[mapping.key]}`)
+          // Dynamic metadata key: description, subtitle, season, episode, title: string columns
+          setKey(podcastEpisode, mapping.key, value)
+          scanLogger.addLog(LogLevel.DEBUG, `Mapping metadata to key ${tagToUse} => ${mapping.key}: ${getKey(podcastEpisode, mapping.key)}`)
         }
       }
     })

@@ -3,6 +3,8 @@ import fileUtils = require('../utils/fileUtils')
 import type LibraryFile = require('../objects/files/LibraryFile')
 import type { LibraryFileObject } from '../models/types'
 import type { BookMetadataObject } from './types'
+import dynamicKey = require('./dynamicKey')
+const { getKey, setKey } = dynamicKey
 const { parseOpfMetadataXML } = parseOpfMetadata
 const { readTextFile } = fileUtils
 
@@ -40,10 +42,8 @@ class OpfFileScanner {
           if (opfMetadata.series?.length) {
             bookMetadata.series = opfMetadata.series
           }
-          // cast(d): dynamic metadata key
-        } else if ((opfMetadata as Record<string, unknown>)[key] && key !== 'sequence') {
-          // cast(d): dynamic metadata key (both casts)
-          (bookMetadata as Record<string, unknown>)[key] = (opfMetadata as Record<string, unknown>)[key]
+        } else if (getKey(opfMetadata, key) && key !== 'sequence') {
+          setKey(bookMetadata, key, getKey(opfMetadata, key))
         }
       }
     }

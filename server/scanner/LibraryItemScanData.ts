@@ -10,6 +10,8 @@ import type LibraryScan = require('./LibraryScan')
 import type ScanLogger = require('./ScanLogger')
 import type { AudioFileObject, EBookFileObject, LibraryFileObject } from '../models/types'
 import type { BookMetadataObject, NewLibraryItemObject } from './types'
+import dynamicKey = require('./dynamicKey')
+const { getKey, setKey } = dynamicKey
 const { LogLevel } = constants
 
 interface LibraryFileModifiedObject {
@@ -216,12 +218,10 @@ class LibraryItemScanData {
     this.hasChanges = false
     this.hasPathChange = false
     for (const key of keysToCompare) {
-      // cast(d): dynamic metadata key (both casts)
-      if ((existingLibraryItem as unknown as Record<string, unknown>)[key] !== (this as unknown as Record<string, unknown>)[key]) {
-        // cast(d): dynamic metadata key (both casts)
-        libraryScan.addLog(LogLevel.DEBUG, `Library item "${existingLibraryItem.relPath}" key "${key}" changed from "${(existingLibraryItem as unknown as Record<string, unknown>)[key]}" to "${(this as unknown as Record<string, unknown>)[key]}"`)
-        // cast(d): dynamic metadata key (both casts; the keys are libraryFolderId, ino, path, relPath and isFile, which have the same types on both)
-        ;(existingLibraryItem as unknown as Record<string, unknown>)[key] = (this as unknown as Record<string, unknown>)[key]
+      if (getKey(existingLibraryItem, key) !== getKey(this, key)) {
+        libraryScan.addLog(LogLevel.DEBUG, `Library item "${existingLibraryItem.relPath}" key "${key}" changed from "${getKey(existingLibraryItem, key)}" to "${getKey(this, key)}"`)
+        // Dynamic metadata key: the keys are libraryFolderId, ino, path, relPath and isFile, which have the same types on both
+        setKey(existingLibraryItem, key, getKey(this, key))
         this.hasChanges = true
 
         if (key === 'relPath' || key === 'path') {
@@ -330,17 +330,14 @@ class LibraryItemScanData {
     }
 
     for (const key in existingLibraryFile.metadata) {
-      // cast(d): dynamic metadata key (both casts)
-      if ((existingLibraryFile.metadata as unknown as Record<string, unknown>)[key] !== (scannedLibraryFile.metadata as unknown as Record<string, unknown>)[key]) {
+      if (getKey(existingLibraryFile.metadata, key) !== getKey(scannedLibraryFile.metadata, key)) {
         if (key !== 'path' && key !== 'relPath') {
-          // cast(d): dynamic metadata key (both casts)
-          libraryScan.addLog(LogLevel.DEBUG, `Library file "${existingLibraryFile.metadata.relPath}" for library item "${libraryItemPath}" key "${key}" changed from "${(existingLibraryFile.metadata as unknown as Record<string, unknown>)[key]}" to "${(scannedLibraryFile.metadata as unknown as Record<string, unknown>)[key]}"`)
+          libraryScan.addLog(LogLevel.DEBUG, `Library file "${existingLibraryFile.metadata.relPath}" for library item "${libraryItemPath}" key "${key}" changed from "${getKey(existingLibraryFile.metadata, key)}" to "${getKey(scannedLibraryFile.metadata, key)}"`)
         } else {
-          // cast(d): dynamic metadata key (both casts)
-          libraryScan.addLog(LogLevel.DEBUG, `Library file for library item "${libraryItemPath}" key "${key}" changed from "${(existingLibraryFile.metadata as unknown as Record<string, unknown>)[key]}" to "${(scannedLibraryFile.metadata as unknown as Record<string, unknown>)[key]}"`)
+          libraryScan.addLog(LogLevel.DEBUG, `Library file for library item "${libraryItemPath}" key "${key}" changed from "${getKey(existingLibraryFile.metadata, key)}" to "${getKey(scannedLibraryFile.metadata, key)}"`)
         }
-        // cast(d): dynamic metadata key (both casts; the same file metadata keys on both)
-        (existingLibraryFile.metadata as unknown as Record<string, unknown>)[key] = (scannedLibraryFile.metadata as unknown as Record<string, unknown>)[key]
+        // Dynamic metadata key: the same file metadata keys on both
+        setKey(existingLibraryFile.metadata, key, getKey(scannedLibraryFile.metadata, key))
         hasChanges = true
       }
     }
@@ -386,10 +383,8 @@ class LibraryItemScanData {
   setBookMetadataFromFilenames(bookMetadata: BookMetadataObject) {
     const keysToMap = ['title', 'subtitle', 'publishedYear', 'asin']
     for (const key in this.mediaMetadata) {
-      // cast(d): dynamic metadata key
-      if (keysToMap.includes(key) && (this.mediaMetadata as unknown as Record<string, unknown>)[key]) {
-        // cast(d): dynamic metadata key (both casts)
-        (bookMetadata as Record<string, unknown>)[key] = (this.mediaMetadata as unknown as Record<string, unknown>)[key]
+      if (keysToMap.includes(key) && getKey(this.mediaMetadata, key)) {
+        setKey(bookMetadata, key, getKey(this.mediaMetadata, key))
       }
     }
 

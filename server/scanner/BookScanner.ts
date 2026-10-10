@@ -35,6 +35,8 @@ import type LibraryItemScanData = require('./LibraryItemScanData')
 import type { AudioFileObject, EBookFileObject, LibraryFileObject, LibrarySettingsObject } from '../models/types'
 import type { EBookFileScanData, EBookMetadata } from '../utils/parsers/types'
 import type { BookMetadataObject } from './types'
+import dynamicKey = require('./dynamicKey')
+const { getKey, setKey } = dynamicKey
 const uuidv4 = uuid.v4
 const { LogLevel } = constants
 const { getTitleIgnorePrefix, areEquivalent } = utils
@@ -261,8 +263,8 @@ class BookScanner {
 
     for (const key in bookMetadata) {
       // Ignore unset metadata and empty arrays
-      // cast(d): dynamic metadata key (all 4 casts)
-      if ((bookMetadata as Record<string, unknown>)[key] === undefined || (Array.isArray((bookMetadata as Record<string, unknown>)[key]) && !((bookMetadata as Record<string, unknown>)[key] as unknown[]).length)) continue
+      // cast(d): dynamic metadata key (the length read: Array.isArray does not narrow the second getKey call)
+      if (getKey(bookMetadata, key) === undefined || (Array.isArray(getKey(bookMetadata, key)) && !(getKey(bookMetadata, key) as unknown[]).length)) continue
 
       if (key === 'authors') {
         // Check for authors added
@@ -381,12 +383,10 @@ class BookScanner {
           media.coverPath = bookMetadata.coverPath!
           hasMediaChanges = true
         }
-        // cast(d): dynamic metadata key (both casts)
-      } else if ((bookMetadata as Record<string, unknown>)[key] !== (media as unknown as Record<string, unknown>)[key]) {
-        // cast(d): dynamic metadata key (both casts)
-        libraryScan.addLog(LogLevel.DEBUG, `Updating book ${key} "${(media as unknown as Record<string, unknown>)[key]}" => "${(bookMetadata as Record<string, unknown>)[key]}" for book "${bookMetadata.title}"`)
-        // cast(d): dynamic metadata key (both casts; the metadata sources only set strings, booleans and the arrays handled above, matching the book fields)
-        ;(media as unknown as Record<string, unknown>)[key] = (bookMetadata as Record<string, unknown>)[key]
+      } else if (getKey(bookMetadata, key) !== getKey(media, key)) {
+        libraryScan.addLog(LogLevel.DEBUG, `Updating book ${key} "${getKey(media, key)}" => "${getKey(bookMetadata, key)}" for book "${bookMetadata.title}"`)
+        // Dynamic metadata key: the metadata sources only set strings, booleans and the arrays handled above, matching the book fields
+        setKey(media, key, getKey(bookMetadata, key))
         hasMediaChanges = true
       }
     }
@@ -818,10 +818,8 @@ class BookScanner {
             if (ebookMetdataObject.series?.length) {
               this.bookMetadata.series = ebookMetdataObject.series
             }
-            // cast(d): dynamic metadata key
-          } else if ((ebookMetdataObject as Record<string, unknown>)[key] && key !== 'sequence') {
-            // cast(d): dynamic metadata key (both casts)
-            (this.bookMetadata as Record<string, unknown>)[key] = (ebookMetdataObject as Record<string, unknown>)[key]
+          } else if (getKey(ebookMetdataObject, key) && key !== 'sequence') {
+            setKey(this.bookMetadata, key, getKey(ebookMetdataObject, key))
           }
         }
       }

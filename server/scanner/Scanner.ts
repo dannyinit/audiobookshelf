@@ -22,6 +22,8 @@ import type iTunes = require('../providers/iTunes')
 import type { BookSearchResult, SeriesResult } from '../providers/types'
 import type { Model } from 'sequelize'
 import type { RssPodcastEpisode } from '../models/types'
+import dynamicKey = require('./dynamicKey')
+const { getKey } = dynamicKey
 const { getTitleIgnorePrefix } = utils
 const { findMatchingEpisodesInFeed, getPodcastFeed } = podcastUtils
 
@@ -189,17 +191,15 @@ class Scanner {
     }
 
     for (const key in matchDataTransformed) {
-      // cast(d): dynamic metadata key
-      if ((matchDataTransformed as Record<string, unknown>)[key]) {
+      if (getKey(matchDataTransformed, key)) {
         if (key === 'genres') {
           if (!libraryItem.media.genres.length || options.overrideDetails) {
             var genresArray: string[] = []
-            // cast(d): dynamic metadata key (both casts; the second reads the genres list)
-            if (Array.isArray((matchDataTransformed as Record<string, unknown>)[key])) genresArray = [...(matchDataTransformed as unknown as Record<string, string[]>)[key]]
+            // cast(d): dynamic metadata key (the genres list, checked with Array.isArray just before)
+            if (Array.isArray(getKey(matchDataTransformed, key))) genresArray = [...(matchDataTransformed as unknown as Record<string, string[]>)[key]]
             else {
               // Genres should always be passed in as an array but just incase handle a string
-              // cast(d): dynamic metadata key
-              Logger.warn(`[Scanner] quickMatch genres is not an array ${(matchDataTransformed as Record<string, unknown>)[key]}`)
+              Logger.warn(`[Scanner] quickMatch genres is not an array ${getKey(matchDataTransformed, key)}`)
               // cast(d): dynamic metadata key (a genres string)
               genresArray = (matchDataTransformed as unknown as Record<string, string>)[key]
                 .split(',')
@@ -208,10 +208,8 @@ class Scanner {
             }
             updatePayload[key] = genresArray
           }
-          // cast(d): dynamic metadata key (all 3 casts)
-        } else if ((libraryItem.media as unknown as Record<string, unknown>)[key] !== (matchDataTransformed as Record<string, unknown>)[key] && (!(libraryItem.media as unknown as Record<string, unknown>)[key] || options.overrideDetails)) {
-          // cast(d): dynamic metadata key
-          updatePayload[key] = (matchDataTransformed as Record<string, unknown>)[key]
+        } else if (getKey(libraryItem.media, key) !== getKey(matchDataTransformed, key) && (!getKey(libraryItem.media, key) || options.overrideDetails)) {
+          updatePayload[key] = getKey(matchDataTransformed, key)
         }
       }
     }
@@ -225,8 +223,7 @@ class Scanner {
     const updatePayload: Record<string, unknown> = {}
 
     for (const key in matchData) {
-      // cast(d): dynamic metadata key
-      if ((matchData as Record<string, unknown>)[key] && detailKeysToUpdate.includes(key)) {
+      if (getKey(matchData, key) && detailKeysToUpdate.includes(key)) {
         if (key === 'narrator') {
           if (!libraryItem.media.narrators?.length || options.overrideDetails) {
             // cast(d): dynamic metadata key (the narrator string)
@@ -238,12 +235,11 @@ class Scanner {
         } else if (key === 'genres') {
           if (!libraryItem.media.genres.length || options.overrideDetails) {
             let genresArray: string[] = []
-            // cast(d): dynamic metadata key (both casts; the second reads the genres list)
-            if (Array.isArray((matchData as Record<string, unknown>)[key])) genresArray = [...(matchData as Record<string, string[]>)[key]]
+            // cast(d): dynamic metadata key (the genres list, checked with Array.isArray just before)
+            if (Array.isArray(getKey(matchData, key))) genresArray = [...(matchData as Record<string, string[]>)[key]]
             else {
               // Genres should always be passed in as an array but just incase handle a string
-              // cast(d): dynamic metadata key
-              Logger.warn(`[Scanner] quickMatch genres is not an array ${(matchData as Record<string, unknown>)[key]}`)
+              Logger.warn(`[Scanner] quickMatch genres is not an array ${getKey(matchData, key)}`)
               // cast(d): dynamic metadata key (a genres string)
               genresArray = (matchData as Record<string, string>)[key]
                 .split(',')
@@ -255,8 +251,8 @@ class Scanner {
         } else if (key === 'tags') {
           if (!libraryItem.media.tags.length || options.overrideDetails) {
             let tagsArray: string[] = []
-            // cast(d): dynamic metadata key (both casts; the second reads the tags list)
-            if (Array.isArray((matchData as Record<string, unknown>)[key])) tagsArray = [...(matchData as Record<string, string[]>)[key]]
+            // cast(d): dynamic metadata key (the tags list, checked with Array.isArray just before)
+            if (Array.isArray(getKey(matchData, key))) tagsArray = [...(matchData as Record<string, string[]>)[key]]
             else
               // cast(d): dynamic metadata key (a tags string)
               tagsArray = (matchData as Record<string, string>)[key]
@@ -265,10 +261,8 @@ class Scanner {
                 .filter((v) => !!v)
             updatePayload[key] = tagsArray
           }
-          // cast(d): dynamic metadata key
-        } else if (!(libraryItem.media as unknown as Record<string, unknown>)[key] || options.overrideDetails) {
-          // cast(d): dynamic metadata key
-          updatePayload[key] = (matchData as Record<string, unknown>)[key]
+        } else if (!getKey(libraryItem.media, key) || options.overrideDetails) {
+          updatePayload[key] = getKey(matchData, key)
         }
       }
     }
@@ -439,12 +433,9 @@ class Scanner {
     }
     const updatePayload: Record<string, unknown> = {}
     for (const key in matchDataTransformed) {
-      // cast(d): dynamic metadata key
-      if ((matchDataTransformed as Record<string, unknown>)[key]) {
-        // cast(d): dynamic metadata key (all 3 casts)
-        if ((episode as unknown as Record<string, unknown>)[key] !== (matchDataTransformed as Record<string, unknown>)[key] && (!(episode as unknown as Record<string, unknown>)[key] || options.overrideDetails)) {
-          // cast(d): dynamic metadata key
-          updatePayload[key] = (matchDataTransformed as Record<string, unknown>)[key]
+      if (getKey(matchDataTransformed, key)) {
+        if (getKey(episode, key) !== getKey(matchDataTransformed, key) && (!getKey(episode, key) || options.overrideDetails)) {
+          updatePayload[key] = getKey(matchDataTransformed, key)
         }
       }
     }

@@ -3,6 +3,8 @@ import fileUtils = require('../utils/fileUtils')
 import type LibraryFile = require('../objects/files/LibraryFile')
 import type { LibraryFileObject } from '../models/types'
 import type { BookMetadataObject } from './types'
+import dynamicKey = require('./dynamicKey')
+const { getKey, setKey } = dynamicKey
 const { parseNfoMetadata } = parseNfoMetadataModule
 const { readTextFile } = fileUtils
 
@@ -47,10 +49,8 @@ class NfoFileScanner {
               }
             ]
           }
-          // cast(d): dynamic metadata key
-        } else if ((nfoMetadata as Record<string, unknown>)[key] && key !== 'sequence') {
-          // cast(d): dynamic metadata key (both casts)
-          (bookMetadata as Record<string, unknown>)[key] = (nfoMetadata as Record<string, unknown>)[key]
+        } else if (getKey(nfoMetadata, key) && key !== 'sequence') {
+          setKey(bookMetadata, key, getKey(nfoMetadata, key))
         }
       }
     }

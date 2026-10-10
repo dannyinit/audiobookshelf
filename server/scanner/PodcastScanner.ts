@@ -22,6 +22,8 @@ import type ScanLogger = require('./ScanLogger')
 import type LibraryItemScanData = require('./LibraryItemScanData')
 import type { AudioFileObject, LibraryFileObject, LibrarySettingsObject } from '../models/types'
 import type { PodcastMetadataObject } from './types'
+import dynamicKey = require('./dynamicKey')
+const { getKey, setKey } = dynamicKey
 const uuidv4 = uuid.v4
 const { LogLevel } = constants
 const { getTitleIgnorePrefix } = utils
@@ -205,8 +207,8 @@ class PodcastScanner {
 
     for (const key in podcastMetadata) {
       // Ignore unset metadata and empty arrays
-      // cast(d): dynamic metadata key (all 4 casts)
-      if ((podcastMetadata as Record<string, unknown>)[key] === undefined || (Array.isArray((podcastMetadata as Record<string, unknown>)[key]) && !((podcastMetadata as Record<string, unknown>)[key] as unknown[]).length)) continue
+      // cast(d): dynamic metadata key (the length read: Array.isArray does not narrow the second getKey call)
+      if (getKey(podcastMetadata, key) === undefined || (Array.isArray(getKey(podcastMetadata, key)) && !(getKey(podcastMetadata, key) as unknown[]).length)) continue
 
       if (key === 'genres') {
         const existingGenres = media.genres || []
@@ -224,12 +226,10 @@ class PodcastScanner {
           media.changed('tags', true)
           hasMediaChanges = true
         }
-        // cast(d): dynamic metadata key (both casts)
-      } else if ((podcastMetadata as Record<string, unknown>)[key] !== (media as unknown as Record<string, unknown>)[key]) {
-        // cast(d): dynamic metadata key (both casts)
-        libraryScan.addLog(LogLevel.DEBUG, `Updating podcast ${key} "${(media as unknown as Record<string, unknown>)[key]}" => "${(podcastMetadata as Record<string, unknown>)[key]}" for podcast "${podcastMetadata.title}"`)
-        // cast(d): dynamic metadata key (both casts; the podcast metadata keys are podcast fields of the same types: strings, explicit boolean)
-        ;(media as unknown as Record<string, unknown>)[key] = (podcastMetadata as Record<string, unknown>)[key]
+      } else if (getKey(podcastMetadata, key) !== getKey(media, key)) {
+        libraryScan.addLog(LogLevel.DEBUG, `Updating podcast ${key} "${getKey(media, key)}" => "${getKey(podcastMetadata, key)}" for podcast "${podcastMetadata.title}"`)
+        // Dynamic metadata key: the podcast metadata keys are podcast fields of the same types: strings, explicit boolean
+        setKey(media, key, getKey(podcastMetadata, key))
         hasMediaChanges = true
       }
     }

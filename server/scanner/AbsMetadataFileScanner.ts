@@ -7,6 +7,8 @@ import type LibraryScan = require('./LibraryScan')
 import type ScanLogger = require('./ScanLogger')
 import type LibraryItemScanData = require('./LibraryItemScanData')
 import type { BookMetadataObject, PodcastMetadataObject } from './types'
+import dynamicKey = require('./dynamicKey')
+const { setKey } = dynamicKey
 const { readTextFile } = fileUtils
 const { LogLevel } = constants
 
@@ -51,8 +53,7 @@ class AbsMetadataFileScanner {
         if (key === 'tags' && !abMetadata.tags?.length) continue
         if (key === 'chapters' && !abMetadata.chapters?.length) continue
 
-        // cast(d): dynamic metadata key
-        (bookMetadata as Record<string, unknown>)[key] = abMetadata[key]
+        setKey(bookMetadata, key, abMetadata[key])
       }
     }
   }
@@ -85,8 +86,7 @@ class AbsMetadataFileScanner {
         if (abMetadata[key] === undefined || abMetadata[key] === null) continue
         if (key === 'tags' && !abMetadata.tags?.length) continue
 
-        // cast(d): dynamic metadata key
-        (podcastMetadata as Record<string, unknown>)[key] = abMetadata[key]
+        setKey(podcastMetadata, key, abMetadata[key])
       }
     }
   }

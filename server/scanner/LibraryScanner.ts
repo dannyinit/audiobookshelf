@@ -514,10 +514,9 @@ class LibraryScanner {
     //    Test Case: Moving audio files from library item folder to author folder should trigger a re-scan of the item
     const updateGroup = { ...fileUpdateGroup }
     for (const itemDir in updateGroup) {
-      if (isSingleMediaFile(fileUpdateGroup, itemDir)) continue // Media in root path
+      if (isSingleMediaEntry(itemDir, fileUpdateGroup[itemDir])) continue // Media in root path
 
-      // cast(d): root media files (a string) were skipped just above, so this is the item's list of files
-      const itemDirNestedFiles = (fileUpdateGroup[itemDir] as string[]).filter((b) => b.includes('/'))
+      const itemDirNestedFiles = fileUpdateGroup[itemDir].filter((b) => b.includes('/'))
       if (!itemDirNestedFiles.length) continue
 
       const firstNest = itemDirNestedFiles[0].split('/').shift()
@@ -669,13 +668,21 @@ function ItemToItemInoMatch(libraryItem1: InoMatchItem, libraryItem2: InoMatchIt
 }
 
 function hasAudioFiles(fileUpdateGroup: FileUpdateGroup, itemDir: string) {
-  // cast(d): record is string | string[], single-file check is in a separate function
-  // cast(d): (as string[]) otherwise the entry is an item dir with its list of files
-  return isSingleMediaFile(fileUpdateGroup, itemDir) ? scanUtils.checkFilepathIsAudioFile(fileUpdateGroup[itemDir] as string) : (fileUpdateGroup[itemDir] as string[]).some(scanUtils.checkFilepathIsAudioFile)
+  return isSingleMediaEntry(itemDir, fileUpdateGroup[itemDir]) ? scanUtils.checkFilepathIsAudioFile(fileUpdateGroup[itemDir]) : fileUpdateGroup[itemDir].some(scanUtils.checkFilepathIsAudioFile)
 }
 
 function isSingleMediaFile(fileUpdateGroup: FileUpdateGroup, itemDir: string) {
-  return itemDir === fileUpdateGroup[itemDir]
+  return isSingleMediaEntry(itemDir, fileUpdateGroup[itemDir])
+}
+
+/**
+ * Whether the file update group entry of `itemDir` is a single media file in the folder root.
+ * groupFileItemsIntoLibraryItemDirs stores such a file as a string equal to its own key
+ * (`libraryItemGroup[item.name] = item.name`) and every other entry as the list of files of an item dir,
+ * so the entry is a string exactly when it equals its key (the same check the JavaScript did).
+ */
+function isSingleMediaEntry(itemDir: string, entry: string | string[]): entry is string {
+  return itemDir === entry
 }
 
 async function findLibraryItemByItemToItemInoMatch(libraryId: string, fullPath: string) {
