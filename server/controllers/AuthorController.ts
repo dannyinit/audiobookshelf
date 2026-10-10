@@ -11,11 +11,13 @@ import CoverManager = require('../managers/CoverManager')
 import AuthorFinder = require('../finders/AuthorFinder')
 
 import utils = require('../utils/index')
+import queryValue = require('../utils/queryValue')
 import type { RequestWithUser } from './types'
 import type { SortInstance } from '../utils/types'
 
 const { createNewSortInstance } = fastSort
 const { reqSupportsWebp, isValidASIN, clampPositiveInt } = utils
+const { optionalString, requiredString } = queryValue
 
 type Author = import('../models/Author')
 import type LibraryItem = require('../models/LibraryItem')
@@ -45,8 +47,8 @@ class AuthorController {
    * GET: /api/authors/:id
    */
   async findOne(req: AuthorControllerRequest, res: Response) {
-    // cast(d): query value
-    const include = ((req.query.include as string | undefined) || '').split(',')
+    // NOTE: a repeated query parameter is an array; .split then throws a TypeError, which in this async handler stops the server (see Bugs)
+    const include = (optionalString(req.query.include) || '').split(',')
 
     const authorJson: ReturnType<Author['toOldJSON']> & { series?: unknown[]; libraryItems?: unknown[] } = req.author.toOldJSON()
 
@@ -413,12 +415,9 @@ class AuthorController {
     }
 
     const options = {
-      // cast(d): query value
-      format: (format as string | undefined) || (reqSupportsWebp(req) ? 'webp' : 'jpeg'),
-      // cast(d): query value
-      height: clampPositiveInt(height ? parseInt(height as string) : null, 4096),
-      // cast(d): query value
-      width: clampPositiveInt(width ? parseInt(width as string) : null, 4096)
+      format: optionalString(format) || (reqSupportsWebp(req) ? 'webp' : 'jpeg'),
+      height: clampPositiveInt(height ? parseInt(requiredString(height)) : null, 4096),
+      width: clampPositiveInt(width ? parseInt(requiredString(width)) : null, 4096)
     }
     return CacheManager.handleAuthorCache(res, authorId, options)
   }

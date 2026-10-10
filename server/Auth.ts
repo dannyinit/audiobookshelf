@@ -10,12 +10,14 @@ import OidcAuthStrategy = require('./auth/OidcAuthStrategy')
 
 import RateLimiterFactory = require('./utils/rateLimiterFactory')
 import utils = require('./utils')
+import queryValue = require('./utils/queryValue')
 import type User = require('./models/User')
 import type ServerSettings = require('./objects/settings/ServerSettings')
 import type EmailSettings = require('./objects/settings/EmailSettings')
 const JwtStrategy = passportJwt.Strategy
 const ExtractJwt = passportJwt.ExtractJwt
 const { escapeRegExp } = utils
+const { requiredString } = queryValue
 
 /**
  * Login response payload; the login and refresh routes add the tokens to its user
@@ -269,8 +271,7 @@ class Auth {
       }
 
       // Security: Validate callback URL is same-origin only
-      // cast(d): query value
-      if (!this.oidcAuthStrategy.isValidWebCallbackUrl(callback as string, req)) {
+      if (!this.oidcAuthStrategy.isValidWebCallbackUrl(requiredString(callback), req)) {
         Logger.warn(`[Auth] Rejected invalid callback URL: ${callback}`)
         res.status(400).send({ message: 'Invalid callback URL - must be same-origin' })
         return { error: 'Invalid callback URL - must be same-origin' }

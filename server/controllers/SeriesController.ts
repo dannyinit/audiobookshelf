@@ -6,8 +6,11 @@ import Database = require('../Database')
 import RssFeedManager = require('../managers/RssFeedManager')
 
 import libraryItemsBookFilters = require('../utils/queries/libraryItemsBookFilters')
+import queryValue = require('../utils/queryValue')
 import type { RequestWithUser } from './types'
 import type { FilteredLibraryItem } from '../utils/queries/types'
+
+const { optionalString } = queryValue
 
 type Series = import('../models/Series')
 
@@ -29,8 +32,8 @@ class SeriesController {
    * Series are not library specific so we need to know what the library id is
    */
   async findOne(req: SeriesControllerRequest, res: Response) {
-    // cast(d): query value
-    const include = ((req.query.include as string | undefined) || '')
+    // NOTE: a repeated query parameter is an array; .split then throws a TypeError, which in this async handler stops the server (see Bugs)
+    const include = (optionalString(req.query.include) || '')
       .split(',')
       .map((v) => v.trim())
       .filter((v) => !!v)

@@ -17,11 +17,13 @@ import htmlSanitizer = require('../utils/htmlSanitizer')
 
 import TaskManager = require('../managers/TaskManager')
 import adminStats = require('../utils/queries/adminStats')
+import queryValue = require('../utils/queryValue')
 import type { RequestWithUser } from './types'
 
 const { isObject, getTitleIgnorePrefix } = utils
 const { sanitizeFilename } = fileUtils
 const { sanitize } = htmlSanitizer
+const { optionalString } = queryValue
 
 type ApiRouter = import('../routers/ApiRouter')
 type Book = import('../models/Book')
@@ -116,8 +118,8 @@ class MiscController {
    * Get tasks for task manager
    */
   getTasks(this: ApiRouter, req: RequestWithUser, res: Response) {
-    // cast(d): query value
-    const includeArray = ((req.query.include as string | undefined) || '').split(',')
+    // NOTE: a repeated query parameter is an array; .split then throws a TypeError (this handler is not async, so Express answers 500; see Bugs)
+    const includeArray = (optionalString(req.query.include) || '').split(',')
 
     const data: { tasks: ReturnType<(typeof TaskManager.tasks)[number]['toJSON']>[]; queuedTaskData?: { embedMetadata: ReturnType<ApiRouter['audioMetadataManager']['getQueuedTaskData']> } } = {
       tasks: TaskManager.tasks.map((t) => t.toJSON())

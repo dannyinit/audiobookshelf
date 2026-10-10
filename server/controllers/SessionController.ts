@@ -8,12 +8,14 @@ import fileUtils = require('../utils/fileUtils')
 import constants = require('../utils/constants')
 
 import ShareManager = require('../managers/ShareManager')
+import queryValue = require('../utils/queryValue')
 import type { RequestWithUser } from './types'
 import type { RuntimeFindOptions } from '../utils/queries/types'
 
 const { toNumber, isUUID } = utils
 const { getAudioMimeTypeFromExtname, encodeUriPath } = fileUtils
 const { PlayMethod } = constants
+const { optionalString } = queryValue
 
 type ApiRouter = import('../routers/ApiRouter')
 type PublicRouter = import('../routers/PublicRouter')
@@ -45,16 +47,14 @@ class SessionController {
       return res.sendStatus(404)
     }
     // Validate "user" query
-    // cast(d): query value
-    let userId: string | null | undefined = req.query.user as string | undefined
+    let userId: string | null | undefined = optionalString(req.query.user)
     if (userId && !isUUID(userId)) {
       Logger.warn(`[SessionController] Invalid "user" query string "${userId}"`)
       userId = null
     }
     // Validate "sort" query
     const validSortOrders = ['displayTitle', 'duration', 'playMethod', 'startTime', 'currentTime', 'timeListening', 'updatedAt', 'createdAt']
-    // cast(d): query value
-    let orderKey = (req.query.sort as string | undefined) || 'updatedAt'
+    let orderKey = optionalString(req.query.sort) || 'updatedAt'
     if (!validSortOrders.includes(orderKey)) {
       Logger.warn(`[SessionController] Invalid "sort" query string "${orderKey}" (Must be one of "${validSortOrders.join('|')}")`)
       orderKey = 'updatedAt'

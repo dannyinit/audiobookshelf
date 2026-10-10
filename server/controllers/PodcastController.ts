@@ -15,11 +15,13 @@ import htmlSanitizer = require('../utils/htmlSanitizer')
 
 import Scanner = require('../scanner/Scanner')
 import CoverManager = require('../managers/CoverManager')
+import queryValue = require('../utils/queryValue')
 import type { RequestWithUser } from './types'
 
 const { getPodcastFeed, findMatchingEpisodes } = podcastUtils
 const { getFileTimestampsWithIno, filePathToPOSIX, isSameOrSubPath } = fileUtils
 const { validateUrl } = utils
+const { isNaNArgument } = queryValue
 
 type ApiRouter = import('../routers/ApiRouter')
 type User = import('../models/User')
@@ -292,8 +294,7 @@ class PodcastController {
       return res.status(400).send('Podcast has no rss feed url')
     }
 
-    // cast(d): isNaN coerces its argument (the query value is a string)
-    const maxEpisodesToDownload = !isNaN(req.query.limit as unknown as number) ? Number(req.query.limit) : 3
+    const maxEpisodesToDownload = !isNaN(isNaNArgument(req.query.limit)) ? Number(req.query.limit) : 3
 
     const newEpisodes = await this.podcastManager.checkAndDownloadNewEpisodes(req.libraryItem, maxEpisodesToDownload)
     res.json({

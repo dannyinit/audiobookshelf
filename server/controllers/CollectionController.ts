@@ -8,8 +8,11 @@ import Database = require('../Database')
 import htmlSanitizer = require('../utils/htmlSanitizer')
 
 import RssFeedManager = require('../managers/RssFeedManager')
+import queryValue = require('../utils/queryValue')
 import type { RequestWithUser } from './types'
 import type { RuntimeFindOptions } from '../utils/queries/types'
+
+const { optionalString } = queryValue
 
 type Collection = import('../models/Collection')
 type CollectionBook = import('../models/CollectionBook')
@@ -132,8 +135,8 @@ class CollectionController {
    * GET: /api/collections/:id
    */
   async findOne(req: CollectionControllerRequest, res: Response) {
-    // cast(d): query value
-    const includeEntities = ((req.query.include as string | undefined) || '').split(',')
+    // NOTE: a repeated query parameter is an array; .split then throws a TypeError, which in this async handler stops the server (see Bugs)
+    const includeEntities = (optionalString(req.query.include) || '').split(',')
 
     const collectionExpanded = await req.collection.getOldJsonExpanded(req.user, includeEntities)
     if (!collectionExpanded) {

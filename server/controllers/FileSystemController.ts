@@ -5,9 +5,11 @@ import fs = require('../libs/fsExtra')
 import utils = require('../utils/index')
 import fileUtils = require('../utils/fileUtils')
 import Database = require('../Database')
+import queryValue = require('../utils/queryValue')
 import type { RequestWithUser } from './types'
 
 const { toNumber } = utils
+const { optionalString } = queryValue
 
 class FileSystemController {
   constructor() {}
@@ -18,8 +20,8 @@ class FileSystemController {
       return res.sendStatus(403)
     }
 
-    // cast(d): query value
-    const relpath = req.query.path as string | undefined
+    // NOTE: a repeated query parameter is an array; Path.isAbsolute below then throws a TypeError, which in this async handler stops the server (see Bugs)
+    const relpath = optionalString(req.query.path)
     const level = toNumber(req.query.level, 0)
 
     // Validate path. Must be absolute

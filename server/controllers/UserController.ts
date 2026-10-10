@@ -6,11 +6,13 @@ import SocketAuthority = require('../SocketAuthority')
 import Database = require('../Database')
 
 import utils = require('../utils/index')
+import queryValue = require('../utils/queryValue')
 import type { RequestWithUser } from './types'
 import type { RuntimeFindOptions } from '../utils/queries/types'
 
 const uuidv4 = uuid.v4
 const { toNumber } = utils
+const { optionalString } = queryValue
 
 type ApiRouter = import('../routers/ApiRouter')
 type User = import('../models/User')
@@ -37,8 +39,8 @@ class UserController {
     if (!req.user.isAdminOrUp) return res.sendStatus(403)
     const hideRootToken = !req.user.isRoot
 
-    // cast(d): query value
-    const includes = ((req.query.include as string | undefined) || '').split(',').map((i) => i.trim())
+    // NOTE: a repeated query parameter is an array; .split then throws a TypeError, which in this async handler stops the server (see Bugs)
+    const includes = (optionalString(req.query.include) || '').split(',').map((i) => i.trim())
 
     // Minimal toJSONForBrowser does not include mediaProgress and bookmarks
     const allUsers = await Database.userModel.findAll()

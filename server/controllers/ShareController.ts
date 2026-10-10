@@ -12,11 +12,13 @@ import zipHelpers = require('../utils/zipHelpers')
 
 import PlaybackSession = require('../objects/PlaybackSession')
 import ShareManager = require('../managers/ShareManager')
+import queryValue = require('../utils/queryValue')
 import type { RequestWithUser } from './types'
 
 const { Op } = sequelize
 const { PlayMethod } = constants
 const { getAudioMimeTypeFromExtname, encodeUriPath } = fileUtils
+const { requiredString, isNaNArgument } = queryValue
 
 type PublicRouter = import('../routers/PublicRouter')
 type Book = import('../models/Book')
@@ -41,9 +43,7 @@ class ShareController {
   async getMediaItemShareBySlug(this: PublicRouter, req: Request, res: Response) {
     const { slug } = req.params
     // Optional start time
-    // cast(d): isNaN coerces its argument (the query value is a string)
-    // cast(d): query value
-    let startTime = req.query.t && !isNaN(req.query.t as unknown as number) ? Math.max(0, parseInt(req.query.t as string)) : 0
+    let startTime = req.query.t && !isNaN(isNaNArgument(req.query.t)) ? Math.max(0, parseInt(requiredString(req.query.t))) : 0
 
     const mediaItemShare: MediaItemShareWithSession | null = ShareManager.findBySlug(slug)
     if (!mediaItemShare) {

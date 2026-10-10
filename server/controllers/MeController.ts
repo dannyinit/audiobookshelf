@@ -7,11 +7,13 @@ import fastSort = require('../libs/fastSort')
 import utils = require('../utils/index')
 import userStats = require('../utils/queries/userStats')
 import parseUserAgent = require('../utils/parsers/parseUserAgent')
+import queryValue = require('../utils/queryValue')
 import type { RequestWithUser } from './types'
 
 const { Op } = sequelize
 const { sort } = fastSort
 const { toNumber, isNullOrNaN, isUUID } = utils
+const { isNaNArgument } = queryValue
 
 type ApiRouter = import('../routers/ApiRouter')
 type LibraryItem = import('../models/LibraryItem')
@@ -429,8 +431,7 @@ class MeController {
    * TODO: Update to use mediaItemId and mediaItemType. Use sort & limit in query
    */
   async getAllLibraryItemsInProgress(req: RequestWithUser, res: Response) {
-    // cast(d): isNaN coerces its argument (the query value is a string)
-    const limit = !isNaN(req.query.limit as unknown as number) ? Number(req.query.limit) || 25 : 25
+    const limit = !isNaN(isNaNArgument(req.query.limit)) ? Number(req.query.limit) || 25 : 25
 
     // Non-null: a null ebookProgress compares as 0 here (null > 0 is false)
     const mediaProgressesInProgress = req.user.mediaProgresses.filter((mp) => !mp.isFinished && (mp.currentTime > 0 || mp.ebookProgress! > 0))
