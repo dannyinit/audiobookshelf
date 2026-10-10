@@ -37,7 +37,7 @@ class PodcastEpisodeDownload {
     this.rssPodcastEpisode = null
 
     this.url = null
-    // Typed LibraryItem (as the JSDoc did); setData sets it before use
+    // cast(d): typed LibraryItem (as the JSDoc did); setData sets it before use (left from batch 11a, see Skipped files)
     this.libraryItem = null as unknown as LibraryItem
     this.libraryId = null
 
@@ -97,7 +97,7 @@ class PodcastEpisodeDownload {
     return this.rssPodcastEpisode!.title
   }
   get targetPath() {
-    // setData sets targetFilename to a string before the getters are used
+    // cast(d): setData sets targetFilename to a string before the getters are used
     return filePathToPOSIX(Path.join(this.libraryItem.path, this.targetFilename as string))
   }
   get targetRelPath() {
@@ -107,8 +107,9 @@ class PodcastEpisodeDownload {
     return this.libraryItem?.id || null
   }
   get pubYear() {
-    // cast(d): setData sets rssPodcastEpisode before the getters are used (2)
+    // cast(d): setData sets rssPodcastEpisode before the getters are used
     if (!this.rssPodcastEpisode!.publishedAt) return null
+    // cast(d): setData sets rssPodcastEpisode before the getters are used
     return new Date(this.rssPodcastEpisode!.publishedAt).getFullYear()
   }
 

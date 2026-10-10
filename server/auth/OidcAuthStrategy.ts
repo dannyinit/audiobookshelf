@@ -72,7 +72,7 @@ class OidcAuthStrategy {
    */
   getStrategy(): OidcStrategy {
     if (!this.strategy) {
-      // Typed with the internal fields read in getAuthorizationUrl
+      // cast(d): typed with the internal fields of the openid-client strategy read in getAuthorizationUrl (see OidcStrategy)
       this.strategy = new OpenIDClient.Strategy(
         {
           client: this.getClient(),
@@ -99,7 +99,7 @@ class OidcAuthStrategy {
       // Custom req timeout see: https://github.com/panva/node-openid-client/blob/main/docs/README.md#customizing
       OpenIDClient.custom.setHttpOptionsDefaults({ timeout: 10000 })
 
-      // Settings were checked valid above; a null logout URL is passed through, like the JS
+      // cast(d): the settings are string | null; they were checked valid above, and a null logout URL is passed through, like the JS
       const openIdIssuerClient = new OpenIDClient.Issuer({
         issuer: global.ServerSettings.authOpenIDIssuerURL,
         authorization_endpoint: global.ServerSettings.authOpenIDAuthorizationURL,
@@ -109,7 +109,7 @@ class OidcAuthStrategy {
         end_session_endpoint: global.ServerSettings.authOpenIDLogoutURL
       } as OpenIDClient.IssuerMetadata).Client
 
-      // Settings were checked valid above
+      // cast(d): the settings are string | null; they were checked valid above
       this.client = new openIdIssuerClient({
         client_id: global.ServerSettings.authOpenIDClientID,
         client_secret: global.ServerSettings.authOpenIDClientSecret,
@@ -207,7 +207,7 @@ class OidcAuthStrategy {
 
       return done(null, user)
     } catch (error) {
-      // Errors thrown above are Error objects
+      // cast(d) (2): catch variable is unknown; errors thrown above are Error objects
       Logger.error(`[OidcAuth] openid callback error: ${(error as Error)?.message}\n${(error as Error)?.stack}`)
       // Remove new user if an error occurs
       if (isNewUser && user) {
@@ -247,7 +247,7 @@ class OidcAuthStrategy {
 
     if (!userinfo[groupClaimName]) throw new Error(`Group claim ${groupClaimName} not found in userinfo`)
 
-    // The group claim is a list of group names
+    // cast(d): assumed: the provider sends the group claim as a list of group names (only its presence is checked above)
     const groupsList = (userinfo[groupClaimName] as string[]).map((group) => group.toLowerCase())
     const rolesInOrderOfPriority = ['admin', 'user', 'guest']
 
@@ -403,7 +403,7 @@ class OidcAuthStrategy {
         }
       }
 
-      // Index the session by the strategy's session key
+      // cast(b): express-session types the session without the strategy's key; it is indexed by that key here
       const session = req.session as unknown as Record<string, object | undefined>
       session[sessionKey] = {
         ...session[sessionKey],
@@ -430,11 +430,11 @@ class OidcAuthStrategy {
         isMobileFlow
       }
     } catch (error) {
-      // Errors thrown above are Error objects
+      // cast(d): catch variable is unknown; errors thrown above are Error objects
       Logger.error(`[OidcAuth] Error generating authorization URL: ${error}\n${(error as Error)?.stack}`)
       return {
         status: 500,
-        // Error object (see above)
+        // cast(d): catch variable is unknown; errors thrown above are Error objects
         error: (error as Error).message || 'Unknown error'
       }
     }
@@ -449,7 +449,7 @@ class OidcAuthStrategy {
   getEndSessionUrl(req: Request, idToken: string, authMethod: string): string | null {
     const client = this.getClient()
 
-    // The issuer exposes its metadata fields directly (end_session_endpoint is a string or unset)
+    // cast(d): openid-client types issuer without its metadata fields, which it exposes directly (end_session_endpoint is a string or unset)
     const issuer = client.issuer as OpenIDClient.Issuer<OpenIDClient.BaseClient> & OpenIDClient.IssuerMetadata
     if (issuer.end_session_endpoint && issuer.end_session_endpoint.length > 0) {
       let postLogoutRedirectUri: string | null = null
@@ -471,7 +471,7 @@ class OidcAuthStrategy {
 
       return client.endSessionUrl({
         id_token_hint: idToken,
-        // undefined and null both leave the parameter out
+        // cast(d): postLogoutRedirectUri is string | null; undefined and null both leave the parameter out
         post_logout_redirect_uri: postLogoutRedirectUri as string | undefined
       })
     }
@@ -503,7 +503,7 @@ class OidcAuthStrategy {
     }
 
     try {
-      // configUrl was set in the try block above (it returns otherwise)
+      // cast(d): configUrl was set in the try block above, which returns otherwise (the cast changes no type)
       const { data } = await axios.get((configUrl as URL).toString())
       return {
         issuer: data.issuer,
@@ -539,7 +539,7 @@ class OidcAuthStrategy {
         return res.status(400).send('State parameter mismatch')
       }
 
-      // has(state) was checked above
+      // cast(d): has(state) was checked above, so get returns the session
       let mobile_redirect_uri = this.openIdAuthSession.get(requiredString(state))!.mobile_redirect_uri
 
       if (!mobile_redirect_uri) {
@@ -554,7 +554,7 @@ class OidcAuthStrategy {
       // Redirect to the overwrite URI saved in the map
       res.redirect(redirectUri)
     } catch (error) {
-      // Errors thrown above are Error objects
+      // cast(d): catch variable is unknown; errors thrown above are Error objects
       Logger.error(`[OidcAuth] Error in /auth/openid/mobile-redirect route: ${error}\n${(error as Error)?.stack}`)
       res.status(500).send('Internal Server Error')
     }

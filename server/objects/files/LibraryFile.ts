@@ -37,7 +37,7 @@ class LibraryFile {
 
   constructor(file?: LibraryFileData | null) {
     this.ino = null
-    // Typed FileMetadata; construct or setDataFromPath sets it before use
+    // cast(d): typed FileMetadata; construct or setDataFromPath sets it before use (left from batch 11a, see Skipped files)
     this.metadata = null as unknown as FileMetadata
     this.isSupplementary = null
     this.addedAt = null
@@ -57,7 +57,7 @@ class LibraryFile {
   }
 
   toJSON() {
-    // Typed as set: toJSON is only called on files that construct or setDataFromPath filled in (isSupplementary may still be null)
+    // cast(d): typed as set: toJSON is only called on files that construct or setDataFromPath filled in (isSupplementary may still be null)
     return {
       ino: this.ino,
       metadata: this.metadata.toJSON(),
@@ -95,6 +95,7 @@ class LibraryFile {
 
   async setDataFromPath(path: string, relPath: string) {
     // NOTE: getFileTimestampsWithIno returns false when stat fails; then ino is undefined and no timestamps are set
+    // cast(c): typed without false; when stat fails it is false and the reads below are undefined, as in the JS (see NOTE above)
     var fileTsData = (await getFileTimestampsWithIno(path)) as Exclude<Awaited<ReturnType<typeof getFileTimestampsWithIno>>, false>
     var fileMetadata = new FileMetadata()
     fileMetadata.setData(fileTsData)

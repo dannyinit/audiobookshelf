@@ -135,7 +135,7 @@ class Notification {
     }
 
     const keysToUpdate = ['libraryId', 'eventName', 'urls', 'titleTemplate', 'bodyTemplate', 'enabled', 'type'] as const
-    // Index this object by key
+    // cast(d): this object is read and written by key in the loop below (same object)
     const self = this as unknown as Record<string, unknown>
     var hasUpdated = false
     for (const key of keysToUpdate) {
@@ -168,7 +168,7 @@ class Notification {
     var updatedTemplate = templateText
     while ((match = ptrn.exec(templateText)) != null) {
       if (data[match[1]]) {
-        // Event data values are not all strings; replace coerces the replacement to a string, like the JS
+        // cast(d): event data values are not all strings; replace coerces the replacement to a string, like the JS
         updatedTemplate = updatedTemplate.replace(match[0], data[match[1]] as string)
       }
     }

@@ -132,7 +132,7 @@ class AudioMetaTags {
 
   toJSON(): AudioMetaTagsJSON {
     // Only return the tags that are actually set
-    // Index this object by key
+    // cast(d): this object is read by key in the loop below (same object; the tag fields are string | null)
     const self = this as unknown as Record<string, string | null>
     const json: Record<string, string | null> = {}
     for (const key in self) {
@@ -318,7 +318,7 @@ class AudioMetaTags {
       tagMusicBrainzArtistId: payload.file_tag_musicbrainz_artistid || null
     }
 
-    // Index this object by key
+    // cast(d): this object is read and written by key in the loop below (same object; the tag fields are string | null)
     const self = this as unknown as Record<string, string | null>
     let hasUpdates = false
     for (const key in dataMap) {
@@ -336,8 +336,9 @@ class AudioMetaTags {
 
   isEqual(audioFileMetadata: AudioMetaTags | null | undefined) {
     if (!audioFileMetadata || !audioFileMetadata.toJSON) return false
-    // Index both objects by key
+    // cast(d): the other meta tags object is read by key in the loop below (same object; the tag fields are string | null)
     const other = audioFileMetadata as unknown as Record<string, string | null>
+    // cast(d): this object is read by key in the loop below (same object; the tag fields are string | null)
     const self = this as unknown as Record<string, string | null>
     for (const key in audioFileMetadata.toJSON()) {
       if (other[key] !== self[key]) return false

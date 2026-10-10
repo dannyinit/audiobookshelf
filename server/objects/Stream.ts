@@ -72,7 +72,7 @@ class Stream extends EventEmitter {
 
   get episode() {
     if (!this.libraryItem.isPodcast) return null
-    // Media of a podcast library item is a Podcast
+    // cast(d): isPodcast is checked just above (a getter does not narrow media), so media is a Podcast
     return (this.libraryItem.media as Podcast).podcastEpisodes.find((ep) => ep.id === this.episodeId)
   }
   get mediaTitle() {
@@ -82,7 +82,7 @@ class Stream extends EventEmitter {
     return this.libraryItem.media.getPlaybackDuration(this.episodeId)
   }
   get tracks() {
-    // getTrackList only reads the episode id for podcasts (null for books)
+    // cast(d): getTrackList only reads the episode id for podcasts (null for books)
     return this.libraryItem.getTrackList(this.episodeId as string)
   }
   get tracksAudioFileType() {
@@ -129,7 +129,7 @@ class Stream extends EventEmitter {
     return `/hls/${this.id}/output.m3u8`
   }
   get isAACEncodable() {
-    // includes(null) is false
+    // cast(d): tracksAudioFileType may be null; includes(null) is false
     return ['mp4', 'm4a', 'm4b'].includes(this.tracksAudioFileType as string)
   }
   get transcodeForceAAC() {
@@ -247,6 +247,7 @@ class Stream extends EventEmitter {
   startLoop() {
     this.clientEmit('stream_progress', { stream: this.id, chunks: [], numSegments: 0, percent: '0%' })
 
+    // cast(d): loop is null before the first transcode; clearInterval ignores null, but its type does not accept it
     clearInterval(this.loop as NodeJS.Timeout) // clearInterval ignores null
     var intervalId = setInterval(() => {
       if (!this.isTranscodeComplete) {
@@ -296,7 +297,7 @@ class Stream extends EventEmitter {
     const logLevel = process.env.NODE_ENV === 'production' ? 'error' : 'warning'
 
     let audioCodec = 'copy'
-    // includes(null) is false
+    // cast(d) (2): the mime type and codec may be null; includes(null) is false
     if (this.transcodeForceAAC || this.mimeTypesToForceAAC.includes(this.tracksMimeType as string) || this.codecsToForceAAC.includes(this.tracksCodec as string)) {
       Logger.debug(`[Stream] Forcing AAC for tracks with mime type ${this.tracksMimeType} and codec ${this.tracksCodec}`)
       audioCodec = 'aac'
@@ -304,7 +305,7 @@ class Stream extends EventEmitter {
 
     const codecOptions = [`-loglevel ${logLevel}`, '-map 0:a']
 
-    // includes(null) is false
+    // cast(d): tracksCodec may be null; includes(null) is false
     if (['ac3', 'eac3'].includes(this.tracksCodec as string) && this.tracks.length > 0 && this.tracks[0].bitRate && this.tracks[0].channels) {
       // In case for ac3/eac3 it needs to be passed the bitrate and channels to avoid ffmpeg errors
       codecOptions.push(`-c:a ${audioCodec}`, `-b:a ${this.tracks[0].bitRate}`, `-ac ${this.tracks[0].channels}`)
@@ -350,6 +351,7 @@ class Stream extends EventEmitter {
         // This is an intentional SIGKILL
         Logger.info('[FFMPEG] Transcode Killed')
         this.ffmpeg = null
+        // cast(d): loop may be null; clearInterval ignores null, but its type does not accept it
         clearInterval(this.loop as NodeJS.Timeout) // clearInterval ignores null
       } else {
         Logger.error('Ffmpeg Err', '"' + err.message + '"')
@@ -379,6 +381,7 @@ class Stream extends EventEmitter {
       }
       this.isTranscodeComplete = true
       this.ffmpeg = null
+      // cast(d): loop may be null; clearInterval ignores null, but its type does not accept it
       clearInterval(this.loop as NodeJS.Timeout) // clearInterval ignores null
     })
 
@@ -386,6 +389,7 @@ class Stream extends EventEmitter {
   }
 
   async close(errorMessage: string | null = null) {
+    // cast(d): loop is null when no transcode ran; clearInterval ignores null, but its type does not accept it
     clearInterval(this.loop as NodeJS.Timeout) // clearInterval ignores null
 
     Logger.info('Closing Stream', this.id)
@@ -409,6 +413,7 @@ class Stream extends EventEmitter {
   }
 
   cancelTranscode() {
+    // cast(d): loop may be null; clearInterval ignores null, but its type does not accept it
     clearInterval(this.loop as NodeJS.Timeout) // clearInterval ignores null
     if (this.ffmpeg) {
       this.ffmpeg.kill('SIGKILL')

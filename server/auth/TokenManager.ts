@@ -40,17 +40,22 @@ class TokenManager {
   declare RefreshTokenGracePeriod: number
 
   constructor() {
-    // Each `as string` below: parseInt(undefined) is NaN, like the JS
+    // cast(d): the variable may be unset; parseInt(undefined) is NaN, so the fallback is used, like the JS
     this.RefreshTokenExpiry = parseInt(process.env.REFRESH_TOKEN_EXPIRY as string) || 30 * 24 * 60 * 60 // 30 days
+    // cast(d): the variable may be unset; parseInt(undefined) is NaN, so the fallback is used, like the JS
     this.AccessTokenExpiry = parseInt(process.env.ACCESS_TOKEN_EXPIRY as string) || 1 * 60 * 60 // 1 hour
+    // cast(d): the variable may be unset; parseInt(undefined) is NaN, so the fallback is used, like the JS
     this.RefreshTokenGracePeriod = parseInt(process.env.REFRESH_TOKEN_GRACE_PERIOD as string) || 10 * 60 // 10 minutes
 
+    // cast(d): the variable may be unset; parseInt(undefined) is NaN, which fails the check
     if (parseInt(process.env.REFRESH_TOKEN_EXPIRY as string) > 0) { // parseInt(undefined) is NaN
       Logger.info(`[TokenManager] Refresh token expiry set from ENV variable to ${this.RefreshTokenExpiry} seconds`)
     }
+    // cast(d): the variable may be unset; parseInt(undefined) is NaN, which fails the check
     if (parseInt(process.env.ACCESS_TOKEN_EXPIRY as string) > 0) { // parseInt(undefined) is NaN
       Logger.info(`[TokenManager] Access token expiry set from ENV variable to ${this.AccessTokenExpiry} seconds`)
     }
+    // cast(d): the variable may be unset; parseInt(undefined) is NaN, which fails the check
     if (parseInt(process.env.REFRESH_TOKEN_GRACE_PERIOD as string) > 0) { // parseInt(undefined) is NaN
       Logger.info(`[TokenManager] Refresh token grace period set from ENV variable to ${this.RefreshTokenGracePeriod} seconds`)
     }
@@ -72,7 +77,7 @@ class TokenManager {
     } else if (!Database.serverSettings.tokenSecret) {
       // Generate new token secret and store it on server settings
       Logger.info('[TokenManager] JWT secret key not found, generating one')
-      // Required here like the JS; typed as the node crypto module
+      // cast(d): require() is typed any; required here like the JS, typed as the node crypto module
       TokenManager.TokenSecret = (require('crypto') as typeof import('crypto')).randomBytes(256).toString('base64')
       Database.serverSettings.tokenSecret = TokenManager.TokenSecret
       await Database.updateServerSettings()
@@ -265,6 +270,7 @@ class TokenManager {
       Logger.debug(`[TokenManager] Race condition in rotateTokensForSession for user ${user.id}, getting new token`)
 
       // NOTE: if the session row was deleted in the meantime findOne returns null and the reads below throw
+      // cast(c): typed as found; when the row was deleted findOne returns null (see NOTE above)
       const updatedSession = (await Database.sessionModel.findOne({ where: { id: session.id } })) as SessionRow
 
       newRefreshToken = updatedSession.refreshToken
@@ -297,7 +303,7 @@ class TokenManager {
   async jwtAuthCheck(jwt_payload: JwtPayload, done: PassportDone) {
     if (jwt_payload.type === 'api') {
       // Api key based authentication
-      // API key tokens are signed with a keyId
+      // cast(d): api tokens are signed with a keyId by ApiKey (passport-jwt verified the signature); keyId is optional in JwtPayload
       const apiKey = await Database.apiKeyModel.getById(jwt_payload.keyId as string)
 
       if (!apiKey?.isActive) {
@@ -338,7 +344,7 @@ class TokenManager {
       }
 
       // load user by id from the jwt token
-      // isBearerAccessTokenPayload checked that userId is set
+      // cast(d): isBearerAccessTokenPayload checked that userId is set
       const user: UserWithOldTokenFlag | null = await Database.userModel.getUserByIdOrOldId(jwt_payload.userId as string)
 
       if (!user?.isActive) {
@@ -380,7 +386,7 @@ class TokenManager {
         }
       }
 
-      // Typed with the refresh token columns
+      // cast(d): SessionRow names the refresh token columns; the Session model declares them since batch 3a, so the cast changes no type
       let session = (await Database.sessionModel.findOne({
         where: {
           [Op.or]: [{ refreshToken: refreshToken }, { lastRefreshToken: refreshToken }]
@@ -447,7 +453,7 @@ class TokenManager {
         user
       }
     } catch (error) {
-      // jwt.verify and the queries throw Error objects
+      // cast(d): catch variable is unknown; jwt.verify and the queries throw Error objects
       if ((error as Error).name === 'TokenExpiredError') {
         Logger.info(`[TokenManager] Refresh token expired, cleaning up session`)
 
@@ -458,21 +464,22 @@ class TokenManager {
           })
           Logger.info(`[TokenManager] Expired session cleaned up`)
         } catch (cleanupError) {
-          // The query throws Error objects
+          // cast(d): catch variable is unknown; the query throws Error objects
           Logger.error(`[TokenManager] Error cleaning up expired session: ${(cleanupError as Error).message}`)
         }
 
         return {
           error: 'Refresh token expired'
         }
+      // cast(d): catch variable is unknown; jwt.verify and the queries throw Error objects
       } else if ((error as Error).name === 'JsonWebTokenError') { // Error object (see above)
-        // Error object (see above)
+        // cast(d): catch variable is unknown (see above)
         Logger.error(`[TokenManager] Invalid refresh token format: ${(error as Error).message}`)
         return {
           error: 'Invalid refresh token'
         }
       } else {
-        // Error object (see above)
+        // cast(d): catch variable is unknown (see above)
         Logger.error(`[TokenManager] Refresh token error: ${(error as Error).message}`)
         return {
           error: 'Invalid refresh token'
@@ -492,11 +499,11 @@ class TokenManager {
    */
   async invalidateJwtSessionsForUser(user: User, req: Request, res: Response) {
     const currentRefreshToken = req.cookies.refresh_token || req.headers['x-refresh-token']
-    // Only called from authenticated routes, so req.user is set
+    // cast(d): the callers (MeController and UserController routes) run after the auth middleware, so req.user is set
     if ((req.user as User).id === user.id && currentRefreshToken) {
       // Current user is the same as the user to invalidate sessions for
       // So rotate token for current session
-      // Typed with the refresh token columns
+      // cast(d): SessionRow names the refresh token columns; the Session model declares them since batch 3a, so the cast changes no type
       const currentSession = (await Database.sessionModel.findOne({
         where: {
           userId: user.id,
@@ -566,7 +573,7 @@ class TokenManager {
       Logger.info(`[TokenManager] Refresh token invalidated, ${numDeleted} sessions deleted`)
       return true
     } catch (error) {
-      // The query throws Error objects
+      // cast(d): catch variable is unknown; the query throws Error objects
       Logger.error(`[TokenManager] Error invalidating refresh token: ${(error as Error).message}`)
       return false
     }

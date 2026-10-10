@@ -6,7 +6,7 @@ import type LibraryItem = require('../models/LibraryItem')
 import type AudioTrack = require('./files/AudioTrack')
 import type Stream = require('./Stream')
 import type { AudioChapter, DateAndTime } from './types'
-// Typed view of the untyped vendored date-and-time
+// cast(a): typed view of the untyped vendored date-and-time (see DateAndTime)
 const date = dateAndTime as unknown as DateAndTime
 const uuidv4 = uuid.v4
 const serverVersion = packageJson.version
@@ -236,7 +236,7 @@ class PlaybackSession {
     this.currentTime = session.currentTime || 0
 
     this.startedAt = session.startedAt
-    // Copied as given (possibly undefined), like the JS
+    // cast(d): updatedAt and startedAt of the stored session may be undefined; copied as given, like the JS
     this.updatedAt = (session.updatedAt || session.startedAt) as number | null
 
     // Local playback sessions dont set this date field so set using updatedAt
@@ -293,7 +293,7 @@ class PlaybackSession {
     this.episodeId = episodeId
     this.mediaType = libraryItem.mediaType
     this.mediaMetadata = libraryItem.media.oldMetadataToJSON()
-    // Book media ignores the episode id; podcast sessions always pass one
+    // cast(d): a book ignores the id; for a podcast a null id finds no episode, so getChapters logs it and returns [], as in the JS
     this.chapters = libraryItem.media.getChapters(episodeId as string)
     this.displayTitle = libraryItem.media.getPlaybackTitle(episodeId)
     this.displayAuthor = libraryItem.media.getPlaybackAuthor()
@@ -315,7 +315,7 @@ class PlaybackSession {
   }
 
   addListeningTime(timeListened: number | string) {
-    // isNaN coerces its argument
+    // cast(d): timeListened is number | string; isNaN coerces its argument
     if (!timeListened || isNaN(timeListened as number)) return
 
     if (!this.date) {
@@ -324,7 +324,7 @@ class PlaybackSession {
       this.dayOfWeek = date.format(new Date(), 'dddd')
     }
 
-    // timeListening is null before the first update (null + n is n); parseFloat coerces numbers to strings
+    // cast(d) (2): timeListening is null before the first update (null + n is n); parseFloat coerces numbers to strings
     (this.timeListening as number) += Number.parseFloat(timeListened as string)
     this.updatedAt = Date.now()
   }

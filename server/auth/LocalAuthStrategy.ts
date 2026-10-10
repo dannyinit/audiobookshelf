@@ -136,7 +136,7 @@ class LocalAuthStrategy {
   comparePassword(password: string, user: User): boolean | Promise<boolean> {
     if (user.type === 'root' && !password && !user.pash) return true
     if (!password || !user.pash) return false
-    // Without a callback compare returns a promise
+    // cast(a): the vendored bcryptjs is typed with both overloads; without a callback compare returns a promise
     return bcrypt.compare(password, user.pash) as Promise<boolean>
   }
 

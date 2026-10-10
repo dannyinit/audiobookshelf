@@ -22,7 +22,7 @@ class FileMetadata {
     this.birthtimeMs = null
 
     if (metadata) {
-      // Missing fields are copied as undefined, like the JS
+      // cast(d): the stored JSON may lack fields; missing fields are copied as undefined, like the JS
       this.construct(metadata as FileMetadataJSON)
     }
 
@@ -42,7 +42,7 @@ class FileMetadata {
   }
 
   toJSON() {
-    // Typed as set: toJSON is only called on metadata that construct or setData filled in
+    // cast(d): typed as set: toJSON is only called on metadata that construct or setData filled in
     return {
       filename: this.filename,
       ext: this.ext,
@@ -69,8 +69,9 @@ class FileMetadata {
   }
 
   update(payload: object) {
-    // Index this object and the payload by key
+    // cast(d): this object is read and written by key in the loop below (same object; the class has no index signature)
     const self = this as unknown as Record<string, unknown>
+    // cast(d): the payload is read by key in the loop below (same object)
     const values = payload as Record<string, unknown>
     var hasUpdates = false
     for (const key in values) {
@@ -83,8 +84,9 @@ class FileMetadata {
   }
 
   setData(payload: object) {
-    // Index this object and the payload by key
+    // cast(d): this object is read and written by key in the loop below (same object; the class has no index signature)
     const self = this as unknown as Record<string, unknown>
+    // cast(d): the payload is read by key in the loop below (same object)
     const values = payload as Record<string, unknown>
     for (const key in values) {
       if (self[key] !== undefined) {

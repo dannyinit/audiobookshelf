@@ -114,7 +114,7 @@ class EmailSettings {
 
     if (payload.ereaderDevices?.length) {
       // Validate ereader devices
-      // filter removes the null (invalid) devices
+      // cast(d): filter removes the null (invalid) devices, but TypeScript keeps null in the element type
       payload.ereaderDevices = payload.ereaderDevices
         .map((device) => {
           if (!device.name || !device.email) {
@@ -138,8 +138,9 @@ class EmailSettings {
     let hasUpdates = false
 
     const json = this.toJSON()
-    // Index this object and the JSON by key
+    // cast(d): this object is written by key in the loop below (same object; the class has no index signature)
     const self = this as unknown as Record<string, unknown>
+    // cast(d): the JSON is read by key in the loop below (same object)
     const jsonValues = json as Record<string, unknown>
     for (const key in json) {
       if (key === 'id') continue

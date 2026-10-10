@@ -69,7 +69,7 @@ class AudioFile {
   constructor(data?: AudioFileData | null) {
     this.index = null
     this.ino = null
-    // Typed FileMetadata (as the JSDoc did); construct or setDataFromProbe sets it before use
+    // cast(d): typed FileMetadata (as the JSDoc did); construct or setDataFromProbe sets it before use (left from batch 11a, see Skipped files)
     this.metadata = null as unknown as FileMetadata
     this.addedAt = null
     this.updatedAt = null
@@ -163,7 +163,7 @@ class AudioFile {
   }
 
   get mimeType() {
-    // Index the mime type map by any format string; unknown formats read undefined, like the JS
+    // cast(d): the mime type map is indexed by any format string; unknown formats read undefined, like the JS
     const mimeTypes = AudioMimeType as Record<string, string | undefined>
     const format = this.metadata.format.toUpperCase()
     if (mimeTypes[format]) {
@@ -195,7 +195,7 @@ class AudioFile {
     this.channels = probeData.channels
     this.channelLayout = probeData.channelLayout
     this.chapters = probeData.chapters || []
-    // Probe data from prober.probe always has audioMetaTags (MediaProbeData.setData)
+    // cast(d): probe data from prober.probe always has audioMetaTags (MediaProbeData.setData sets it)
     this.metaTags = probeData.audioMetaTags as AudioMetaTags
     this.embeddedCoverArt = probeData.embeddedCoverArt
   }
@@ -239,8 +239,9 @@ class AudioFile {
     const newjson = scannedAudioFile.toJSON()
     const ignoreKeys = ['manuallyVerified', 'ctimeMs', 'addedAt', 'updatedAt']
 
-    // Index this object and the new JSON by key
+    // cast(d): this object is read and written by key in the loop below (same object; the class has no index signature)
     const self = this as unknown as Record<string, unknown>
+    // cast(d): the new JSON is read by key in the loop below (same object)
     const newValues = newjson as Record<string, unknown>
     for (const key in newjson) {
       if (key === 'metadata') {

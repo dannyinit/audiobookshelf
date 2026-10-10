@@ -4,7 +4,7 @@ import fsExtra = require('../libs/fsExtra')
 import fileUtils = require('../utils/fileUtils')
 import Logger = require('../Logger')
 import type { DateAndTime } from './types'
-// Typed view of the untyped vendored date-and-time
+// cast(a): typed view of the untyped vendored date-and-time (see DateAndTime)
 const date = dateAndTime as unknown as DateAndTime
 const fs = fsExtra
 

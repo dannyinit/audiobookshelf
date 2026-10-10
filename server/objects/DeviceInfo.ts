@@ -75,8 +75,9 @@ class DeviceInfo {
   }
 
   construct(deviceInfo: object) {
-    // Index this object and the stored data by key
+    // cast(d): this object is read and written by key in the loop below (same object; the class has no index signature)
     const self = this as unknown as Record<string, unknown>
+    // cast(d): the stored data is read by key in the loop below (same object)
     const values = deviceInfo as Record<string, unknown>
     for (const key in values) {
       if (values[key] !== undefined && self[key] !== undefined) {
@@ -103,7 +104,7 @@ class DeviceInfo {
       clientName: this.clientName,
       deviceName: this.deviceName
     }
-    // Index the JSON object by key
+    // cast(d): the JSON object is read and its empty keys deleted by key in the loop below (same object)
     const values = obj as Record<string, string | null | undefined>
     for (const key in obj) {
       if (values[key] === null || values[key] === undefined) {
@@ -173,9 +174,11 @@ class DeviceInfo {
     const deviceInfoJson = deviceInfo.toJSON ? deviceInfo.toJSON() : deviceInfo
     const existingDeviceInfoJson = this.toJSON()
 
-    // Index this object and both JSON objects by key
+    // cast(d): this object is read and written by key in the loop below (same object; the class has no index signature)
     const self = this as unknown as Record<string, unknown>
+    // cast(d): the new JSON is read by key in the loop below (same object)
     const newValues = deviceInfoJson as Record<string, unknown>
+    // cast(d): the existing JSON is read by key in the loop below (same object)
     const existingValues = existingDeviceInfoJson as Record<string, unknown>
     let hasUpdates = false
     for (const key in deviceInfoJson) {

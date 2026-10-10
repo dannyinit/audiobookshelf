@@ -2,7 +2,7 @@ import Path = require('path')
 import dateAndTime = require('../libs/dateAndTime')
 import packageJson = require('../../package.json')
 import type { DateAndTime } from './types'
-// Typed view of the untyped vendored date-and-time
+// cast(a): typed view of the untyped vendored date-and-time (see DateAndTime)
 const date = dateAndTime as unknown as DateAndTime
 const version = packageJson.version
 
@@ -51,7 +51,7 @@ class Backup {
   construct(data: { details: string[]; fullPath: string }) {
     this.id = data.details[0]
     this.key = data.details[1]
-    // Loose comparison with the number 1 (the key is a string), like the JS
+    // cast(d): key is a string; the loose comparison with the number 1 coerces it, like the JS
     if ((this.key as unknown as number) == 1) this.key = null // v2.2.23 and below backups stored '1' here
 
     this.createdAt = Number(data.details[2])

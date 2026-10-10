@@ -180,11 +180,11 @@ class ServerSettings {
   }
 
   construct(settings: ServerSettingsData) {
-    // Copied as given (possibly undefined), like the JS
+    // cast(d): tokenSecret of the stored settings may be undefined; copied as given, like the JS
     this.tokenSecret = settings.tokenSecret as string | null
     this.scannerFindCovers = !!settings.scannerFindCovers
     this.scannerCoverProvider = settings.scannerCoverProvider || 'google'
-    // Copied as given (possibly undefined), like the JS
+    // cast(d): scannerParseSubtitle of the stored settings may be undefined; copied as given, like the JS
     this.scannerParseSubtitle = settings.scannerParseSubtitle as boolean
     this.scannerPreferMatchedMetadata = !!settings.scannerPreferMatchedMetadata
     this.scannerDisableWatcher = !!settings.scannerDisableWatcher
@@ -193,9 +193,9 @@ class ServerSettings {
     this.storeMetadataWithItem = !!settings.storeMetadataWithItem
     this.metadataFileFormat = settings.metadataFileFormat || 'json'
 
-    // isNaN coerces its argument (undefined is NaN)
+    // cast(d): isNaN coerces its argument (undefined is NaN)
     this.rateLimitLoginRequests = !isNaN(settings.rateLimitLoginRequests as number) ? Number(settings.rateLimitLoginRequests) : 10
-    // isNaN coerces its argument (undefined is NaN)
+    // cast(d): isNaN coerces its argument (undefined is NaN)
     this.rateLimitLoginWindow = !isNaN(settings.rateLimitLoginWindow as number) ? Number(settings.rateLimitLoginWindow) : 10 * 60 * 1000 // 10 Minutes
     this.allowIframe = !!settings.allowIframe
 
@@ -268,7 +268,7 @@ class ServerSettings {
     }
     if (settings.homeBookshelfView == undefined) {
       // homeBookshelfView was added in 2.1.3
-      // Copied as given (possibly undefined), like the JS
+      // cast(d): bookshelfView of the stored settings may be undefined; copied as given, like the JS
       this.homeBookshelfView = settings.bookshelfView as number
     }
     if (settings.metadataFileFormat == undefined) {
@@ -434,7 +434,7 @@ class ServerSettings {
    * @returns true if updates were made
    */
   update(payload: Record<string, unknown>) {
-    // Index this object by key
+    // cast(d): this object is read and written by key in the loop below (same object)
     const self = this as unknown as Record<string, unknown>
     let hasUpdates = false
     for (const key in payload) {

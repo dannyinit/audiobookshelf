@@ -40,7 +40,7 @@ import type { FindOptions } from 'sequelize'
 import type Server = require('../Server')
 import type { DateAndTime } from '../objects/types'
 const fs = fsExtra
-// Typed view of the untyped vendored date-and-time
+// cast(a): typed view of the untyped vendored date-and-time (see DateAndTime)
 const date = dateAndTime as unknown as DateAndTime
 
 type OldPlaybackSession = import('../objects/PlaybackSession')
@@ -121,7 +121,7 @@ class ApiRouter {
     this.emailManager = Server.emailManager
     this.apiCacheManager = Server.apiCacheManager
 
-    // Same app; typed so the routes accept the controller handlers (see ApiRouterApp)
+    // cast(b): same app; typed so the routes accept the controller handlers, which express's RequestHandler rejects (see ApiRouterApp)
     this.router = express() as unknown as ApiRouterApp
     this.router.disable('x-powered-by')
     this.init()
@@ -498,7 +498,7 @@ class ApiRouter {
             required: false // Ensure it includes series even if no books exist
           },
           transaction
-          // Sequelize accepts an array of where conditions at runtime; its types do not
+          // cast(b): Sequelize accepts an array of where conditions at runtime; its types do not
         } as unknown as FindOptions)
       ).map((s) => ({ id: s.id, name: s.name, libraryId: s.libraryId }))
 
@@ -526,7 +526,7 @@ class ApiRouter {
       }
     } catch (error) {
       await transaction.rollback()
-      // The queries throw Error objects
+      // cast(d): catch variable is unknown; the queries throw Error objects
       Logger.error(`[ApiRouter] Error removing empty series: ${(error as Error).message}`)
     }
   }
@@ -563,7 +563,7 @@ class ApiRouter {
           attributes: ['id', 'name', 'libraryId'],
           raw: true,
           transaction
-          // Sequelize accepts an array of where conditions at runtime; its types do not
+          // cast(b): Sequelize accepts an array of where conditions at runtime; its types do not
         } as unknown as FindOptions)
       ).map((au) => ({ id: au.id, name: au.name, libraryId: au.libraryId }))
 
@@ -587,7 +587,7 @@ class ApiRouter {
       })
     } catch (error) {
       await transaction.rollback()
-      // The queries throw Error objects
+      // cast(d): catch variable is unknown; the queries throw Error objects
       Logger.error(`[ApiRouter] Error removing authors: ${(error as Error).message}`)
     }
   }
@@ -595,14 +595,14 @@ class ApiRouter {
   async getUserListeningSessionsHelper(userId: string) {
     // cast(d): getPlaybackSessions returns false only before Database.init, which runs before routes are served
     const userSessions = (await Database.getPlaybackSessions({ userId })) as OldPlaybackSession[]
-    // Stored sessions always have updatedAt
+    // cast(d) (2): sessions loaded from the database always have updatedAt (Sequelize timestamps)
     return userSessions.sort((a, b) => (b.updatedAt as number) - (a.updatedAt as number))
   }
 
   async getUserItemListeningSessionsHelper(userId: string, mediaItemId: string) {
     // cast(d): getPlaybackSessions returns false only before Database.init, which runs before routes are served
     const userSessions = (await Database.getPlaybackSessions({ userId, mediaItemId })) as OldPlaybackSession[]
-    // Stored sessions always have updatedAt
+    // cast(d) (2): sessions loaded from the database always have updatedAt (Sequelize timestamps)
     return userSessions.sort((a, b) => (b.updatedAt as number) - (a.updatedAt as number))
   }
 
@@ -618,7 +618,7 @@ class ApiRouter {
       today: 0,
       recentSessions: listeningSessions.slice(0, 10)
     }
-    // Same array; typed as the stats read the sessions (see ListeningStatsSession)
+    // cast(d): same array; typed as the stats read the sessions (see ListeningStatsSession)
     const sessionsForStats = listeningSessions as unknown as ListeningStatsSession[]
     sessionsForStats.forEach((s) => {
       let sessionTimeListening = s.timeListening
