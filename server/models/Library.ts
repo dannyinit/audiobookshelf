@@ -1,5 +1,5 @@
 import Sequelize = require('sequelize')
-import type { Attributes, CreationOptional, InferAttributes, InferCreationAttributes, InitOptions, ModelAttributes, ModelStatic, NonAttribute } from 'sequelize'
+import type { Attributes, CreationOptional, HasManyGetAssociationsMixin, InferAttributes, InferCreationAttributes, InitOptions, ModelAttributes, ModelStatic, NonAttribute } from 'sequelize'
 import Logger = require('../Logger')
 import type LibraryFolder = require('./LibraryFolder')
 import type { LibraryExtraData, LibrarySettingsObject, ModelsSequelize } from './types'
@@ -32,6 +32,7 @@ class Library extends Model<InferAttributes<Library>, InferCreationAttributes<Li
   // Associations, only set when included
 
   declare libraryFolders?: NonAttribute<LibraryFolder[]>
+  declare getLibraryFolders: HasManyGetAssociationsMixin<LibraryFolder>
 
   static getDefaultLibrarySettingsForMediaType(mediaType: string): LibrarySettingsObject {
     if (mediaType === 'podcast') {

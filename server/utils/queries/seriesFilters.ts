@@ -38,7 +38,7 @@ export = {
   /**
    * Get series filtered and sorted
    */
-  async getFilteredSeries(library: Library, user: User, filterBy: string, sortBy: string, sortDesc: boolean, include: string[], limit: number, offset: number) {
+  async getFilteredSeries(library: Library, user: User, filterBy: string | undefined, sortBy: string | undefined, sortDesc: boolean, include: string[], limit: number, offset: number) {
     let filterValue: string | null = null
     let filterGroup: string | null = null
     if (filterBy) {
