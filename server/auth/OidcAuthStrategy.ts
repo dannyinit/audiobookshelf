@@ -5,9 +5,11 @@ import axios from 'axios'
 import Database = require('../Database')
 import Logger = require('../Logger')
 import requestUtils = require('../utils/requestUtils')
+import queryValue = require('../utils/queryValue')
 import type User = require('../models/User')
 import type { PassportDone } from './types'
 const { getRequestOrigin } = requestUtils
+const { optionalString, requiredString } = queryValue
 
 /**
  * openid-client Strategy with the internal fields read here (not in its types)
@@ -22,11 +24,6 @@ type OidcStrategy = OpenIDClient.Strategy<User> & {
  * User model as used in the verify callback
  */
 type OidcUser = User & { error?: string; openid_id_token?: string }
-
-/**
- * Query params read by the openid routes
- */
-type OidcQuery = Partial<Record<'response_type' | 'redirect_uri' | 'code_challenge' | 'code_challenge_method' | 'state' | 'code', string>>
 
 /**
  * OpenID userinfo; claim names (group claim, advanced permissions claim) come from the server settings
@@ -304,8 +301,7 @@ class OidcAuthStrategy {
    * @param isMobileFlow
    */
   generatePkce(req: Request, isMobileFlow: unknown): PkceData {
-    // Query params are read as strings
-    const query = req.query as OidcQuery
+    const query = req.query
     if (isMobileFlow) {
       if (!query.code_challenge) {
         return {
@@ -318,8 +314,8 @@ class OidcAuthStrategy {
         }
       }
       return {
-        code_challenge: query.code_challenge,
-        code_challenge_method: query.code_challenge_method || 'S256'
+        code_challenge: requiredString(query.code_challenge),
+        code_challenge_method: optionalString(query.code_challenge_method) || 'S256'
       }
     } else {
       const code_verifier = OpenIDClient.generators.codeVerifier()
@@ -343,8 +339,7 @@ class OidcAuthStrategy {
    * @param req
    */
   getAuthorizationUrl(req: Request): { authorizationUrl: string; isMobileFlow: unknown; status?: undefined; error?: undefined } | { status: number; error: string; authorizationUrl?: undefined; isMobileFlow?: undefined } {
-    // Query params are read as strings
-    const query = req.query as OidcQuery
+    const query = req.query
     const client = this.getClient()
     const strategy = this.getStrategy()
     const sessionKey = strategy._key
@@ -364,7 +359,7 @@ class OidcAuthStrategy {
       }
 
       // Generate a state on web flow or if no state supplied
-      const state = !isMobileFlow || !query.state ? OpenIDClient.generators.random() : query.state
+      const state = !isMobileFlow || !query.state ? OpenIDClient.generators.random() : requiredString(query.state)
 
       // Redirect URL for the SSO provider
       let redirectUri: string
@@ -372,7 +367,7 @@ class OidcAuthStrategy {
         // Mobile required redirect uri
         // If it is in the whitelist, we will save into this.openIdAuthSession and set the redirect uri to /auth/openid/mobile-redirect
         //    where we will handle the redirect to it
-        if (!query.redirect_uri || !this.isValidRedirectUri(query.redirect_uri)) {
+        if (!query.redirect_uri || !this.isValidRedirectUri(requiredString(query.redirect_uri))) {
           Logger.debug(`[OidcAuth] Invalid redirect_uri=${query.redirect_uri}`)
           return {
             status: 400,
@@ -381,7 +376,7 @@ class OidcAuthStrategy {
         }
         // We cannot save the supplied redirect_uri in the session, because it the mobile client uses browser instead of the API
         //   for the request to mobile-redirect and as such the session is not shared
-        this.openIdAuthSession.set(state, { mobile_redirect_uri: query.redirect_uri })
+        this.openIdAuthSession.set(state, { mobile_redirect_uri: requiredString(query.redirect_uri) })
 
         redirectUri = new URL(`${global.ServerSettings.authOpenIDSubfolderForRedirectURLs}/auth/openid/mobile-redirect`, hostUrl).toString()
       } else {
@@ -536,27 +531,26 @@ class OidcAuthStrategy {
   handleMobileRedirect(req: Request, res: Response) {
     try {
       // Extract the state parameter from the request
-      // Query params are read as strings
-      const { state, code } = req.query as OidcQuery
+      const { state, code } = req.query
 
       // Check if the state provided is in our list
-      if (!state || !this.openIdAuthSession.has(state)) {
+      if (!state || !this.openIdAuthSession.has(requiredString(state))) {
         Logger.error('[OidcAuth] /auth/openid/mobile-redirect route: State parameter mismatch')
         return res.status(400).send('State parameter mismatch')
       }
 
       // has(state) was checked above
-      let mobile_redirect_uri = this.openIdAuthSession.get(state)!.mobile_redirect_uri
+      let mobile_redirect_uri = this.openIdAuthSession.get(requiredString(state))!.mobile_redirect_uri
 
       if (!mobile_redirect_uri) {
         Logger.error('[OidcAuth] No redirect URI')
         return res.status(400).send('No redirect URI')
       }
 
-      this.openIdAuthSession.delete(state)
+      this.openIdAuthSession.delete(requiredString(state))
 
-      // encodeURIComponent stringifies undefined, like the JS
-      const redirectUri = `${mobile_redirect_uri}?code=${encodeURIComponent(code as string)}&state=${encodeURIComponent(state)}`
+      // cast(d): query value; code is not checked (requiredString does not fit), and encodeURIComponent stringifies undefined or an array, like the JS
+      const redirectUri = `${mobile_redirect_uri}?code=${encodeURIComponent(code as string)}&state=${encodeURIComponent(requiredString(state))}`
       // Redirect to the overwrite URI saved in the map
       res.redirect(redirectUri)
     } catch (error) {
