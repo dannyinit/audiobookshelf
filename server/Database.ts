@@ -24,6 +24,16 @@ import type oldPlaybackSession = require('./objects/PlaybackSession')
 const { Sequelize, Op } = sequelize
 
 /**
+ * Calls `load` (a require() call written at the call site, so the module is still required there, when the
+ * caller runs) and returns its result typed as the module the caller names, for example
+ * `lazy<typeof import('./models/User')>(() => require('./models/User'))`
+ */
+function lazy<T>(load: () => unknown): T {
+  // cast(d): require() is typed any; the caller names the type of the module it requires
+  return load() as T
+}
+
+/**
  * Fields that are null until init (Database.init runs first in Server.init, before the routes, managers and
  * queries that read them): sequelize is set by connect (the models are on sequelize.models after buildModels),
  * the settings objects by loadData. They are read as set and can be written null (the constructor does, and the
@@ -330,32 +340,32 @@ class Database {
   }
 
   buildModels(force = false) {
-    // cast(d): require() is typed any; the models are required here (lazily, in this order), not at module load
-    (require('./models/User') as typeof import('./models/User')).init(this.sequelize)
-    ;(require('./models/Session') as typeof import('./models/Session')).init(this.sequelize)
-    ;(require('./models/ApiKey') as typeof import('./models/ApiKey')).init(this.sequelize)
-    ;(require('./models/Library') as typeof import('./models/Library')).init(this.sequelize)
-    ;(require('./models/LibraryFolder') as typeof import('./models/LibraryFolder')).init(this.sequelize)
-    ;(require('./models/Book') as typeof import('./models/Book')).init(this.sequelize)
-    ;(require('./models/Podcast') as typeof import('./models/Podcast')).init(this.sequelize)
-    ;(require('./models/PodcastEpisode') as typeof import('./models/PodcastEpisode')).init(this.sequelize)
-    ;(require('./models/LibraryItem') as typeof import('./models/LibraryItem')).init(this.sequelize)
-    ;(require('./models/MediaProgress') as typeof import('./models/MediaProgress')).init(this.sequelize)
-    ;(require('./models/Series') as typeof import('./models/Series')).init(this.sequelize)
-    ;(require('./models/BookSeries') as typeof import('./models/BookSeries')).init(this.sequelize)
-    ;(require('./models/Author') as typeof import('./models/Author')).init(this.sequelize)
-    ;(require('./models/BookAuthor') as typeof import('./models/BookAuthor')).init(this.sequelize)
-    ;(require('./models/Collection') as typeof import('./models/Collection')).init(this.sequelize)
-    ;(require('./models/CollectionBook') as typeof import('./models/CollectionBook')).init(this.sequelize)
-    ;(require('./models/Playlist') as typeof import('./models/Playlist')).init(this.sequelize)
-    ;(require('./models/PlaylistMediaItem') as typeof import('./models/PlaylistMediaItem')).init(this.sequelize)
-    ;(require('./models/Device') as typeof import('./models/Device')).init(this.sequelize)
-    ;(require('./models/PlaybackSession') as typeof import('./models/PlaybackSession')).init(this.sequelize)
-    ;(require('./models/Feed') as typeof import('./models/Feed')).init(this.sequelize)
-    ;(require('./models/FeedEpisode') as typeof import('./models/FeedEpisode')).init(this.sequelize)
-    ;(require('./models/Setting') as typeof import('./models/Setting')).init(this.sequelize)
-    ;(require('./models/CustomMetadataProvider') as typeof import('./models/CustomMetadataProvider')).init(this.sequelize)
-    ;(require('./models/MediaItemShare') as typeof import('./models/MediaItemShare')).init(this.sequelize)
+    // The models are required here (lazily, in this order), not at module load
+    lazy<typeof import('./models/User')>(() => require('./models/User')).init(this.sequelize)
+    lazy<typeof import('./models/Session')>(() => require('./models/Session')).init(this.sequelize)
+    lazy<typeof import('./models/ApiKey')>(() => require('./models/ApiKey')).init(this.sequelize)
+    lazy<typeof import('./models/Library')>(() => require('./models/Library')).init(this.sequelize)
+    lazy<typeof import('./models/LibraryFolder')>(() => require('./models/LibraryFolder')).init(this.sequelize)
+    lazy<typeof import('./models/Book')>(() => require('./models/Book')).init(this.sequelize)
+    lazy<typeof import('./models/Podcast')>(() => require('./models/Podcast')).init(this.sequelize)
+    lazy<typeof import('./models/PodcastEpisode')>(() => require('./models/PodcastEpisode')).init(this.sequelize)
+    lazy<typeof import('./models/LibraryItem')>(() => require('./models/LibraryItem')).init(this.sequelize)
+    lazy<typeof import('./models/MediaProgress')>(() => require('./models/MediaProgress')).init(this.sequelize)
+    lazy<typeof import('./models/Series')>(() => require('./models/Series')).init(this.sequelize)
+    lazy<typeof import('./models/BookSeries')>(() => require('./models/BookSeries')).init(this.sequelize)
+    lazy<typeof import('./models/Author')>(() => require('./models/Author')).init(this.sequelize)
+    lazy<typeof import('./models/BookAuthor')>(() => require('./models/BookAuthor')).init(this.sequelize)
+    lazy<typeof import('./models/Collection')>(() => require('./models/Collection')).init(this.sequelize)
+    lazy<typeof import('./models/CollectionBook')>(() => require('./models/CollectionBook')).init(this.sequelize)
+    lazy<typeof import('./models/Playlist')>(() => require('./models/Playlist')).init(this.sequelize)
+    lazy<typeof import('./models/PlaylistMediaItem')>(() => require('./models/PlaylistMediaItem')).init(this.sequelize)
+    lazy<typeof import('./models/Device')>(() => require('./models/Device')).init(this.sequelize)
+    lazy<typeof import('./models/PlaybackSession')>(() => require('./models/PlaybackSession')).init(this.sequelize)
+    lazy<typeof import('./models/Feed')>(() => require('./models/Feed')).init(this.sequelize)
+    lazy<typeof import('./models/FeedEpisode')>(() => require('./models/FeedEpisode')).init(this.sequelize)
+    lazy<typeof import('./models/Setting')>(() => require('./models/Setting')).init(this.sequelize)
+    lazy<typeof import('./models/CustomMetadataProvider')>(() => require('./models/CustomMetadataProvider')).init(this.sequelize)
+    lazy<typeof import('./models/MediaItemShare')>(() => require('./models/MediaItemShare')).init(this.sequelize)
 
     return this.sequelize.sync({ force, alter: false })
   }
@@ -404,8 +414,8 @@ class Database {
     }
     // Build migrations
     if (this.serverSettings.buildNumber <= 0) {
-      // cast(d): require() is typed any; the module is required here (lazily), not at module load
-      await (require('./utils/migrations/absMetadataMigration') as typeof import('./utils/migrations/absMetadataMigration')).migrate(this)
+      // The module is required here (lazily), not at module load
+      await lazy<typeof import('./utils/migrations/absMetadataMigration')>(() => require('./utils/migrations/absMetadataMigration')).migrate(this)
     }
 
     await this.cleanDatabase()

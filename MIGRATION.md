@@ -25,7 +25,7 @@ Goal: convert every first-party .js file under server/ and index.js to TypeScrip
 | 8 | server/migrations | 15 | done: 15 converted, none skipped |
 | 9 | server top-level files (Logger, Database, Auth, SocketAuthority, Watcher, Server) and index.js | 7 | done: 7 converted, none skipped; 9b done (InitializedDatabase removed) |
 | 10 | Packaging: package.json scripts, Dockerfile and anything else that references a .js entry point | 9 | done: 9 files changed (configuration and comments), prod.js skipped (see Skipped files) |
-| 11 | Final cleanup (see "Final cleanup (batch 11)") | 25 | 11a done (items 3 and 5 partly done, FsExtra part of item 7 done; see the Batch 11a Log); 11b in progress: job 1 done |
+| 11 | Final cleanup (see "Final cleanup (batch 11)") | 25 | 11a done (items 3 and 5 partly done, FsExtra part of item 7 done; see the Batch 11a Log); 11b in progress: jobs 1 and 2 done |
 
 Already done in Phase 2: server/finders, server/providers, server/controllers/SearchController.
 
@@ -459,6 +459,17 @@ Each has a `NOTE:` comment at the line.
 - Files changed: server/utils/sequelizeStatics.d.ts (new), server/utils/types.ts (the reference line), server/Database.ts, server/managers/MigrationManager.ts, server/migrations/v2.15.0-series-column-unique.ts, v2.17.3-fk-constraints.ts, v2.17.6-share-add-isdownloadable.ts, v2.19.1-copy-title-to-library-items.ts, v2.19.4-improve-podcast-queries.ts, v2.20.0-improve-author-sort-queries.ts, v2.26.0-create-auth-tables.ts, v2.35.0-add-last-refresh-token.ts, and this file (also the LibraryFile.metadata count in the Batch 11a Log and in Skipped files: 52 outside LibraryFile, the sum of the list, not 50).
 - Per file (`as` before -> after; `as unknown as` and `!` unchanged): Database 42 -> 39, MigrationManager 5 -> 4, v2.15.0 5 -> 4, v2.17.3 2 -> 1, v2.17.6 1 -> 0, v2.19.1 5 -> 3, v2.19.4 2 -> 0, v2.20.0 5 -> 3, v2.26.0 2 -> 0, v2.35.0 2 -> 0. No count went up. Casts added: 0.
 - Compiled JS: HEAD built in a temporary git worktree in the scratchpad (node_modules symlinked, 0 `error TS`), every compiled .js file of both dist-server trees printed with the TypeScript printer (comments and blank lines removed): 472 files each, none added or removed, no file differs. dist-server/server/migrations still holds exactly the 15 migrations.
+- No bugs found, no tests changed.
+- Result: `npm run build:server` (clean build) reports 0 `error TS`; `npm test` 356 passing, 0 failing.
+
+### Batch 11b job 2: lazy models in Database (the batch 9 note "A typed lazy-require helper"; no file converted)
+- Counts before (after job 1, 191 files): 712 `as`, 151 `as unknown as`, 267 `!`. Counts after: 687 `as` (-25: 26 removed, 1 added), 151 `as unknown as`, 267 `!`. By tag: d 358 -> 333, the others unchanged.
+- server/Database.ts: one local, non-exported function `lazy<T>(load: () => unknown): T` after the module-level destructuring (exception 6), with one cast `load() as T` (tag d). It calls `load` and returns its result; the caller names the module type: `lazy<typeof import('./models/User')>(() => require('./models/User')).init(this.sequelize)`. The 25 `buildModels` lines and the absMetadataMigration line in `init` (`await lazy<typeof import('./utils/migrations/absMetadataMigration')>(() => require('./utils/migrations/absMetadataMigration')).migrate(this)`) use it; each `require` is still written at its call site, in the same order, and runs when that line runs (inside `buildModels` / `init`), not at module load. No top-level import, no variable annotation of a require result.
+- absMetadataMigration: the cast was in Database.ts (`init`), not in server/utils/migrations/absMetadataMigration.ts, so it reuses the same local `lazy` (no new shared code); absMetadataMigration.ts is unchanged.
+- The tag comment of the block (`cast(d): require() is typed any; ...`) and of the absMetadataMigration line became plain comments ("required here (lazily, ...), not at module load"), since those lines have no cast now. The leading `;` of the 24 `;(require(...) as ...)` lines is gone (the lines no longer start with `(`); Database.ts now passes `prettier --check` (before this job it did not, see the Batch 9b Log).
+- Casts removed: 26 `as` (tag d, 26 different target types `typeof import('./models/X')`); added: 1 `as T` (tag d). Database 39 -> 14 `as`; no other file changed its counts.
+- Files changed: server/Database.ts and this file.
+- Compiled JS: compared with the clean build of the baseline (18b19b45, the same temporary worktree as job 1): one file differs, server/Database.js: the new `function lazy(load) { return load(); }` (3 lines after the module-level `const { Sequelize, Op } = sequelize`), the 25 `require('./models/X').init(this.sequelize)` lines became `lazy(() => require('./models/X')).init(this.sequelize)`, and `await require('./utils/migrations/absMetadataMigration').migrate(this)` became `await lazy(() => require(...)).migrate(this)`. The require calls of the compiled Database.js, listed in source order, are identical (same modules, same order). `lazy` calls the arrow at once and returns its result, so each module is required at the same moment and `init` / `migrate` are called on the same module object.
 - No bugs found, no tests changed.
 - Result: `npm run build:server` (clean build) reports 0 `error TS`; `npm test` 356 passing, 0 failing.
 
