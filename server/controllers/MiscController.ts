@@ -751,7 +751,7 @@ class MiscController {
     }
 
     res.json({
-      // logManager is set in the Server constructor, before any route is served
+      // cast(d): logManager is set in the Server constructor, before any route is served
       currentDailyLogs: Logger.logManager!.getMostRecentCurrentDailyLogs()
     })
   }

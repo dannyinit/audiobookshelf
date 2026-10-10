@@ -234,7 +234,7 @@ class Server {
     // Create or set JWT secret in token manager
     await this.auth.tokenManager.initTokenSecret()
 
-    // logManager is set in the constructor
+    // cast(d): logManager is set in the constructor
     await Logger.logManager!.init()
 
     await this.cleanUserData() // Remove invalid user item progress
@@ -342,7 +342,7 @@ class Server {
     // enable express-session
     app.use(
       expressSession({
-        // set by initTokenSecret in init (before start creates the app)
+        // cast(d): set by initTokenSecret in init (before start creates the app)
         secret: this.auth.tokenManager.TokenSecret!,
         resave: false,
         saveUninitialized: false,
@@ -613,7 +613,7 @@ class Server {
     Logger.info('[Server] Watcher Closed')
     await SocketAuthority.close()
     Logger.info('[Server] Closing HTTP Server')
-    // stop runs after start, which creates the server
+    // cast(d): stop runs after start, which creates the server
     await new Promise((resolve) => this.server!.close(resolve))
     Logger.info('[Server] HTTP Server Closed')
   }

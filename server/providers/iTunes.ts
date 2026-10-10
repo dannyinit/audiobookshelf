@@ -134,6 +134,7 @@ class iTunes {
    */
   searchAudiobooks(term: string, timeout: number = this.#responseTimeout): Promise<iTunesAudiobookResult[]> {
     // NOTE: search() returns a plain array when term is empty, so .then throws here (existing behaviour)
+    // cast(c): search() returns a plain array when term is empty (see NOTE above)
     return (this.search({ term, entity: 'audiobook', media: 'audiobook' }, timeout) as Promise<iTunesSearchResultItem[]>).then((results) => {
       return results.map(this.cleanAudiobook.bind(this))
     })
@@ -162,6 +163,7 @@ class iTunes {
    */
   searchPodcasts(term: string, options: { country?: string } = {}, timeout: number = this.#responseTimeout): Promise<iTunes.iTunesPodcastSearchResult[]> {
     // NOTE: search() returns a plain array when term is empty, so .then throws here (existing behaviour)
+    // cast(c): search() returns a plain array when term is empty (see NOTE above)
     return (this.search({ term, entity: 'podcast', media: 'podcast', ...options }, timeout) as Promise<iTunesSearchResultItem[]>).then((results) => {
       return results.map(this.cleanPodcast.bind(this))
     })

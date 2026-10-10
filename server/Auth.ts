@@ -162,7 +162,7 @@ class Auth {
       new JwtStrategy(
         {
           jwtFromRequest: ExtractJwt.fromExtractors([ExtractJwt.fromAuthHeaderAsBearerToken(), ExtractJwt.fromUrlQueryParameter('token')]),
-          // TokenSecret is set by initTokenSecret (Server.init) before passport is initialized
+          // cast(d): TokenSecret is set by initTokenSecret (Server.init) before passport is initialized
           secretOrKey: TokenManager.TokenSecret!,
           // Handle expiration manaully in order to disable api keys that are expired
           ignoreExpiration: true
@@ -331,10 +331,10 @@ class Auth {
    */
   async handleLoginSuccess(req: Request, res: Response, returnTokens = false) {
     // Create tokens and session
-    // req.user is set by passport.authenticate before this runs (see above)
+    // cast(d): req.user is set by passport.authenticate before this runs (see above)
     const { accessToken, refreshToken } = await this.tokenManager.createTokensAndSession(req.user!, req)
 
-    // req.user is set by passport.authenticate (see above)
+    // cast(d): req.user is set by passport.authenticate (see above)
     const userResponse = await this.getUserLoginResponsePayload(req.user!)
 
     userResponse.user.refreshToken = returnTokens ? refreshToken : null
@@ -389,7 +389,7 @@ class Auth {
         return res.status(401).json({ error: refreshResponse.error })
       }
 
-      // handleRefreshToken returns the user when there is no error
+      // cast(d): handleRefreshToken returns the user when there is no error (checked above)
       const userResponse = await this.getUserLoginResponsePayload(refreshResponse.user!)
 
       userResponse.user.accessToken = refreshResponse.accessToken
@@ -411,7 +411,7 @@ class Auth {
         return // Response already sent by paramsToCookies
       }
 
-      // the url is set when there is no error
+      // cast(d): the url is set when there is no error (checked above)
       res.redirect(authorizationUrlResponse.authorizationUrl!)
     })
 
@@ -502,9 +502,9 @@ class Auth {
      * @example /auth/openid/config?issuer=http://192.168.1.66:9000/application/o/audiobookshelf/
      */
     router.get('/auth/openid/config', this.authRateLimiter, this.isAuthenticated, async (req, res) => {
-      // req.user is set by isAuthenticated (the middleware before this handler)
+      // cast(d): req.user is set by isAuthenticated (the middleware before this handler)
       if (!req.user!.isAdminOrUp) {
-        // req.user is set by isAuthenticated (see above)
+        // cast(d): req.user is set by isAuthenticated (see above)
         Logger.error(`[Auth] Non-admin user "${req.user!.username}" attempted to get issuer config`)
         return res.sendStatus(403)
       }

@@ -101,6 +101,7 @@ class SearchController {
       const results = await BookFinder.search(libraryItem, provider, title, author)
       res.json(results)
     } catch (error) {
+      // cast(d): catch variable is unknown; the finders and validation helpers throw Error objects
       Logger.error(`[SearchController] findBooks: ${(error as Error).message}`)
       if (error instanceof ValidationError || error instanceof NotFoundError) {
         return res.status(error.status).json({ error: error.message })
@@ -126,6 +127,7 @@ class SearchController {
       else results = await BookFinder.findCovers(provider, title, author)
       res.json({ results })
     } catch (error) {
+      // cast(d): catch variable is unknown; the finders and validation helpers throw Error objects
       Logger.error(`[SearchController] findCovers: ${(error as Error).message}`)
       if (error instanceof ValidationError) {
         return res.status(error.status).json({ error: error.message })
@@ -147,6 +149,7 @@ class SearchController {
       const results = await PodcastFinder.search(term, { country })
       res.json(results)
     } catch (error) {
+      // cast(d): catch variable is unknown; the finders and validation helpers throw Error objects
       Logger.error(`[SearchController] findPodcasts: ${(error as Error).message}`)
       if (error instanceof ValidationError) {
         return res.status(error.status).json({ error: error.message })
@@ -166,6 +169,7 @@ class SearchController {
       const author = await AuthorFinder.findAuthorByName(query)
       res.json(author)
     } catch (error) {
+      // cast(d): catch variable is unknown; the finders and validation helpers throw Error objects
       Logger.error(`[SearchController] findAuthor: ${(error as Error).message}`)
       if (error instanceof ValidationError) {
         return res.status(error.status).json({ error: error.message })
@@ -191,6 +195,7 @@ class SearchController {
       }
       res.json(chapterData)
     } catch (error) {
+      // cast(d): catch variable is unknown; the finders and validation helpers throw Error objects
       Logger.error(`[SearchController] findChapters: ${(error as Error).message}`)
       if (error instanceof ValidationError) {
         if (error.paramName === 'asin') {
@@ -209,6 +214,7 @@ class SearchController {
    * Get all available metadata providers
    */
   async getAllProviders(req: RequestWithUser, res: Response) {
+    // cast(d): typed view from Phase 2, when the model's init() kept it from being a ModelStatic; since batch 3a findAll is typed on the model
     const customProviders = await (Database.customMetadataProviderModel as CustomMetadataProviderLister).findAll()
 
     const customBookProviders = customProviders.filter((p) => p.mediaType === 'book')

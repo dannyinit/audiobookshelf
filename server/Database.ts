@@ -183,7 +183,7 @@ class Database {
    * Check if db file exists
    */
   async checkHasDb(): Promise<boolean> {
-    // dbPath is set by init before it calls this
+    // cast(d): dbPath is set by init before it calls this
     if (!(await fs.pathExists(this.dbPath!))) {
       Logger.info(`[Database] absdatabase.sqlite not found at ${this.dbPath}`)
       return false
@@ -248,7 +248,7 @@ class Database {
     // cast(d): uppercaseFirst is added on the next line and the models by buildModels (Model.init)
     this.sequelize = new Sequelize({
       dialect: 'sqlite',
-      // dbPath is set by init before it calls this
+      // cast(d): dbPath is set by init before it calls this
       storage: this.dbPath!,
       logging: logging,
       benchmark: benchmark,

@@ -138,6 +138,7 @@ class Audnexus {
     Logger.debug(`[Audnexus] Looking up author by name ${name}`)
     const authorAsinObjs = await this.authorASINsRequest(name, region)
 
+    // cast(d): with a plain null initialiser TypeScript narrows closestMatch to null, so the assignments in the callback below would not type check
     let closestMatch = null as (AuthorASINObj & { levenshteinDistance: number }) | null
     authorAsinObjs.forEach((authorAsinObj) => {
       const scoredAuthorAsinObj = Object.assign(authorAsinObj, { levenshteinDistance: levenshteinDistance(authorAsinObj.name, name) })
@@ -185,6 +186,7 @@ class Audnexus {
     try {
       return await request()
     } catch (error) {
+      // cast(d): catch variable is unknown; axios rejects with an error that may have a response (see RequestError)
       const requestError = error as RequestError
       if (requestError.response?.status === 429) {
         const retryAfter = parseInt(String(requestError.response.headers?.['retry-after']), 10) || 5

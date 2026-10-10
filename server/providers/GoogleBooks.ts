@@ -65,6 +65,7 @@ class GoogleBooks {
     let cover: string | null = null
     // Selects the largest cover assuming the largest is the last key in the object
     if (imageLinks && Object.keys(imageLinks).length) {
+      // cast(d): imageLinks has keys (checked above), so pop is not undefined
       cover = imageLinks[Object.keys(imageLinks).pop()!]
       cover = cover?.replace(/^http:/, 'https:') || null
     }

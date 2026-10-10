@@ -236,7 +236,7 @@ class MigrationHelper {
       await this.queryInterface.addIndex(tableName, columns as string[])
       this.logger.info(`${loggerPrefix} added index on [${columnString}] to table ${tableName}. index name: ${indexName}"`)
     } catch (error) {
-      // cast(d): catch variable is unknown
+      // cast(d) (2): catch variable is unknown
       if ((error as Error).name === 'SequelizeDatabaseError' && (error as Error).message.includes('already exists')) {
         this.logger.info(`${loggerPrefix} index [${columnString}] for table "${tableName}" already exists`)
       } else {

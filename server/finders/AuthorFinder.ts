@@ -39,6 +39,7 @@ class AuthorFinder {
    * Download author image from url and save in authors folder
    */
   async saveAuthorImage(authorId: string, url: string): Promise<{ path: string } | { error: string }> {
+    // cast(d): ServerGlobals names MetadataPath, which Server sets at startup (utils/types.ts declares it on global too, so the cast changes no type)
     const authorDir = Path.join((global as ServerGlobals).MetadataPath, 'authors')
 
     if (!await fs.pathExists(authorDir)) {

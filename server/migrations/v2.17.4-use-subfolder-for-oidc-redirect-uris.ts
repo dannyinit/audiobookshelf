@@ -73,7 +73,7 @@ async function getServerSettings(queryInterface: QueryInterface, logger: Migrati
     throw error
   }
 
-  // set by the try block (the catch rethrows)
+  // cast(d): set by the try block (the catch rethrows)
   return serverSettings!
 }
 

@@ -46,14 +46,14 @@ class SocketAuthority {
     Object.values(this.clients)
       .filter((c) => c.user)
       .forEach((client) => {
-        // filtered on user above
+        // cast(d): the clients are filtered on user above
         if (onlineUsersMap[client.user!.id]) {
-          // filtered on user above
+          // cast(d): the clients are filtered on user above
           onlineUsersMap[client.user!.id].connections++
         } else {
-          // filtered on user above
+          // cast(d): the clients are filtered on user above
           onlineUsersMap[client.user!.id] = {
-            // filtered on user above; Server is set by initialize before any socket connects
+            // cast(d) (2): filtered on user above; Server is set by initialize before any socket connects
             ...client.user!.toJSONForPublic(this.Server!.playbackSessionManager.sessions),
             connections: 1
           }
@@ -75,7 +75,7 @@ class SocketAuthority {
   emitter(evt: string, data?: unknown, filter: ((user: User) => boolean) | null = null) {
     for (const socketId in this.clients) {
       if (this.clients[socketId].user) {
-        // checked just above
+        // cast(d): user is checked just above
         if (filter && !filter(this.clients[socketId].user!)) continue
 
         this.clients[socketId].socket.emit(evt, data)
@@ -138,7 +138,7 @@ class SocketAuthority {
   libraryItemsEmitter(evt: string, libraryItems: LibraryItem[]) {
     for (const socketId in this.clients) {
       if (this.clients[socketId].user) {
-        // checked just above
+        // cast(d): user is checked just above (the filter runs inside that if)
         const libraryItemsAccessibleToUser = libraryItems.filter((li) => this.clients[socketId].user!.checkCanAccessLibraryItem(li))
         if (libraryItemsAccessibleToUser.length) {
           this.clients[socketId].socket.emit(
@@ -179,7 +179,7 @@ class SocketAuthority {
       }
     }
 
-    // server is created in Server.start before it calls initialize
+    // cast(d): the server is created in Server.start before it calls initialize
     const ioServer = new SocketIO.Server(Server.server!, socketIoOptions)
     // NOTE: this shadows the socket.io Server path() method on the instance with a string (only read in log messages here); see Bugs
     // cast(c): path is a method in socket.io's types
@@ -189,7 +189,7 @@ class SocketAuthority {
     if (global.RouterBasePath) {
       // open a separate socket.io server for the router base path, keeping the original server open for legacy clients
       const ioBasePath = `${global.RouterBasePath}/socket.io`
-      // server is created in Server.start before it calls initialize
+      // cast(d): the server is created in Server.start before it calls initialize
       const ioBasePathServer = new SocketIO.Server(Server.server!, { ...socketIoOptions, path: ioBasePath })
       // NOTE: as above, shadows the path() method; see Bugs
       // cast(c): path is a method in socket.io's types
@@ -246,7 +246,7 @@ class SocketAuthority {
             delete this.clients[socket.id]
           } else {
             Logger.debug('[SocketAuthority] User Offline ' + _client.user.username)
-            // Server is set by initialize before any socket connects
+            // cast(d): Server is set by initialize before any socket connects
             this.adminEmitter('user_offline', _client.user.toJSONForPublic(this.Server!.playbackSessionManager.sessions))
 
             const disconnectTime = Date.now() - _client.connected_at
@@ -373,7 +373,7 @@ class SocketAuthority {
     }
 
     client.user = user
-    // Server is set by initialize before any socket connects
+    // cast(d): Server is set by initialize before any socket connects
     this.adminEmitter('user_online', client.user.toJSONForPublic(this.Server!.playbackSessionManager.sessions))
 
     // Update user lastSeen without firing sequelize bulk update hooks
@@ -393,7 +393,7 @@ class SocketAuthority {
 
   cancelScan(id: string) {
     Logger.debug('[SocketAuthority] Cancel scan', id)
-    // Server is set by initialize before any socket connects
+    // cast(d): Server is set by initialize before any socket connects
     this.Server!.cancelLibraryScan(id)
   }
 

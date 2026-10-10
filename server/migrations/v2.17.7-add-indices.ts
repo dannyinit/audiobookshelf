@@ -51,7 +51,7 @@ async function addIndex(queryInterface: QueryInterface, logger: MigrationContext
     await queryInterface.addIndex(tableName, columns)
     logger.info(`${loggerPrefix} added index [${columns.join(', ')}] to table "${tableName}"`)
   } catch (error) {
-    // cast(d): catch variable is unknown
+    // cast(d) (2): catch variable is unknown
     if ((error as Error).name === 'SequelizeDatabaseError' && (error as Error).message.includes('already exists')) {
       logger.info(`${loggerPrefix} index [${columns.join(', ')}] for table "${tableName}" already exists`)
     } else {

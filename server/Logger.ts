@@ -42,7 +42,7 @@ class Logger {
 
   get source(): string {
     const regex = global.isWin ? /^.*\\([^\\:]*:[0-9]*):[0-9]*\)*/ : /^.*\/([^/:]*:[0-9]*):[0-9]*\)*/
-    // Error() always has a stack in V8
+    // cast(d): Error() always has a stack in V8
     return Error().stack!.split('\n')[3].replace(regex, '$1')
   }
 

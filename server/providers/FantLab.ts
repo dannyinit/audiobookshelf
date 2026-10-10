@@ -213,6 +213,7 @@ class FantLab {
       return null
     }
 
+    // cast(d): the list was checked above to have items, so pop is not undefined
     const lastEdition = bookEditions.list.pop()!
 
     const editionId = lastEdition['edition_id']

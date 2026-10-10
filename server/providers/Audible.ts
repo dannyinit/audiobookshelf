@@ -233,6 +233,7 @@ class Audible {
         })
     }
     // NOTE: items is null when the catalog response has no "products" and this throws (existing behaviour)
+    // cast(c): items is null when the catalog response has no "products" (see NOTE above); read as in the JS
     return items!.filter((item): item is AudnexusBook => Boolean(item)).map((item) => this.cleanResult(item)) || []
   }
 }

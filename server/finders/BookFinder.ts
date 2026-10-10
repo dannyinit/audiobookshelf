@@ -84,6 +84,7 @@ class BookFinder {
     var searchAuthor = cleanAuthorForCompares(author)
     return books
       .map((book) => {
+        // cast(d): the same result object, which gets the score fields assigned below
         const b = book as ScoredOpenLibraryResult
         b.cleanedTitle = cleanTitleForCompares(b.title)
         b.titleDistance = levenshteinDistance(b.cleanedTitle, title)
@@ -130,6 +131,7 @@ class BookFinder {
           if (b.includesAuthor) {
             // If search author was found in result author then skip over leven distance check
             if (this.verbose) Logger.debug(`Exact author was included in "${b.author}", Search: "${b.includesAuthor}"`)
+          // cast(d): authorDistance is set for every result above when author is given (this branch)
           } else if (b.authorDistance! > maxAuthorDistance) {
             if (this.verbose) Logger.debug(`Filtering out search result "${b.author}", author distance = ${b.authorDistance}: "${b.author}"/"${author}"`)
             return false
@@ -170,6 +172,7 @@ class BookFinder {
     }
     // Google has good sort
     // NOTE: entries are null for volumes without volumeInfo, which makes runSearch throw (existing behaviour)
+    // cast(c): typed as results without null; entries are null for volumes without volumeInfo (see NOTE above)
     return books as BookSearchResult[]
   }
 
@@ -195,6 +198,7 @@ class BookFinder {
   }
 
   async getAudibleResults(title: string, author: string | null | undefined, asin: string | null | undefined, provider: string): Promise<BookSearchResult[]> {
+    // cast(d): split always returns at least one element, so pop is not undefined
     const region = provider.includes('.') ? provider.split('.').pop()! : ''
     const books = await this.audible.search(title, author, asin, region, this.#providerResponseTimeout)
     if (this.verbose) Logger.debug(`Audible Book Search Results: ${books.length || 0}`)
@@ -606,6 +610,7 @@ class BookFinder {
     let searchResults: BookSearchResult[] = []
     // NOTE: options is passed in the isbn position of search() so the distance options are ignored
     // and the object is sent as the isbn to custom providers (existing behaviour)
+    // cast(c): options is passed in the isbn position of search() (see NOTE above)
     const optionsAsIsbn = options as unknown as string
 
     if (provider === 'all') {

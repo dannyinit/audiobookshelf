@@ -242,6 +242,7 @@ class LibraryController {
     for (const folder of newLibraryPayload.libraryFolders!) {
       try {
         // Create folder if it doesn't exist
+        // cast(d): each folder path is set in the map above
         await fs.ensureDir(folder.path!)
       } catch (error) {
         Logger.error(`[LibraryController] Failed to ensure folder dir "${folder.path}"`, error)
@@ -730,7 +731,7 @@ class LibraryController {
     // Non-null (2): filterByGroup is only set when filterBy is
     const filterByValue = filterByGroup ? libraryFilters.decode(payload.filterBy!.replace(`${filterByGroup}.`, '')) : null
     if (filterByGroup === 'series' && filterByValue !== 'no-series' && payload.collapseseries) {
-      // cast(d): decode returns null for an invalid id; findByPk(null) in handleCollapseSubseries then finds no series, as in the JS
+      // cast(d) (2): filterByGroup is only set when filterBy is; decode returns null for an invalid id, and findByPk(null) in handleCollapseSubseries then finds no series, as in the JS
       const seriesId = libraryFilters.decode(payload.filterBy!.split('.')[1]) as string
       payload.results = await libraryHelpers.handleCollapseSubseries(payload, seriesId, req.user, req.library)
     } else {
@@ -1467,6 +1468,7 @@ class LibraryController {
           itunesId: p.itunesId,
           // Non-null (2): the library item is included with a where, so every podcast has one
           libraryItemId: p.libraryItem!.id,
+          // cast(d): the library item is included with a where, so every podcast has one
           libraryId: p.libraryItem!.libraryId
         }
       })

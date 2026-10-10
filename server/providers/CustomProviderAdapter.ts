@@ -70,6 +70,7 @@ class CustomProviderAdapter {
     if (!timeout || isNaN(timeout)) timeout = this.#responseTimeout
 
     const providerId = providerSlug.split('custom-')[1]
+    // cast(d): typed view from Phase 2, when the model's init() kept it from being a ModelStatic; since batch 3a findByPk is typed on the model
     const provider = await (Database.customMetadataProviderModel as CustomMetadataProviderFinder).findByPk(providerId)
 
     if (!provider) {
@@ -183,7 +184,9 @@ class CustomProviderAdapter {
 
       // Remove undefined values
       for (const key in payload) {
+        // cast(d): for...in only yields keys of payload
         if (payload[key as keyof CustomProviderBookResult] === undefined) {
+          // cast(d): for...in only yields keys of payload
           delete payload[key as keyof CustomProviderBookResult]
         }
       }

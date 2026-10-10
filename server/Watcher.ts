@@ -77,7 +77,7 @@ class FolderWatcher extends EventEmitter {
     }
     Logger.info(`[Watcher] Initializing watcher for "${library.name}".`)
 
-    // the callers pass libraries loaded with their folders (getAllWithFolders, the library controller)
+    // cast(b): the callers pass libraries loaded with their folders (getAllWithFolders, the library controller); the association is optional in the model
     const folderPaths = library.libraryFolders!.map((f) => f.path)
     folderPaths.forEach((fp) => {
       Logger.debug(`[Watcher] Init watcher for library folder path "${fp}"`)
@@ -116,7 +116,7 @@ class FolderWatcher extends EventEmitter {
     this.libraryWatchers.push({
       id: library.id,
       name: library.name,
-      // loaded with the library (see above)
+      // cast(b): loaded with the library (see above); the association is optional in the model
       libraryFolders: library.libraryFolders!,
       paths: folderPaths,
       watcher
@@ -164,7 +164,7 @@ class FolderWatcher extends EventEmitter {
       libwatcher.name = library.name
 
       // If any folder paths were added or removed then re-init watcher
-      // the library controller passes the library loaded with its folders
+      // cast(b): the library controller passes the library loaded with its folders; the association is optional in the model
       const folderPaths = library.libraryFolders!.map((f) => f.path)
       const pathsToAdd = folderPaths.filter((path) => !libwatcher.paths.includes(path))
       const pathsRemoved = libwatcher.paths.filter((path) => !folderPaths.includes(path))
@@ -364,9 +364,9 @@ class FolderWatcher extends EventEmitter {
           text: 'No files to scan',
           key: 'MessageTaskNoFilesToScan'
         }
-        // pendingTask is set by addFileUpdate before it starts this timeout
+        // cast(d): pendingTask is set by addFileUpdate before it starts this timeout
         this.pendingTask!.setFinished(taskFinishedString)
-        // as above
+        // cast(d): pendingTask is set by addFileUpdate (as above)
         TaskManager.taskFinished(this.pendingTask!)
       }
       this.pendingTask = null
